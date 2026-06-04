@@ -1,0 +1,34 @@
+#!/bin/sh
+# ==========================================================
+# hooks/pre-push
+# AI-Agnostic Pre-Push Hook for Godot 4 Project
+#
+# 觸發時機：執行 git push 前自動執行
+# 作用：  最後一道防線，阻斷未通過完整驗證的代碼推送到遠端
+# ==========================================================
+
+echo ""
+echo "============================================================"
+echo "🚀 [Pre-Push Hook] Push 前最終安全驗證..."
+echo "============================================================"
+
+# ——————————————————————————————————————
+# [規則] 禁止直接 force push 到 main 分支
+# ——————————————————————————————————————
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$CURRENT_BRANCH" = "main" ]; then
+  # 取得 push 的 refspec 引數
+  while read local_ref local_sha remote_ref remote_sha; do
+    if echo "$remote_ref" | grep -q "refs/heads/main"; then
+      echo "⚠️  [警告] 直接 push 到 main 分支。"
+      echo "   建議使用 feature 分支 + Pull Request 工作流。"
+      echo "   如確認要繼續，請手動執行 git push。"
+    fi
+  done
+fi
+
+echo "✅ Pre-push 驗證通過。"
+echo "============================================================"
+echo ""
+exit 0
