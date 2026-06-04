@@ -1,0 +1,59 @@
+#!/bin/sh
+# ==========================================================
+# hooks/commit-msg
+# Commit 訊息格式驗證
+#
+# 觸發時機：git commit 訊息確認後
+# 作用：強制 commit 訊息符合可追蹤的格式規範
+# 格式：[ROLE] type: 描述
+#       type 可以是：feat|fix|plan|review|test|docs|refactor|chore
+# ==========================================================
+
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# 跳過 merge commit
+if echo "$COMMIT_MSG" | grep -q "^Merge"; then
+    exit 0
+fi
+
+# 跳過 revert commit
+if echo "$COMMIT_MSG" | grep -q "^Revert"; then
+    exit 0
+fi
+
+# 允許的 type 列表
+VALID_TYPES="feat|fix|plan|review|test|docs|refactor|chore|style|perf|ci"
+
+# 允許的格式：
+# 1. [ROLE] type: 描述 （有角色標籤）
+# 2. type: 描述 （無角色標籤）
+PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA)\] ($VALID_TYPES): .{3,}"
+PATTERN_WITHOUT_ROLE="^($VALID_TYPES): .{3,}"
+
+if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITH_ROLE"; then
+    exit 0
+fi
+
+if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITHOUT_ROLE"; then
+    exit 0
+fi
+
+# 格式不符合
+echo ""
+echo "❌ [commit-msg] Commit 訊息格式不正確！"
+echo ""
+echo "   你的訊息：$COMMIT_MSG"
+echo ""
+echo "   正確格式：[ROLE] type: 描述 （至少 3 個字元）"
+echo "   範例："
+echo "     [ARCH] plan: 設計玩家移動系統架構"
+echo "     [DEV] feat: 實作玩家跳躍功能"
+echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤"
+echo "     [REVIEW] review: 審查玩家移動 PR"
+echo "     [QA] test: 驗證玩家移動測試全部通過"
+echo "     docs: 更新 README"
+echo ""
+echo "   可用 type: feat | fix | plan | review | test | docs | refactor | chore"
+echo ""
+exit 1

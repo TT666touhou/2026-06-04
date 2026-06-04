@@ -1,0 +1,54 @@
+#!/bin/sh
+# ==========================================================
+# hooks/post-merge
+# Merge 後自動觸發 QA 提醒
+#
+# 觸發時機：git merge（或 PR 合併）完成後
+# 作用：提醒 QA Agent 啟動測試流程
+# ==========================================================
+
+MERGE_HEAD=$(git log --merges -1 --format="%H" 2>/dev/null || echo "")
+
+echo ""
+echo "============================================================"
+echo "🔀 [Post-Merge Hook] Merge 完成，執行合併後驗證..."
+echo "============================================================"
+
+# ——————————————————————————————————————
+# [1] 確認合併後沒有遺留衝突標記
+# ——————————————————————————————————————
+echo "[1/2] 掃描遺留的衝突標記..."
+CONFLICT_MARKERS=$(grep -rn "<<<<<<< \|======= \|>>>>>>> " --include="*.gd" --include="*.tscn" --include="*.tres" . 2>/dev/null | grep -v ".git/" || true)
+
+if [ -n "$CONFLICT_MARKERS" ]; then
+    echo "❌ 發現未解決的衝突標記！合併後代碼包含衝突："
+    echo "$CONFLICT_MARKERS"
+    echo ""
+    echo "   請手動解決以上衝突後重新 commit。"
+    exit 1
+fi
+echo "   ✅ 無遺留衝突標記"
+
+# ——————————————————————————————————————
+# [2] 觸發 QA 提醒
+# ——————————————————————————————————————
+echo "[2/2] 通知 QA 啟動測試..."
+
+# 取得最近 merge 的分支名稱
+MERGED_BRANCH=$(git log --merges -1 --format="%s" 2>/dev/null | sed "s/Merge branch '//; s/'.*//" || echo "unknown")
+
+echo ""
+echo "============================================================"
+echo "🧪 [QA 提醒] 有新的代碼合併到 main！"
+echo "============================================================"
+echo "   合併來源：$MERGED_BRANCH"
+echo "   請 QA Agent 啟動測試流程："
+echo ""
+echo "   1. 切換角色：  .\\scripts\\set-role.ps1 qa"
+echo "   2. 閱讀計畫：  implementation_plan.md"
+echo "   3. 執行測試並建立報告：docs\\qa-report-[任務名].md"
+echo "   4. 在 GitHub PR 留下測試結論"
+echo "============================================================"
+echo ""
+
+exit 0

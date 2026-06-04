@@ -1,0 +1,41 @@
+#!/bin/sh
+# ==========================================================
+# hooks/prepare-commit-msg
+# 自動在 Commit 訊息前加入角色標籤
+#
+# 觸發時機：git commit 時，在編輯訊息前
+# 作用：讓每條 commit 歷史都清楚標示是哪個角色做的
+# 格式：[ARCHITECT] / [DEV] / [REVIEW] / [QA] 前綴
+# ==========================================================
+
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+
+# 只處理普通 commit（排除 merge、amend、rebase）
+if [ -n "$COMMIT_SOURCE" ]; then
+    exit 0
+fi
+
+# 讀取角色
+ROLE="none"
+if [ -f ".agent-role" ]; then
+    ROLE=$(cat .agent-role | tr -d '[:space:]')
+fi
+
+# 定義角色前綴
+case "$ROLE" in
+    "architect") PREFIX="[ARCH]" ;;
+    "developer")  PREFIX="[DEV]"  ;;
+    "reviewer")   PREFIX="[REVIEW]" ;;
+    "qa")         PREFIX="[QA]"   ;;
+    *)            PREFIX=""       ;;
+esac
+
+# 若訊息不包含前綴，自動加入
+if [ -n "$PREFIX" ]; then
+    CURRENT_MSG=$(cat "$COMMIT_MSG_FILE")
+    # 只在訊息不已含有此前綴時才加入
+    if ! echo "$CURRENT_MSG" | grep -q "^\[$\]"; then
+        echo "$PREFIX $CURRENT_MSG" > "$COMMIT_MSG_FILE"
+    fi
+fi

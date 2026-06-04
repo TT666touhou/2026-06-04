@@ -1,94 +1,156 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-commit
-# AI-Agnostic Pre-Commit Hook for Godot 4 Project
+# hooks/pre-commit  (v2 — 含角色感知)
+# AI-Agnostic + Role-Aware Pre-Commit Hook
 #
-# 適用範圍：任何 AI 模型（Claude、Gemini、GPT 等）以及人類開發者
-# 觸發時機：每次執行 git commit 前自動執行
-# 作用：  阻斷不符合規範的代碼進入 Git 歷史
+# 觸發時機：每次 git commit 前
+# 新增功能：根據 .agent-role 文件，執行對應角色的專屬驗證
 # ==========================================================
 
 set -e
 
 echo ""
 echo "============================================================"
-echo "🔒 [Pre-Commit Hook] 開始執行代碼品質閘門..."
+echo "🔒 [Pre-Commit Hook v2] 角色感知驗證閘門..."
 echo "============================================================"
 
 # ——————————————————————————————————————
-# [規則 1] 禁止提交 Godot 大型二進位資源而不通過 LFS
+# 讀取目前角色
 # ——————————————————————————————————————
-echo "[1/3] 檢查大型檔案是否都已被 Git LFS 追蹤..."
+ROLE="none"
+if [ -f ".agent-role" ]; then
+    ROLE=$(cat .agent-role | tr -d '[:space:]')
+fi
+echo "👤 目前角色：$ROLE"
+echo ""
 
-# 找出 staged 中大於 5MB 的檔案
-LARGE_FILES=$(git diff --cached --name-only --diff-filter=ACM | xargs -I{} sh -c 'test -f "{}" && stat -c "%s %n" "{}"' 2>/dev/null | awk '$1 > 5242880 {print $2}' || true)
+# ——————————————————————————————————————
+# [通用規則 1] 大型檔案 LFS 追蹤檢查
+# ——————————————————————————————————————
+echo "[通用/1] 檢查大型檔案 LFS 追蹤..."
+LARGE_FILES=$(git diff --cached --name-only --diff-filter=ACM | while read f; do
+    if [ -f "$f" ]; then
+        size=$(wc -c < "$f" 2>/dev/null || echo 0)
+        if [ "$size" -gt 5242880 ]; then
+            echo "$f"
+        fi
+    fi
+done)
 
 if [ -n "$LARGE_FILES" ]; then
-  echo "❌ [錯誤] 發現大型檔案未通過 LFS 追蹤，禁止提交！"
-  echo "   以下檔案超過 5MB，請先執行 git lfs track 再 commit："
-  echo "$LARGE_FILES"
-  echo ""
-  echo "   修復指令範例："
-  echo '   git lfs track "*.glb"'
-  echo "   git add .gitattributes"
-  echo "   git add <your_file>"
-  exit 1
+    echo "❌ 大型檔案未通過 LFS，阻斷 Commit："
+    echo "$LARGE_FILES"
+    exit 1
 fi
-echo "   ✅ 所有大型檔案已正確追蹤"
+echo "   ✅ LFS 檢查通過"
 
 # ——————————————————————————————————————
-# [規則 2] Godot GDScript 靜態語法與型別安全檢查
+# [通用規則 2] 機密掃描
 # ——————————————————————————————————————
-echo "[2/3] 執行 Godot 靜態語法檢查..."
-
-# 確認是否有任何 .gd 檔案被修改
-CHANGED_GD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
-
-if [ -n "$CHANGED_GD" ]; then
-  # 自動尋找 Godot 執行檔
-  GODOT_BIN="C:/Users/88698/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64.exe"
-
-  if [ -f "$GODOT_BIN" ]; then
-    "$GODOT_BIN" --headless --check-only --path . 2>&1
-    GODOT_EXIT=$?
-    if [ $GODOT_EXIT -ne 0 ]; then
-      echo "❌ [錯誤] GDScript 語法或型別安全檢查失敗！阻斷 Commit。"
-      echo "   請修復上方報告的 GDScript 錯誤後再重試。"
-      exit 1
-    fi
-    echo "   ✅ GDScript 語法檢查通過"
-  else
-    echo "   ⚠️  找不到 Godot 執行檔，跳過語法檢查 (路徑: $GODOT_BIN)"
-  fi
-else
-  echo "   ℹ️  本次無 .gd 檔案變更，跳過語法檢查"
-fi
-
-# ——————————————————————————————————————
-# [規則 3] 禁止提交包含硬編碼機密或 API Key 的代碼
-# ——————————————————————————————————————
-echo "[3/3] 掃描敏感資訊洩露..."
-
-# 掃描常見的機密洩露模式
+echo "[通用/2] 掃描機密資訊洩露..."
 STAGED_CONTENT=$(git diff --cached)
 SECRETS_FOUND=0
-
-# 偵測常見敏感字串模式
 echo "$STAGED_CONTENT" | grep -iE '(api_key|apikey|secret_key|password|private_key|access_token)\s*=\s*["\x27][A-Za-z0-9+/]{20,}' && SECRETS_FOUND=1 || true
-
 if [ $SECRETS_FOUND -eq 1 ]; then
-  echo "❌ [錯誤] 偵測到疑似硬編碼的機密資訊（API Key / Password），阻斷 Commit！"
-  echo "   請使用環境變數或設定檔管理機密，不可直接寫入代碼。"
-  exit 1
+    echo "❌ 偵測到硬編碼機密，阻斷 Commit！"
+    exit 1
 fi
-echo "   ✅ 未偵測到敏感資訊洩露"
+echo "   ✅ 機密掃描通過"
 
 # ——————————————————————————————————————
-# 所有檢查通過
+# [角色規則] Architect 專屬檢查
+# ——————————————————————————————————————
+if [ "$ROLE" = "architect" ]; then
+    echo "[Architect/1] 驗證不包含代碼文件..."
+    GD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+    if [ -n "$GD_FILES" ]; then
+        echo "❌ [Architect 規則違反] Architect 不應提交代碼文件！"
+        echo "   以下文件請由 Developer 角色處理："
+        echo "$GD_FILES"
+        echo "   提示：切換角色 → .\\scripts\\set-role.ps1 developer"
+        exit 1
+    fi
+    echo "   ✅ 無代碼文件，符合 Architect 規則"
+
+    echo "[Architect/2] 驗證 implementation_plan.md 已修改..."
+    PLAN_CHANGED=$(git diff --cached --name-only | grep 'implementation_plan.md' || true)
+    if [ -z "$PLAN_CHANGED" ]; then
+        echo "⚠️  [Architect 警告] 此次提交未包含 implementation_plan.md"
+        echo "   Architect 的提交通常應包含設計文件的修改。"
+        echo "   若確認這是正確的，請繼續。(5秒後繼續...)"
+        sleep 5
+    else
+        echo "   ✅ implementation_plan.md 已更新"
+    fi
+fi
+
+# ——————————————————————————————————————
+# [角色規則] Developer 專屬檢查
+# ——————————————————————————————————————
+if [ "$ROLE" = "developer" ]; then
+    echo "[Developer/1] 執行 GDScript 語法驗證..."
+    CHANGED_GD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
+
+    if [ -n "$CHANGED_GD" ]; then
+        GODOT_BIN="C:/Users/88698/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64.exe"
+        if [ -f "$GODOT_BIN" ]; then
+            "$GODOT_BIN" --headless --check-only --path . 2>&1
+            if [ $? -ne 0 ]; then
+                echo "❌ GDScript 語法驗證失敗，阻斷 Commit！"
+                exit 1
+            fi
+            echo "   ✅ GDScript 語法驗證通過"
+        else
+            echo "   ⚠️  找不到 Godot 執行檔，跳過語法驗證"
+        fi
+    else
+        echo "   ℹ️  本次無 .gd 文件變更"
+    fi
+
+    echo "[Developer/2] 驗證在 feature 分支上提交..."
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$CURRENT_BRANCH" = "main" ]; then
+        GD_IN_COMMIT=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
+        if [ -n "$GD_IN_COMMIT" ]; then
+            echo "❌ [Developer 規則違反] 禁止直接在 main 分支提交 .gd 代碼文件！"
+            echo "   請使用 Worktree 在 feature 分支上工作："
+            echo "   .\\scripts\\worktree.ps1 new [feature-name]"
+            exit 1
+        fi
+    fi
+    echo "   ✅ 分支檢查通過（目前：$CURRENT_BRANCH）"
+fi
+
+# ——————————————————————————————————————
+# [角色規則] QA 專屬檢查
+# ——————————————————————————————————————
+if [ "$ROLE" = "qa" ]; then
+    echo "[QA/1] 驗證不包含代碼文件..."
+    CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+    if [ -n "$CODE_FILES" ]; then
+        echo "❌ [QA 規則違反] QA 不應提交代碼文件！"
+        echo "   QA 只能提交測試報告（docs/qa-report-*.md）"
+        exit 1
+    fi
+    echo "   ✅ 無代碼文件，符合 QA 規則"
+
+    echo "[QA/2] 驗證包含 QA 報告文件..."
+    QA_REPORT=$(git diff --cached --name-only --diff-filter=ACM | grep 'docs/qa-report' || true)
+    if [ -z "$QA_REPORT" ]; then
+        echo "⚠️  [QA 警告] 此次提交未包含 QA 報告（docs/qa-report-*.md）"
+        echo "   QA 的提交通常應包含測試報告。請確認。(5秒後繼續...)"
+        sleep 5
+    else
+        echo "   ✅ QA 報告已包含"
+    fi
+fi
+
+# ——————————————————————————————————————
+# 全部通過
 # ——————————————————————————————————————
 echo ""
 echo "============================================================"
-echo "✅ 所有閘門通過！允許執行 Git Commit。"
+echo "✅ 所有閘門通過！允許 Git Commit。[角色：$ROLE]"
 echo "============================================================"
 echo ""
 exit 0
