@@ -28,7 +28,7 @@ VALID_TYPES="feat|fix|plan|review|test|docs|refactor|chore|style|perf|ci"
 # 允許的格式：
 # 1. [ROLE] type: 描述 （有角色標籤）
 # 2. type: 描述 （無角色標籤）
-PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA)\] ($VALID_TYPES): .{3,}"
+PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA|DESIGN)\] ($VALID_TYPES): .{3,}"
 PATTERN_WITHOUT_ROLE="^($VALID_TYPES): .{3,}"
 
 if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITH_ROLE"; then

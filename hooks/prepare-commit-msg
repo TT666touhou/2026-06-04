@@ -24,6 +24,7 @@ fi
 
 # 定義角色前綴
 case "$ROLE" in
+    "designer")  PREFIX="[DESIGN]" ;;
     "architect") PREFIX="[ARCH]" ;;
     "developer")  PREFIX="[DEV]"  ;;
     "reviewer")   PREFIX="[REVIEW]" ;;
