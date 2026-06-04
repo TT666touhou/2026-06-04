@@ -25,7 +25,28 @@ echo "👤 目前角色：$ROLE"
 echo ""
 
 # ——————————————————————————————————————
-# [通用規則 1] 大型檔案 LFS 追蹤檢查
+# [通用規則 0] GAME_DESIGN.md 存在性檢查
+# 代碼類文件不能在設計文件建立之前提交
+# ——————————————————————————————————————
+CHANGED_CODE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+if [ -n "$CHANGED_CODE" ] && [ ! -f "docs/GAME_DESIGN.md" ]; then
+    echo "❌ [設計前置檢查] 尚未建立 docs/GAME_DESIGN.md！"
+    echo "   在寫任何代碼之前，Designer 必須先完成遊戲設計文件。"
+    echo "   請切換到 Designer 角色：.\\scripts\\set-role.ps1 designer"
+    exit 1
+fi
+
+# ——————————————————————————————————————
+# [通用規則 0b] GAME_DESIGN.md 只能由 Designer 修改
+# ——————————————————————————————————————
+GAME_DESIGN_CHANGED=$(git diff --cached --name-only | grep 'docs/GAME_DESIGN.md' || true)
+if [ -n "$GAME_DESIGN_CHANGED" ] && [ "$ROLE" != "designer" ]; then
+    echo "❌ [Designer 文件保護] docs/GAME_DESIGN.md 只能由 Designer 角色修改！"
+    echo "   目前角色：$ROLE"
+    echo "   若需修改遊戲設計：.\\scripts\\set-role.ps1 designer"
+    exit 1
+fi
+
 # ——————————————————————————————————————
 echo "[通用/1] 檢查大型檔案 LFS 追蹤..."
 LARGE_FILES=$(git diff --cached --name-only --diff-filter=ACM | while read f; do
@@ -56,6 +77,30 @@ if [ $SECRETS_FOUND -eq 1 ]; then
     exit 1
 fi
 echo "   ✅ 機密掃描通過"
+
+# ——————————————————————————————————————
+# [角色規則] Designer 專屬檢查
+# ——————————————————————————————————————
+if [ "$ROLE" = "designer" ]; then
+    echo "[Designer/1] 驗證不包含代碼文件..."
+    CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+    if [ -n "$CODE_FILES" ]; then
+        echo "❌ [Designer 規則違反] Designer 不應提交代碼文件！"
+        echo "   設計師只能修改 docs/GAME_DESIGN.md 等文件"
+        exit 1
+    fi
+    echo "   ✅ 無代碼文件，符合 Designer 規則"
+
+    echo "[Designer/2] 驗證包含 GAME_DESIGN.md 的更新..."
+    DESIGN_CHANGED=$(git diff --cached --name-only | grep 'docs/GAME_DESIGN.md' || true)
+    if [ -z "$DESIGN_CHANGED" ]; then
+        echo "⚠️  [Designer 警告] 此次提交未更新 GAME_DESIGN.md"
+        echo "   Designer 的提交通常應更新設計文件。(5秒後繼續...)"
+        sleep 5
+    else
+        echo "   ✅ GAME_DESIGN.md 已更新"
+    fi
+fi
 
 # ——————————————————————————————————————
 # [角色規則] Architect 專屬檢查

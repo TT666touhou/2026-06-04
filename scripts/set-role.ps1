@@ -8,12 +8,13 @@
 
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("architect","developer","reviewer","qa","none")]
+    [ValidateSet("designer","architect","developer","reviewer","qa","none")]
     [string]$Role
 )
 
 $RoleFile = ".agent-role"
 $RoleColors = @{
+    "designer"  = "Blue"
     "architect" = "Cyan"
     "developer" = "Green"
     "reviewer"  = "Yellow"
@@ -22,6 +23,7 @@ $RoleColors = @{
 }
 
 $RoleEmoji = @{
+    "designer"  = "🎨 "
     "architect" = "🏗️ "
     "developer" = "💻 "
     "reviewer"  = "🔍 "
@@ -30,6 +32,7 @@ $RoleEmoji = @{
 }
 
 $RoleDesc = @{
+    "designer"  = "遊戲設計師 — 負責與用戶討論並維護 docs/GAME_DESIGN.md"
     "architect" = "系統架構師 — 負責設計 implementation_plan.md"
     "developer" = "開發者 — 負責撰寫 GDScript 代碼（在 Worktree 中）"
     "reviewer"  = "代碼審查員 — 負責審查 PR 並留下結構化意見"
@@ -55,6 +58,12 @@ Write-Host ""
 # 顯示此角色的關鍵規則提醒
 Write-Host "📋 本角色的 Git Hook 規則：" -ForegroundColor White
 switch ($Role) {
+    "designer" {
+        Write-Host "  ✅ 可以修改：docs/GAME_DESIGN.md（唯一可修改者）" -ForegroundColor Green
+        Write-Host "  ❌ 禁止修改：.gd, .tscn, .tres, implementation_plan.md" -ForegroundColor Red
+        Write-Host "  📋 工作文件：docs/GAME_DESIGN.md" -ForegroundColor Cyan
+        Write-Host "  💡 提示：每次對話開始先讀取 GAME_DESIGN.md 了解目前進度" -ForegroundColor Gray
+    }
     "architect" {
         Write-Host "  ✅ 可以提交：implementation_plan.md, docs/, roles/, RULES.md" -ForegroundColor Green
         Write-Host "  ❌ 禁止提交：.gd, .tscn, .tres 文件" -ForegroundColor Red
