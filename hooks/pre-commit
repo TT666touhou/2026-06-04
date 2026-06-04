@@ -19,7 +19,7 @@ echo "============================================================"
 # ——————————————————————————————————————
 ROLE="none"
 if [ -f ".agent-role" ]; then
-    ROLE=$(cat .agent-role | tr -d '[:space:]')
+    ROLE=$(cat .agent-role | tr -d '\r\n\t ' | tr -cd 'a-z')
 fi
 echo "👤 目前角色：$ROLE"
 echo ""

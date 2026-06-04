@@ -40,8 +40,8 @@ $RoleDesc = @{
     "none"      = "未設定角色"
 }
 
-# 寫入角色文件
-$Role | Out-File -FilePath $RoleFile -Encoding UTF8
+# 寫入角色文件（不含 BOM，確保 Git Hook 可正確讀取）
+[System.IO.File]::WriteAllText("$PWD\$RoleFile", $Role)
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor $RoleColors[$Role]
