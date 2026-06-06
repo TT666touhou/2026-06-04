@@ -1,32 +1,103 @@
 shader_type canvas_item;
-// ───────────────────────────────────────────────────────────
-// Palette Swap Shader for MRMOTEXT 2-color tiles
-// 用於 TileMapLayer，將 黑色→shadow_color，白色→highlight_color
+// ═══════════════════════════════════════════════════════════════
+// MRMOTEXT Palette Swap Shader  v2  — Fixed Palette Edition
+// ───────────────────────────────────────────────────────────────
+// 色板全部硬編碼（34 色，來自 palette.pal）
+// 只需設定 1 個 uniform int 選色，黑色輪廓自動加深
 //
 // 使用方式：
-//   1. 選取 TileMapLayer 節點
-//   2. Inspector → CanvasItem → Material → [new ShaderMaterial]
+//   1. 選取 TileMapLayer（角色外觀節點）
+//   2. CanvasItem → Material → New ShaderMaterial
 //   3. Shader → 選這個檔案
-//   4. 調整 shadow_color 和 highlight_color
-// ───────────────────────────────────────────────────────────
+//   4. 調整 palette_index（0-33）選取顏色
+//
+// 效能說明：
+//   • 陣列查詢 = GPU 暫存器存取，沒有貼圖快取未命中
+//   • 每 pixel 約 10 個 GPU 指令，遠低於任何瓶頸
+//   • 不同 index 的節點各佔 1 個 draw call，對小型遊戲無影響
+// ═══════════════════════════════════════════════════════════════
 
-/// 替換「黑色輪廓」的顏色（建議用目標色的暗版）
-uniform vec4 shadow_color    : source_color = vec4(0.05, 0.05, 0.05, 1.0);
+/// 選取色板索引（0 = 深棕, 1 = 深灰棕 ... 33 = 近白）
+uniform int palette_index : hint_range(0, 33) = 15;
 
-/// 替換「白色填充」的顏色（建議用目標主色）
-uniform vec4 highlight_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+/// 輪廓暗化係數（0.0=全黑輪廓 / 0.5=較淺輪廓）
+uniform float shadow_strength : hint_range(0.0, 0.8) = 0.25;
+
+// ── 34 色色板（直接來自 palette.pal，已正規化至 0.0-1.0）────
+// 索引對應名稱參考：
+//  0  #363232  深棕灰      17  #B1D368  萊姆綠
+//  1  #453C3C  深棕        18  #EECF5A  黃色
+//  2  #62494C  玫瑰棕      19  #436794  鋼藍
+//  3  #7F4A50  暗紅        20  #9D5789  紫紅
+//  4  #56774A  橄欖綠      21  #6F81B3  矢車菊藍
+//  5  #65725F  苔綠        22  #77BCD6  天空藍
+//  6  #75656A  藕灰        23  #978C8E  中灰
+//  7  #8A5E40  琥珀棕      24  #8599B0  藍灰
+//  8  #A75064  胭脂紅      25  #E4A691  桃粉
+//  9  #AB6E7C  玫瑰粉      26  #E9CEA1  淡金
+// 10  #E55C5C  番茄紅      27  #BE8EC1  薰衣草
+// 11  #D66B48  橙紅        28  #EDBCCC  粉紅
+// 12  #5DA16E  薄荷綠      29  #B1DECF  薄荷
+// 13  #E09656  金橙        30  #C2C2C2  銀灰
+// 14  #D49C73  膚色        31  #DFE8D3  淡蘆薈
+// 15  #E7946D  杏橙        32  #F1E9D4  奶油
+// 16  #B1D368  萊姆綠      33  #F1E5F8  薰衣草白
+
+const vec3 PALETTE[34] = vec3[34](
+	vec3(0.212, 0.196, 0.196),  //  0  #363232  深棕灰
+	vec3(0.271, 0.235, 0.235),  //  1  #453C3C  深棕
+	vec3(0.384, 0.286, 0.298),  //  2  #62494C  玫瑰棕
+	vec3(0.498, 0.290, 0.314),  //  3  #7F4A50  暗紅
+	vec3(0.337, 0.467, 0.290),  //  4  #56774A  橄欖綠
+	vec3(0.396, 0.447, 0.373),  //  5  #65725F  苔綠
+	vec3(0.459, 0.396, 0.416),  //  6  #75656A  藕灰
+	vec3(0.541, 0.369, 0.251),  //  7  #8A5E40  琥珀棕
+	vec3(0.655, 0.314, 0.392),  //  8  #A75064  胭脂紅
+	vec3(0.671, 0.431, 0.486),  //  9  #AB6E7C  玫瑰粉
+	vec3(0.898, 0.361, 0.361),  // 10  #E55C5C  番茄紅
+	vec3(0.839, 0.420, 0.282),  // 11  #D66B48  橙紅
+	vec3(0.365, 0.631, 0.431),  // 12  #5DA16E  薄荷綠
+	vec3(0.878, 0.588, 0.337),  // 13  #E09656  金橙
+	vec3(0.831, 0.612, 0.451),  // 14  #D49C73  膚色
+	vec3(0.906, 0.580, 0.427),  // 15  #E7946D  杏橙
+	vec3(0.694, 0.827, 0.408),  // 16  #B1D368  萊姆綠
+	vec3(0.933, 0.812, 0.353),  // 17  #EECF5A  黃色
+	vec3(0.263, 0.404, 0.580),  // 18  #436794  鋼藍
+	vec3(0.616, 0.341, 0.537),  // 19  #9D5789  紫紅
+	vec3(0.435, 0.506, 0.702),  // 20  #6F81B3  矢車菊藍
+	vec3(0.467, 0.737, 0.839),  // 21  #77BCD6  天空藍
+	vec3(0.592, 0.549, 0.557),  // 22  #978C8E  中灰
+	vec3(0.522, 0.600, 0.690),  // 23  #8599B0  藍灰
+	vec3(0.894, 0.651, 0.569),  // 24  #E4A691  桃粉
+	vec3(0.914, 0.808, 0.631),  // 25  #E9CEA1  淡金
+	vec3(0.745, 0.557, 0.757),  // 26  #BE8EC1  薰衣草
+	vec3(0.929, 0.737, 0.800),  // 27  #EDBCCC  粉紅
+	vec3(0.694, 0.871, 0.812),  // 28  #B1DECF  薄荷
+	vec3(0.761, 0.761, 0.761),  // 29  #C2C2C2  銀灰
+	vec3(0.875, 0.910, 0.827),  // 30  #DFE8D3  淡蘆薈
+	vec3(0.945, 0.914, 0.831),  // 31  #F1E9D4  奶油
+	vec3(0.945, 0.898, 0.973),  // 32  #F1E5F8  薰衣草白
+	vec3(0.949, 0.976, 0.973)   // 33  #F2F9F8  近白
+);
 
 void fragment() {
 	vec4 tex = texture(TEXTURE, UV);
 
-	// 用亮度（灰階值）在兩色之間線性插值
-	// 純黑 brightness=0 → shadow_color
-	// 純白 brightness=1 → highlight_color
-	float brightness = dot(tex.rgb, vec3(0.299, 0.587, 0.114)); // 感知亮度
-	vec4 result = mix(shadow_color, highlight_color, brightness);
+	// 完全透明像素直接丟棄（效能優化）
+	if (tex.a < 0.01) {
+		COLOR = vec4(0.0);
+		return;
+	}
 
-	// 保留原始透明度（透明像素不受影響）
-	result.a = tex.a;
+	// 選取色板顏色
+	vec3 base_col   = PALETTE[palette_index];
+	vec3 shadow_col = base_col * shadow_strength;
 
-	COLOR = result;
+	// 感知亮度（ITU-R BT.601 標準）
+	// 黑色(0,0,0) → brightness=0 → shadow_col
+	// 白色(1,1,1) → brightness=1 → base_col
+	float brightness = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
+
+	COLOR.rgb = mix(shadow_col, base_col, brightness);
+	COLOR.a   = tex.a;
 }
