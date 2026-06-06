@@ -1,0 +1,29 @@
+[gd_scene load_steps=4 format=3 uid="uid://bq7x9n3km01p4"]
+
+[ext_resource type="Script" path="res://scripts/player1.gd" id="1_pl1sc"]
+[ext_resource type="TileSet" uid="uid://cm2iaqtiafwhn" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="2_tileex"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_pl1col"]
+radius = 8.0
+height = 16.0
+
+[node name="Player1" type="CharacterBody2D"]
+script = ExtResource("1_pl1sc")
+
+[node name="AppearanceLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("2_tileex")
+texture_filter = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(4, 8)
+shape = SubResource("CapsuleShape2D_pl1col")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+drag_horizontal_enabled = true
+drag_vertical_enabled = true
+drag_left_margin = 0.2
+drag_right_margin = 0.2
+drag_top_margin = 0.25
+drag_bottom_margin = 0.25

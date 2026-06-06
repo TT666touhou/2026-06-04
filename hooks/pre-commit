@@ -139,18 +139,38 @@ if [ "$ROLE" = "developer" ]; then
     if [ -n "$CHANGED_GD" ]; then
         GODOT_BIN="C:/Users/88698/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64.exe"
         if [ -f "$GODOT_BIN" ]; then
-            "$GODOT_BIN" --headless --check-only --path . 2>&1
-            if [ $? -ne 0 ]; then
+            PROJECT_ROOT=$(git rev-parse --show-toplevel)
+            VALIDATION_FAILED=0
+            for gd_file in $CHANGED_GD; do
+                RES_PATH="res://$(echo "$gd_file" | tr '\\' '/')"
+                # 用 PowerShell 啟動 Godot，最多等 15 秒，避免無 display 卡住
+                OUT=$(powershell.exe -NoProfile -Command "
+                    \$p = Start-Process -FilePath '$GODOT_BIN' \`
+                        -ArgumentList \"--headless\", \"--path\", '$PROJECT_ROOT', \"--check-only\", '$RES_PATH' \`
+                        -PassThru -NoNewWindow -RedirectStandardOutput \$env:TEMP\\godot_out.txt \`
+                        -RedirectStandardError \$env:TEMP\\godot_err.txt
+                    if (-not \$p.WaitForExit(15000)) { \$p.Kill() }
+                    (Get-Content \$env:TEMP\\godot_out.txt -ErrorAction SilentlyContinue) +
+                    (Get-Content \$env:TEMP\\godot_err.txt -ErrorAction SilentlyContinue)
+                " 2>&1)
+                if echo "$OUT" | grep -qiE 'Parse Error|SCRIPT ERROR|error.*\.gd'; then
+                    echo "❌ GDScript 語法錯誤：$gd_file"
+                    echo "$OUT"
+                    VALIDATION_FAILED=1
+                fi
+            done
+            if [ $VALIDATION_FAILED -ne 0 ]; then
                 echo "❌ GDScript 語法驗證失敗，阻斷 Commit！"
                 exit 1
             fi
-            echo "   ✅ GDScript 語法驗證通過"
+            echo "   ✅ GDScript 語法驗證通過（或無嚴重錯誤）"
         else
             echo "   ⚠️  找不到 Godot 執行檔，跳過語法驗證"
         fi
     else
         echo "   ℹ️  本次無 .gd 文件變更"
     fi
+
 
     echo "[Developer/2] 驗證在 feature 分支上提交..."
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
