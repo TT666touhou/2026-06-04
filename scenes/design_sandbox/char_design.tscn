@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3 uid="uid://char_design_sandbox"]
+
+[ext_resource type="TileSet" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_mrmotext_tileset"]
+
+; ============================================================
+; char_design.tscn — MRMOTEXT 角色外型設計沙盒
+;
+; 用途：用 TileMapLayer 拼湊 MRMOTEXT tile 測試角色外觀
+;
+; 使用方式（Godot 編輯器）：
+;   1. 開啟此場景
+;   2. 點選 TileMapLayer 節點
+;   3. 底部會出現 TileMap 編輯器
+;   4. 從 tile 面板選取想要的 tile，在畫布上點擊拼湊
+;   5. 用 CanvasItem > Modulate 屬性設定顏色
+;
+; 座標系統（Godot 預設）：
+;   - tile 大小 8x8 px
+;   - 畫面中心 = (0,0)
+;   - 向右 = x+, 向下 = y+
+;
+; 角色大約佔 8~16 tiles 寬/高（64~128 px）
+; ============================================================
+
+[node name="CharDesignSandbox" type="Node2D"]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(4, 4)
+position_smoothing_enabled = false
+
+[node name="GridReference" type="Node2D" parent="."]
+; 參考用：此節點下可放 Line2D 畫格線輔助設計
+
+[node name="CharacterLayer" type="TileMapLayer" parent="."]
+; 主要角色拼湊層 — 在這裡用 MRMOTEXT tile 畫角色
+tile_set = ExtResource("1_mrmotext_tileset")
+texture_filter = 0
+rendering_quadrant_size = 16
+collision_enabled = false
+navigation_enabled = false
+
+[node name="BackgroundLayer" type="TileMapLayer" parent="."]
+; 背景層 — 可放地板/環境 tile 作為設計參考背景
+tile_set = ExtResource("1_mrmotext_tileset")
+texture_filter = 0
+rendering_quadrant_size = 16
+collision_enabled = false
+navigation_enabled = false
+z_index = -1
