@@ -1,10 +1,8 @@
 # Normalize EOL for all files that Git considers text files.
 * text=auto eol=lf
-
 # ============================================================
 # Git LFS — 大型二進位資產追蹤 (Godot 4 專案)
 # ============================================================
-
 # 3D 模型與場景
 *.glb filter=lfs diff=lfs merge=lfs -text
 *.gltf filter=lfs diff=lfs merge=lfs -text
@@ -12,7 +10,6 @@
 *.obj filter=lfs diff=lfs merge=lfs -text
 *.blend filter=lfs diff=lfs merge=lfs -text
 *.dae filter=lfs diff=lfs merge=lfs -text
-
 # 貼圖與圖片
 *.png filter=lfs diff=lfs merge=lfs -text
 *.jpg filter=lfs diff=lfs merge=lfs -text
@@ -22,30 +19,25 @@
 *.hdr filter=lfs diff=lfs merge=lfs -text
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.webp filter=lfs diff=lfs merge=lfs -text
-
 # 音效與音樂
 *.wav filter=lfs diff=lfs merge=lfs -text
 *.ogg filter=lfs diff=lfs merge=lfs -text
 *.mp3 filter=lfs diff=lfs merge=lfs -text
 *.flac filter=lfs diff=lfs merge=lfs -text
 *.opus filter=lfs diff=lfs merge=lfs -text
-
 # 字型
 *.ttf filter=lfs diff=lfs merge=lfs -text
 *.otf filter=lfs diff=lfs merge=lfs -text
 *.woff filter=lfs diff=lfs merge=lfs -text
-
 # Godot 編譯資源
 *.res filter=lfs diff=lfs merge=lfs -text
 *.ctex filter=lfs diff=lfs merge=lfs -text
-
 # 影片
 *.mp4 filter=lfs diff=lfs merge=lfs -text
 *.webm filter=lfs diff=lfs merge=lfs -text
-
 # ============================================================
 # tscnmerge — Godot 場景語義合併驅動器
 # ============================================================
 # 對 .tscn 使用自訂 merge driver，防止場景結構毀損
 *.tscn merge=tscnmerge
-*.tres merge=tscnmerge
+*.tres filter=lfs diff=lfs merge=lfs -text
