@@ -83,21 +83,19 @@ const vec3 PALETTE[34] = vec3[34](
 void fragment() {
 	vec4 tex = texture(TEXTURE, UV);
 
-	// 完全透明像素直接丟棄（效能優化）
 	if (tex.a < 0.01) {
+		// 完全透明像素直接輸出透明（不改色）
 		COLOR = vec4(0.0);
-		return;
+	} else {
+		// 選取色板顏色
+		vec3 base_col   = PALETTE[palette_index];
+		vec3 shadow_col = base_col * shadow_strength;
+
+		// 感知亮度（ITU-R BT.601）
+		// 黑(0) → shadow_col；白(1) → base_col
+		float brightness = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
+
+		COLOR.rgb = mix(shadow_col, base_col, brightness);
+		COLOR.a   = tex.a;
 	}
-
-	// 選取色板顏色
-	vec3 base_col   = PALETTE[palette_index];
-	vec3 shadow_col = base_col * shadow_strength;
-
-	// 感知亮度（ITU-R BT.601 標準）
-	// 黑色(0,0,0) → brightness=0 → shadow_col
-	// 白色(1,1,1) → brightness=1 → base_col
-	float brightness = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
-
-	COLOR.rgb = mix(shadow_col, base_col, brightness);
-	COLOR.a   = tex.a;
 }
