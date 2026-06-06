@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://d3hgcr5bar2dl"]
+[gd_scene format=3 uid="uid://d3hgcr5bar2dl"]
 
-[ext_resource type="TileSet" uid="uid://mrmotext_ex_tileset" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_tileset"]
+[ext_resource type="TileSet" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_tileset"]
 
 [node name="CharDesignSandbox" type="Node2D" unique_id=2010415826]
 
@@ -10,12 +10,16 @@ zoom = Vector2(4, 4)
 [node name="GridReference" type="Node2D" parent="." unique_id=551913819]
 
 [node name="CharacterLayer" type="TileMapLayer" parent="." unique_id=1074455503]
+texture_filter = 1
+texture_repeat = 1
 tile_set = ExtResource("1_tileset")
 collision_enabled = false
 navigation_enabled = false
 
 [node name="BackgroundLayer" type="TileMapLayer" parent="." unique_id=1194001105]
 z_index = -1
+texture_filter = 1
+texture_repeat = 1
 tile_set = ExtResource("1_tileset")
 collision_enabled = false
 navigation_enabled = false
