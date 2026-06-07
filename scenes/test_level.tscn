@@ -1,11 +1,22 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=4 uid="uid://dydcj4xup0auq"]
 
-[ext_resource type="PackedScene" path="res://scenes/player/player1.tscn" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://b0yuquq5kh52u" path="res://scenes/player/player1.tscn" id="1_player"]
+[ext_resource type="TileSet" uid="uid://bndxuad5nflps" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="1_world"]
 
-[node name="TestLevel" type="Node2D"]
+[node name="TestLevel" type="Node2D" unique_id=162396267]
 
-[node name="WorldLayer" type="TileMapLayer" parent="."]
+[node name="CloudLayer" type="TileMapLayer" parent="." unique_id=1017840231]
 texture_filter = 1
+tile_map_data = PackedByteArray("AAAGAOz/AAAcAAgAAAAGAO3/AAAcAAkAAAAHAO3/AAAcAAkAABAHAOz/AAAcAAkAAFAIAOv/AAAcAAkAACAJAOv/AAAcAAkAAEAKAO3/AAAcAAkAABAIAO7/AAAcAAkAAHAKAOz/AAAcAAkAAEAIAOz/AAAcAAkAAEAJAO7/AAAcAAkAABAJAO3/AAAdAAkAACAIAO3/AAAcAAYAAAAJAOz/AAAcAAgAAAA=")
+tile_set = ExtResource("1_world")
 
-[node name="Player1" parent="." instance=ExtResource("1_player")]
+[node name="BackGroundLayer" type="TileMapLayer" parent="." unique_id=975764049]
+
+[node name="WorldLayer" type="TileMapLayer" parent="." unique_id=1687698892]
+texture_filter = 1
+texture_repeat = 1
+tile_map_data = PackedByteArray("AAAAAAAAAAABAAcAAAABAAAAAAAKAAcAAQAAAAEAAAAKAAUAAAABAAEAAAALAAUAAAACAAAAAAALAAcAAQADAAAAAAAIAAcAAQAEAAAAAAAKAAcAARAFAAAAAAAIAAcAAQAGAAAAAAAKAAcAAQAHAAAAAAAKAAcAARAIAAAAAAAIAAcAAQAJAAAAAAAKAAcAARAKAAAAAAAKAAcAAQALAAAAAAAKAAcAARAMAAAAAAAIAAcAAQANAAAAAAANAAcAAAA=")
+tile_set = ExtResource("1_world")
+
+[node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(64, -48)

@@ -41,3 +41,4 @@
 # 對 .tscn 使用自訂 merge driver，防止場景結構毀損
 *.tscn merge=tscnmerge
 *.tres filter=lfs diff=lfs merge=lfs -text
+assets/tilesets/mrmotext/mrmotext_world_tileset.tres filter=lfs diff=lfs merge=lfs -text
