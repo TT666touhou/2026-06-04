@@ -42,3 +42,4 @@
 *.tscn merge=tscnmerge
 *.tres filter=lfs diff=lfs merge=lfs -text
 assets/tilesets/mrmotext/mrmotext_world_tileset.tres filter=lfs diff=lfs merge=lfs -text
+assets/tilesets/mrmotext/colored/*.png filter=lfs diff=lfs merge=lfs -text
