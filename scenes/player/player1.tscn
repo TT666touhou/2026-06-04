@@ -10,7 +10,7 @@ height = 14.0
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
 speed = 150.0
-jump_velocity = -300.0
+jump_velocity = -350.0
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=659119027]
 texture_filter = 1
