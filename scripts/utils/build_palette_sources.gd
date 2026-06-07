@@ -3,55 +3,18 @@ extends EditorScript
 ## build_palette_sources.gd
 ## ─────────────────────────────────────────────────────────────────
 ## 前置條件：
-##   1. 已執行 scripts/tools/generate_palette_pngs.py 生成 34 張 PNG
+##   1. 已執行 scripts/tools/generate_palette_pngs.py 生成 PNGs
 ##   2. 在 Godot FileSystem 右上角按 Rescan，等待 PNG 匯入完成
 ##
 ## 執行：Script 編輯器開啟此檔 → File → Run（Ctrl+Shift+X）
 ##
-## 結果：mrmotext_world_tileset.tres 有 35 個 Sources：
+## 結果：mrmotext_world_tileset.tres 重建所有彩色/雙色 Sources：
 ##   Source 0      = 原始黑白（保留物理碰撞設定）
-##   Source 1~34   = 34 種彩色版本（直接染色 PNG，無需 Shader）
+##   Source 1~N    = 動態載入 colored/ 下的所有 PNG 圖源
 ## ─────────────────────────────────────────────────────────────────
 
 const TILESET_PATH := "res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres"
 const COLORED_DIR  := "res://assets/tilesets/mrmotext/colored/"
-
-const COLOR_FILES: Array[String] = [
-	"color_00_shenzonghui.png",  # 深棕灰
-	"color_01_shenzong.png",     # 深棕
-	"color_02_meiguizong.png",   # 玫瑰棕
-	"color_03_anan.png",         # 暗紅
-	"color_04_ganlanlv.png",     # 橄欖綠
-	"color_05_tailv.png",        # 苔綠
-	"color_06_ouhui.png",        # 藕灰
-	"color_07_hupozong.png",     # 琥珀棕
-	"color_08_yanzhihong.png",   # 胭脂紅
-	"color_09_meiguifen.png",    # 玫瑰粉
-	"color_10_fanqiehong.png",   # 番茄紅
-	"color_11_chenghong.png",    # 橙紅
-	"color_12_bohelv.png",       # 薄荷綠
-	"color_13_jincheng.png",     # 金橙
-	"color_14_fuse.png",         # 膚色
-	"color_15_xincheng.png",     # 杏橙
-	"color_16_laimeng.png",      # 萊姆綠
-	"color_17_huang.png",        # 黃色
-	"color_18_ganlanlv2.png",    # 鋼藍
-	"color_19_zihong.png",       # 紫紅
-	"color_20_shiya.png",        # 矢車菊藍
-	"color_21_tiankong.png",     # 天空藍
-	"color_22_zhonghui.png",     # 中灰
-	"color_23_lanhui.png",       # 藍灰
-	"color_24_taofen.png",       # 桃粉
-	"color_25_danjin.png",       # 淡金
-	"color_26_xunyi.png",        # 薰衣草
-	"color_27_fen.png",          # 粉紅
-	"color_28_bohe.png",         # 薄荷
-	"color_29_yinhui.png",       # 銀灰
-	"color_30_luhui.png",        # 淡蘆薈
-	"color_31_naiyu.png",        # 奶油
-	"color_32_xunyi2.png",       # 薰衣草白
-	"color_33_jingbai.png",      # 近白
-]
 
 const COLOR_NAMES: Array[String] = [
 	"深棕灰","深棕","玫瑰棕","暗紅","橄欖綠","苔綠","藕灰","琥珀棕",
@@ -61,13 +24,11 @@ const COLOR_NAMES: Array[String] = [
 	"薰衣草白","近白",
 ]
 
-# ────────────────────────────────────────────────────────────────
 func _run() -> void:
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-	print("  [Build Palette Sources] 建立 34 彩色 PNG Sources")
+	print("  [Build Palette Sources] 動態載入組合 PNG Sources")
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-	# ── 載入 TileSet ──────────────────────────────────────────
 	var tileset := load(TILESET_PATH) as TileSet
 	if not tileset:
 		printerr("❌ 找不到 TileSet：", TILESET_PATH)
@@ -108,8 +69,26 @@ func _run() -> void:
 		tileset.remove_source(sid)
 	print("  移除 %d 個舊 sources" % to_remove.size())
 
-	# ── Step 3：建立 34 個彩色 PNG Sources ───────────────────
-	print("  [3/3] 建立 34 個 PNG Sources...")
+	# ── Step 3：動態掃描並建立 PNG Sources ───────────────────
+	print("  [3/3] 掃描 colored/ 目錄並建立 Sources...")
+	
+	# 收集所有 PNG 檔案
+	var dir := DirAccess.open(COLORED_DIR)
+	if not dir:
+		printerr("❌ 無法開啟目錄：", COLORED_DIR)
+		return
+	
+	var png_files: Array[String] = []
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".png"):
+			png_files.append(file_name)
+		file_name = dir.get_next()
+	dir.list_dir_end()
+	
+	png_files.sort()
+	print("  找到 %d 個 PNG 圖源" % png_files.size())
 
 	# 收集 source 0 的所有 tile 座標
 	var all_coords: Array[Vector2i] = []
@@ -119,8 +98,9 @@ func _run() -> void:
 	var created := 0
 	var missing := 0
 
-	for i in range(34):
-		var png_path := COLORED_DIR + COLOR_FILES[i]
+	for i in range(png_files.size()):
+		var fname := png_files[i]
+		var png_path := COLORED_DIR + fname
 		var tex := load(png_path) as Texture2D
 		if not tex:
 			printerr("  ⚠️  找不到/未匯入：%s（請先 Rescan）" % png_path)
@@ -128,7 +108,29 @@ func _run() -> void:
 			continue
 
 		var new_src := TileSetAtlasSource.new()
-		new_src.resource_name     = COLOR_NAMES[i]
+		
+		# 解析檔名產生友好的資源名稱
+		# 格式 1: color_T_XX_name.png
+		# 格式 2: color_C_fgXX_bgYY_fgName_bgName.png
+		var display_name := fname.get_basename()
+		if fname.begins_with("color_T_"):
+			var parts := fname.split("_")
+			if parts.size() >= 4:
+				var fg_idx := parts[2].to_int()
+				if fg_idx >= 0 and fg_idx < COLOR_NAMES.size():
+					display_name = "[T] " + COLOR_NAMES[fg_idx] + " (透明背景)"
+		elif fname.begins_with("color_C_"):
+			var parts := fname.split("_")
+			if parts.size() >= 6:
+				# color_C_fgXX_bgYY_...
+				var fg_str := parts[2].replace("fg", "")
+				var bg_str := parts[3].replace("bg", "")
+				var fg_idx := fg_str.to_int()
+				var bg_idx := bg_str.to_int()
+				if fg_idx >= 0 and fg_idx < COLOR_NAMES.size() and bg_idx >= 0 and bg_idx < COLOR_NAMES.size():
+					display_name = "[C] " + COLOR_NAMES[fg_idx] + " on " + COLOR_NAMES[bg_idx]
+
+		new_src.resource_name     = display_name
 		new_src.texture           = tex
 		new_src.texture_region_size = tile_size
 
@@ -136,9 +138,9 @@ func _run() -> void:
 		for coords in all_coords:
 			new_src.create_tile(coords)
 
-		tileset.add_source(new_src, i + 1)   # source id = 1~34
+		# 新的 source id 從 1 開始遞增
+		tileset.add_source(new_src, i + 1)
 		created += 1
-		print("  Source %2d: %s" % [i + 1, COLOR_NAMES[i]])
 
 	# ── 儲存 ─────────────────────────────────────────────────
 	print("  儲存 TileSet...")
@@ -146,10 +148,10 @@ func _run() -> void:
 
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	if err == OK:
-		print("✅ 完成！TileSet 共 %d sources（0=黑白，1~34=彩色 PNG）" \
-			% tileset.get_source_count())
+		print("✅ 完成！TileSet 共 %d sources（0=黑白，1~%d=彩色組合 PNG）" \
+			% [tileset.get_source_count(), created])
 		if missing > 0:
-			print("   ⚠️  %d 個 PNG 未匯入，請 Rescan 後重新執行" % missing)
+			print("   ⚠️  %d 個 PNG 未匯入，請在 Godot Rescan 後重新執行" % missing)
 	else:
 		printerr("❌ 儲存失敗（Error %d）" % err)
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
