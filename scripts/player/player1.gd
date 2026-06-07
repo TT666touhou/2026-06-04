@@ -9,8 +9,8 @@ const GRAVITY       := 980.0   ## 重力加速度
 const FRICTION      := 800.0   ## 地面制動加速度（停止時）
 
 # ── 鏡頭前瞻參數 ──────────────────────────────────────────────
-const LOOK_AHEAD_DIST  := 48.0 ## 前瞻最大偏移量（px）
-const LOOK_AHEAD_SPEED := 5.0  ## 前瞻追蹤速度（lerp 係數）
+const LOOK_AHEAD_DIST  := 16.0 ## 前瞻最大偏移（zoom=4 時 = 64 畫素）
+const LOOK_AHEAD_SPEED := 6.0  ## 前瞻追蹤速度（lerp 係數）
 
 @onready var _camera: Camera2D = $Camera2D
 
