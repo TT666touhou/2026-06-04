@@ -16,6 +16,59 @@ const COLOR_NAMES: Array[String] = [
 	"薰衣草白","近白",
 ]
 
+const PRESERVED_SOURCES: Array[String] = [
+	"color_C_fg04_bg01_ganlanlv_shenzong.png",
+	"color_C_fg04_bg02_ganlanlv_meiguizong.png",
+	"color_C_fg05_bg02_tailv_meiguizong.png",
+	"color_C_fg06_bg02_ouhui_meiguizong.png",
+	"color_C_fg08_bg07_yanzhihong_hupozong.png",
+	"color_C_fg11_bg07_chenghong_hupozong.png",
+	"color_C_fg12_bg01_bohelv_shenzong.png",
+	"color_C_fg13_bg02_jincheng_meiguizong.png",
+	"color_C_fg22_bg01_zhonghui_shenzong.png",
+	"color_C_fg22_bg02_zhonghui_meiguizong.png",
+	"color_C_fg22_bg06_zhonghui_ouhui.png",
+	"color_C_fg29_bg00_yinhui_shenzonghui.png",
+	"color_C_fg29_bg06_yinhui_ouhui.png",
+	"color_C_fg29_bg22_yinhui_zhonghui.png",
+	"color_C_fg29_bg23_yinhui_lanhui.png",
+	"color_T_00_shenzonghui.png",
+	"color_T_01_shenzong.png",
+	"color_T_02_meiguizong.png",
+	"color_T_03_anan.png",
+	"color_T_04_ganlanlv.png",
+	"color_T_05_tailv.png",
+	"color_T_06_ouhui.png",
+	"color_T_07_hupozong.png",
+	"color_T_08_yanzhihong.png",
+	"color_T_09_meiguifen.png",
+	"color_T_10_fanqiehong.png",
+	"color_T_11_chenghong.png",
+	"color_T_12_bohelv.png",
+	"color_T_13_jincheng.png",
+	"color_T_14_fuse.png",
+	"color_T_15_xincheng.png",
+	"color_T_16_laimeng.png",
+	"color_T_17_huang.png",
+	"color_T_18_ganlanlv2.png",
+	"color_T_19_zihong.png",
+	"color_T_20_shiya.png",
+	"color_T_21_tiankong.png",
+	"color_T_22_zhonghui.png",
+	"color_T_23_lanhui.png",
+	"color_T_24_taofen.png",
+	"color_T_25_danjin.png",
+	"color_T_26_xunyi.png",
+	"color_T_27_fen.png",
+	"color_T_28_bohe.png",
+	"color_T_29_yinhui.png",
+	"color_T_30_luhui.png",
+	"color_T_31_naiyu.png",
+	"color_T_32_xunyi2.png",
+	"color_T_33_jingbai.png"
+]
+
+
 func _init() -> void:
 	print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	print("  [Build Palette Sources (Headless)]")
@@ -82,7 +135,18 @@ func _init() -> void:
 		file_name = dir.get_next()
 	dir.list_dir_end()
 	
-	png_files.sort()
+	# 使用自訂排序：優先保留原本 49 個圖源的順序，新圖源排列在後面
+	png_files.sort_custom(func(a: String, b: String) -> bool:
+		var idx_a := PRESERVED_SOURCES.find(a)
+		var idx_b := PRESERVED_SOURCES.find(b)
+		if idx_a != -1 and idx_b != -1:
+			return idx_a < idx_b
+		if idx_a != -1:
+			return true
+		if idx_b != -1:
+			return false
+		return a < b
+	)
 	print("  找到 %d 個 PNG 圖源" % png_files.size())
 
 	var all_coords: Array[Vector2i] = []
