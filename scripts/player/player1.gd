@@ -1,6 +1,6 @@
 extends CharacterBody2D
 ## Player1 — 基礎橫向移動控制器
-## 操控：A/D 或 ←/→ 移動；Space / W / ↑ 跳躍
+## 操控：A/D 或 ←/→ 移動；Space / W / ↑ 跳躍（按住可連跳）
 ##
 ## 所有移動與鏡頭參數均可在 Inspector 中即時調整。
 
@@ -91,11 +91,21 @@ func _apply_gravity(delta: float) -> void:
 
 # ── 跳躍計時器（每幀更新 buffer 與 coyote） ───────────────────
 func _tick_jump_timers(delta: float) -> void:
+	var any_jump_held := (
+		Input.is_key_pressed(KEY_SPACE) or
+		Input.is_key_pressed(KEY_W)     or
+		Input.is_key_pressed(KEY_UP)
+	)
+
+	# 連跳：剛落地且跳躍鍵仍按住 → 重新填滿 buffer，下一行邏輯立即觸發跳躍
+	if not _was_on_floor and is_on_floor() and any_jump_held:
+		_jump_buffer = jump_buffer_time
+
 	# Coyote Time：剛離開地面那幀開始倒數
 	if _was_on_floor and not is_on_floor():
 		_coyote = coyote_time
 	elif is_on_floor():
-		_coyote = 0.0          # 落地後清零（避免落地後被 coyote 誤觸）
+		_coyote = 0.0
 	else:
 		_coyote = max(0.0, _coyote - delta)
 
