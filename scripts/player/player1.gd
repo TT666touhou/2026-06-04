@@ -40,7 +40,10 @@ extends CharacterBody2D
 
 var _look_offset: float = 0.0
 var _facing    : float = 1.0
-var _jump_held : bool  = false
+# 每個跳躍鍵分開追蹤，避免按住任一鍵時其他鍵失效
+var _prev_space: bool = false
+var _prev_w    : bool = false
+var _prev_up   : bool = false
 
 # ── 初始化：將 Export 參數同步到 Camera2D ────────────────────
 func _ready() -> void:
@@ -68,14 +71,20 @@ func _apply_gravity(delta: float) -> void:
 		velocity.y += gravity * delta
 
 func _handle_jump() -> void:
-	var held := (
-		Input.is_key_pressed(KEY_SPACE) or
-		Input.is_key_pressed(KEY_W)     or
-		Input.is_key_pressed(KEY_UP)
+	var cur_space := Input.is_key_pressed(KEY_SPACE)
+	var cur_w     := Input.is_key_pressed(KEY_W)
+	var cur_up    := Input.is_key_pressed(KEY_UP)
+	# 任一鍵從「未按」→「按下」即視為 just_pressed，互不干擾
+	var just_pressed := (
+		(cur_space and not _prev_space) or
+		(cur_w     and not _prev_w)     or
+		(cur_up    and not _prev_up)
 	)
-	if held and not _jump_held and is_on_floor():
+	if just_pressed and is_on_floor():
 		velocity.y = jump_velocity
-	_jump_held = held
+	_prev_space = cur_space
+	_prev_w     = cur_w
+	_prev_up    = cur_up
 
 func _handle_horizontal(delta: float) -> void:
 	var dir := float(
