@@ -53,7 +53,7 @@ def main():
         sys.exit(1)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    print(f"✓ 輸出目錄：{out_dir}")
+    print(f"[OK] Output dir: {out_dir}")
 
     # ── 載入原始圖 ──────────────────────────────────────────
     orig      = Image.open(orig_path).convert("RGBA")
@@ -72,7 +72,7 @@ def main():
     done    = 0
     t_start = time.time()
 
-    print(f"開始生成 {total} 張 PNG…")
+    print(f"Generating {total} PNG files...")
 
     for fi in range(34):
         fill    = np.array(PALETTE[fi],    dtype=np.float32) / 255.0   # (3,)
@@ -107,14 +107,14 @@ def main():
             if done % 100 == 0 or done == total:
                 elapsed = time.time() - t_start
                 eta     = elapsed / done * (total - done)
-                print(f"  {done:4d}/{total}  ({done*100//total}%)  "
-                      f"已用：{elapsed:5.1f}s  剩餘：{eta:5.1f}s")
+                print(f"  {done:4d}/{total}  {done*100//total}%  "
+                      f"elapsed:{elapsed:5.1f}s  eta:{eta:5.1f}s")
 
     elapsed = time.time() - t_start
-    print(f"\n✅ 完成！{done} 張 PNG  →  {out_dir}/")
-    print(f"   總耗時：{elapsed:.1f} 秒")
-    print(f"\n下一步：在 Godot 編輯器中按 FileSystem 右上角 Rescan（掃描檔案）")
-    print(f"        待匯入完成後，執行 build_all_combo_sources.gd")
+    print(f"\n[DONE] {done} PNG files saved to {out_dir}/")
+    print(f"       Total time: {elapsed:.1f}s")
+    print(f"\nNext: In Godot, click FileSystem > Rescan, wait for import,")
+    print(f"      then run build_all_combo_sources.gd")
 
 if __name__ == "__main__":
     main()
