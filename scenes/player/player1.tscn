@@ -9,6 +9,8 @@ height = 14.0
 
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
+speed = 150.0
+jump_velocity = -300.0
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=659119027]
 texture_filter = 1
@@ -20,5 +22,3 @@ tile_set = ExtResource("2_33ho1")
 shape = SubResource("CapsuleShape2D_1")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1117571298]
-# Camera params are managed by player1.gd @export vars (_sync_camera_params)
-# Edit them in the Inspector under the Player1 node > Camera group
