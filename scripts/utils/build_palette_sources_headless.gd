@@ -124,8 +124,54 @@ func _init() -> void:
 		new_src.texture           = tex
 		new_src.texture_region_size = tile_size
 
+		# 複製 tile 座標與其屬性 (如物理碰撞、導航區等)
 		for coords in all_coords:
 			new_src.create_tile(coords)
+			var sdata := src0.get_tile_data(coords, 0)
+			var ndata := new_src.get_tile_data(coords, 0)
+			if sdata and ndata:
+				# 1. 基礎屬性
+				ndata.probability = sdata.probability
+				ndata.y_sort_origin = sdata.y_sort_origin
+				ndata.texture_origin = sdata.texture_origin
+				ndata.z_index = sdata.z_index
+				ndata.terrain_set = sdata.terrain_set
+				ndata.terrain = sdata.terrain
+				
+				# 2. 複製地形連接位 (Peering Bits)
+				for bit in range(16):
+					var cell_neighbor := bit as TileSet.CellNeighbor
+					if sdata.is_valid_terrain_peering_bit(cell_neighbor):
+						var t_idx := sdata.get_terrain_peering_bit(cell_neighbor)
+						ndata.set_terrain_peering_bit(cell_neighbor, t_idx)
+				
+				# 3. 複製物理碰撞多邊形
+				for phys_idx in range(tileset.get_physics_layers_count()):
+					var poly_count := sdata.get_collision_polygons_count(phys_idx)
+					ndata.set_collision_polygons_count(phys_idx, poly_count)
+					for poly_idx in range(poly_count):
+						var points := sdata.get_collision_polygon_points(phys_idx, poly_idx)
+						ndata.set_collision_polygon_points(phys_idx, poly_idx, points)
+						ndata.set_collision_polygon_one_way(phys_idx, poly_idx, sdata.is_collision_polygon_one_way(phys_idx, poly_idx))
+						ndata.set_collision_polygon_one_way_margin(phys_idx, poly_idx, sdata.get_collision_polygon_one_way_margin(phys_idx, poly_idx))
+				
+				# 4. 複製導航多邊形
+				for nav_idx in range(tileset.get_navigation_layers_count()):
+					var nav_poly := sdata.get_navigation_polygon(nav_idx)
+					if nav_poly:
+						ndata.set_navigation_polygon(nav_idx, nav_poly)
+				
+				# 5. 複製遮擋多邊形
+				for occ_idx in range(tileset.get_occlusion_layers_count()):
+					var occ_poly := sdata.get_occluder(occ_idx)
+					if occ_poly:
+						ndata.set_occluder(occ_idx, occ_poly)
+				
+				# 6. 複製自訂數據
+				for cd_idx in range(tileset.get_custom_data_layers_count()):
+					var cd_name := tileset.get_custom_data_layer_name(cd_idx)
+					var cd_val := sdata.get_custom_data(cd_name)
+					ndata.set_custom_data(cd_name, cd_val)
 
 		tileset.add_source(new_src, i + 1)
 		created += 1
