@@ -124,6 +124,9 @@ func _init() -> void:
 		new_src.texture           = tex
 		new_src.texture_region_size = tile_size
 
+		# 先加入 TileSet，讓 TileData 能夠存取物理、導航與自訂數據圖層設定
+		tileset.add_source(new_src, i + 1)
+
 		# 複製 tile 座標與其屬性 (如物理碰撞、導航區等)
 		for coords in all_coords:
 			new_src.create_tile(coords)
@@ -170,10 +173,9 @@ func _init() -> void:
 				# 6. 複製自訂數據
 				for cd_idx in range(tileset.get_custom_data_layers_count()):
 					var cd_name := tileset.get_custom_data_layer_name(cd_idx)
-					var cd_val := sdata.get_custom_data(cd_name)
+					var cd_val: Variant = sdata.get_custom_data(cd_name)
 					ndata.set_custom_data(cd_name, cd_val)
 
-		tileset.add_source(new_src, i + 1)
 		created += 1
 
 	# ── 儲存 ─────────────────────────────────────────────────

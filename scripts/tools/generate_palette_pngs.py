@@ -71,8 +71,17 @@ CUSTOM_COMBOS = [
     (8, 7),    # 胭脂紅 FG + 琥珀棕 BG
 ]
 
+# 3. 所有的 palette 顏色 on 最黑的那個顏色 (index 0)，排除重複與同色
+for fg_idx in range(34):
+    if fg_idx == 0:
+        continue  # 排除同色 (0, 0)
+    if any(c == (fg_idx, 0) for c in CUSTOM_COMBOS):
+        continue  # 排除重複
+    CUSTOM_COMBOS.append((fg_idx, 0))
+
 for combo in CUSTOM_COMBOS:
     COMBINATIONS.append(combo)
+
 
 def main():
     orig_path = Path("assets/tilesets/mrmotext/MRMOTEXT_EX.png")
