@@ -1,43 +1,54 @@
 shader_type canvas_item;
-// ═══════════════════════════════════════════════════════════════
-// MRMOTEXT Dual Color Swap Shader  v3
-// ───────────────────────────────────────────────────────────────
-// 兩個顏色選色器：
-//   fill_color    → 替換「白色填充」區域
-//   outline_color → 替換「黑色輪廓」區域
-//
-// 使用方式：
-//   1. TileMapLayer → CanvasItem → Material → New ShaderMaterial
-//   2. Shader → 選這個檔案
-//   3. Inspector 出現兩個顏色選色器，直接點選即可
-//
-// 色票參考（palette.pal 34 色）：
-//   #363232  #453C3C  #62494C  #7F4A50  #56774A  #65725F
-//   #75656A  #8A5E40  #A75064  #AB6E7C  #E55C5C  #D66B48
-//   #5DA16E  #E09656  #D49C73  #E7946D  #B1D368  #EECF5A
-//   #436794  #9D5789  #6F81B3  #77BCD6  #978C8E  #8599B0
-//   #E4A691  #E9CEA1  #BE8EC1  #EDBCCC  #B1DECF  #C2C2C2
-//   #DFE8D3  #F1E9D4  #F1E5F8  #F2F9F8
-// ═══════════════════════════════════════════════════════════════
+// MRMOTEXT Palette Swap  v4  — 由 PaletteApplicator.gd 控制
+// 請勿直接在 Inspector 修改這兩個 int，改用 PaletteApplicator 子節點的枚舉
 
-/// 填充色 — 替換「白色」區域的顏色
-uniform vec4 fill_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+uniform int fill_index    : hint_range(0, 33) = 33;  // 填充色索引（白色區域）
+uniform int outline_index : hint_range(0, 33) = 0;   // 輪廓色索引（黑色區域）
 
-/// 輪廓色 — 替換「黑色」輪廓的顏色
-uniform vec4 outline_color : source_color = vec4(0.05, 0.05, 0.05, 1.0);
+const vec3 PALETTE[34] = vec3[34](
+	vec3(0.212, 0.196, 0.196),  //  0  #363232  深棕灰
+	vec3(0.271, 0.235, 0.235),  //  1  #453C3C  深棕
+	vec3(0.384, 0.286, 0.298),  //  2  #62494C  玫瑰棕
+	vec3(0.498, 0.290, 0.314),  //  3  #7F4A50  暗紅
+	vec3(0.337, 0.467, 0.290),  //  4  #56774A  橄欖綠
+	vec3(0.396, 0.447, 0.373),  //  5  #65725F  苔綠
+	vec3(0.459, 0.396, 0.416),  //  6  #75656A  藕灰
+	vec3(0.541, 0.369, 0.251),  //  7  #8A5E40  琥珀棕
+	vec3(0.655, 0.314, 0.392),  //  8  #A75064  胭脂紅
+	vec3(0.671, 0.431, 0.486),  //  9  #AB6E7C  玫瑰粉
+	vec3(0.898, 0.361, 0.361),  // 10  #E55C5C  番茄紅
+	vec3(0.839, 0.420, 0.282),  // 11  #D66B48  橙紅
+	vec3(0.365, 0.631, 0.431),  // 12  #5DA16E  薄荷綠
+	vec3(0.878, 0.588, 0.337),  // 13  #E09656  金橙
+	vec3(0.831, 0.612, 0.451),  // 14  #D49C73  膚色
+	vec3(0.906, 0.580, 0.427),  // 15  #E7946D  杏橙
+	vec3(0.694, 0.827, 0.408),  // 16  #B1D368  萊姆綠
+	vec3(0.933, 0.812, 0.353),  // 17  #EECF5A  黃色
+	vec3(0.263, 0.404, 0.580),  // 18  #436794  鋼藍
+	vec3(0.616, 0.341, 0.537),  // 19  #9D5789  紫紅
+	vec3(0.435, 0.506, 0.702),  // 20  #6F81B3  矢車菊藍
+	vec3(0.467, 0.737, 0.839),  // 21  #77BCD6  天空藍
+	vec3(0.592, 0.549, 0.557),  // 22  #978C8E  中灰
+	vec3(0.522, 0.600, 0.690),  // 23  #8599B0  藍灰
+	vec3(0.894, 0.651, 0.569),  // 24  #E4A691  桃粉
+	vec3(0.914, 0.808, 0.631),  // 25  #E9CEA1  淡金
+	vec3(0.745, 0.557, 0.757),  // 26  #BE8EC1  薰衣草
+	vec3(0.929, 0.737, 0.800),  // 27  #EDBCCC  粉紅
+	vec3(0.694, 0.871, 0.812),  // 28  #B1DECF  薄荷
+	vec3(0.761, 0.761, 0.761),  // 29  #C2C2C2  銀灰
+	vec3(0.875, 0.910, 0.827),  // 30  #DFE8D3  淡蘆薈
+	vec3(0.945, 0.914, 0.831),  // 31  #F1E9D4  奶油
+	vec3(0.945, 0.898, 0.973),  // 32  #F1E5F8  薰衣草白
+	vec3(0.949, 0.976, 0.973)   // 33  #F2F9F8  近白
+);
 
 void fragment() {
 	vec4 tex = texture(TEXTURE, UV);
-
 	if (tex.a < 0.01) {
 		COLOR = vec4(0.0);
 	} else {
-		// 感知亮度（ITU-R BT.601）
-		// 純黑 brightness=0 → outline_color
-		// 純白 brightness=1 → fill_color
-		// 中間灰色 → 兩色線性插值
-		float brightness = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
-		COLOR.rgb = mix(outline_color.rgb, fill_color.rgb, brightness);
+		float brightness  = dot(tex.rgb, vec3(0.299, 0.587, 0.114));
+		COLOR.rgb = mix(PALETTE[outline_index], PALETTE[fill_index], brightness);
 		COLOR.a   = tex.a;
 	}
 }
