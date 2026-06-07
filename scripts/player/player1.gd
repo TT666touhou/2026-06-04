@@ -17,6 +17,15 @@ extends CharacterBody2D
 ## 空中水平摩擦倍率（0=無摩擦 1=與地面相同）
 @export_range(0.0, 1.0, 0.05) var air_friction_factor: float = 0.3
 
+# ── 跳躍手感（Inspector 可調） ───────────────────────────────
+@export_group("Jump Feel")
+## Jump Buffer：提前按跳躍後的容錯時間（秒），落地時自動補觸發
+## 建議值：0.10 ~ 0.20
+@export_range(0.0, 0.3, 0.01) var jump_buffer_time: float = 0.15
+## Coyote Time：踩空後仍可跳躍的寬限時間（秒）
+## 建議值：0.08 ~ 0.15
+@export_range(0.0, 0.3, 0.01) var coyote_time: float = 0.12
+
 # ── 鏡頭參數（Inspector 可調） ────────────────────────────────
 @export_group("Camera")
 ## 縮放倍率（整數像素藝術請保持整數）
@@ -40,10 +49,18 @@ extends CharacterBody2D
 
 var _look_offset: float = 0.0
 var _facing    : float = 1.0
-# 每個跳躍鍵分開追蹤，避免按住任一鍵時其他鍵失效
-var _prev_space: bool = false
-var _prev_w    : bool = false
-var _prev_up   : bool = false
+
+# ── 跳躍手感計時器 ────────────────────────────────────────────
+# 每個跳躍鍵分開追蹤（防止 W+Space 互干擾）
+var _prev_space: bool  = false
+var _prev_w    : bool  = false
+var _prev_up   : bool  = false
+# Jump Buffer：記住空中提前按下的跳躍輸入，倒數到 0 失效
+var _jump_buffer: float = 0.0
+# Coyote Time：離開地面後的寬限倒數
+var _coyote    : float = 0.0
+# 上一幀是否在地面（用來偵測「剛離開地面」的邊緣）
+var _was_on_floor: bool = false
 
 # ── 初始化：將 Export 參數同步到 Camera2D ────────────────────
 func _ready() -> void:
@@ -51,7 +68,7 @@ func _ready() -> void:
 
 ## 手動呼叫可即時更新鏡頭設定（執行期調整也有效）
 func _sync_camera_params() -> void:
-	_camera.zoom                     = Vector2(cam_zoom, cam_zoom)
+	_camera.zoom                      = Vector2(cam_zoom, cam_zoom)
 	_camera.position_smoothing_enabled = position_smoothing
 	_camera.position_smoothing_speed   = smoothing_speed
 	_camera.drag_horizontal_enabled    = drag_horizontal
@@ -61,27 +78,54 @@ func _sync_camera_params() -> void:
 # ── 物理更新 ──────────────────────────────────────────────────
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
+	_tick_jump_timers(delta)
 	_handle_jump()
 	_handle_horizontal(delta)
 	_update_camera(delta)
 	move_and_slide()
+	_was_on_floor = is_on_floor()
 
 func _apply_gravity(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y += gravity * delta
 
+# ── 跳躍計時器（每幀更新 buffer 與 coyote） ───────────────────
+func _tick_jump_timers(delta: float) -> void:
+	# Coyote Time：剛離開地面那幀開始倒數
+	if _was_on_floor and not is_on_floor():
+		_coyote = coyote_time
+	elif is_on_floor():
+		_coyote = 0.0          # 落地後清零（避免落地後被 coyote 誤觸）
+	else:
+		_coyote = max(0.0, _coyote - delta)
+
+	# Jump Buffer：每幀倒數
+	_jump_buffer = max(0.0, _jump_buffer - delta)
+
+# ── 跳躍邏輯（Buffer + Coyote） ───────────────────────────────
 func _handle_jump() -> void:
 	var cur_space := Input.is_key_pressed(KEY_SPACE)
 	var cur_w     := Input.is_key_pressed(KEY_W)
 	var cur_up    := Input.is_key_pressed(KEY_UP)
-	# 任一鍵從「未按」→「按下」即視為 just_pressed，互不干擾
+
+	# 任一鍵剛按下 → 寫入 buffer（不管是否在地面）
 	var just_pressed := (
 		(cur_space and not _prev_space) or
 		(cur_w     and not _prev_w)     or
 		(cur_up    and not _prev_up)
 	)
-	if just_pressed and is_on_floor():
-		velocity.y = jump_velocity
+	if just_pressed:
+		_jump_buffer = jump_buffer_time
+
+	# 可跳條件：在地面 OR 在 coyote 寬限內
+	var can_jump := is_on_floor() or (_coyote > 0.0)
+
+	# Buffer 有效 + 可跳 → 執行跳躍，同時清空兩個計時器
+	if _jump_buffer > 0.0 and can_jump:
+		velocity.y   = jump_velocity
+		_jump_buffer = 0.0
+		_coyote      = 0.0    # 防止 coyote 重複觸發
+
 	_prev_space = cur_space
 	_prev_w     = cur_w
 	_prev_up    = cur_up
