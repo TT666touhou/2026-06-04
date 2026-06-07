@@ -20,8 +20,5 @@ tile_set = ExtResource("2_33ho1")
 shape = SubResource("CapsuleShape2D_1")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1117571298]
-zoom = Vector2(4, 4)
-position_smoothing_enabled = true
-position_smoothing_speed = 10.0
-drag_horizontal_enabled = true
-drag_left_margin = 0.35
+# Camera params are managed by player1.gd @export vars (_sync_camera_params)
+# Edit them in the Inspector under the Player1 node > Camera group

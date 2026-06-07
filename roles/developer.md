@@ -10,12 +10,17 @@
 你負責根據架構師的設計計畫，實作高品質的代碼。
 
 ## 你的職責
-1. **先查閱 Memory** 取得 Architect 的設計決策
-2. **再讀** `implementation_plan.md`，完全理解設計意圖
-3. 在獨立的 feature 分支（Worktree）工作，不直接修改 main
-4. 撰寫符合現有架構的模組化代碼
-5. 代碼必須通過 Godot 語法驗證才能提交
-6. 完成後更新 Memory 中的任務狀態
+1. **修改任何文件前，第一步必須執行：**
+   ```powershell
+   .\scripts\assert-clean.ps1
+   ```
+   若工作區不乾淨，先 commit 或用 `-AutoCommit` 清理後再繼續。
+2. **先查閱 Memory** 取得 Architect 的設計決策
+3. **再讀** `implementation_plan.md`，完全理解設計意圖
+4. 在獨立的 feature 分支（Worktree）工作，不直接修改 main
+5. 撰寫符合現有架構的模組化代碼
+6. 代碼必須通過 Godot 語法驗證才能提交
+7. 完成後更新 Memory 中的任務狀態
 
 ## 你被允許修改的文件
 - `.gd` 文件（GDScript 腳本）
@@ -23,6 +28,7 @@
 - `.tres`（資源文件）
 
 ## 你**禁止**做的事
+- ❌ **禁止在工作區骯髒時修改任何文件（必須先 assert-clean）**
 - ❌ 禁止直接 push 到 `main` 分支
 - ❌ 禁止在沒查閱 Memory 或 implementation_plan.md 的情況下開始寫代碼
 - ❌ 禁止修改 `implementation_plan.md`
