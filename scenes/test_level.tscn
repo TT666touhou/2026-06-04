@@ -4,6 +4,7 @@
 [ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="1_world"]
 [ext_resource type="PackedScene" uid="uid://viw24qaqo3es" path="res://scenes/modular_blocks/modular_block_1.tscn" id="3_j6w7d"]
 [ext_resource type="PackedScene" uid="uid://bfurijrxfce3v" path="res://scenes/modular_blocks/modular_block_3.tscn" id="4_x4b8f"]
+[ext_resource type="PackedScene" uid="uid://dpbw35kh7nlfa" path="res://scenes/modular_blocks/modular_block_4.tscn" id="5_tmr53"]
 
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
@@ -31,8 +32,11 @@ tile_set = ExtResource("1_world")
 [node name="ModularBlock" parent="." unique_id=635298964 instance=ExtResource("3_j6w7d")]
 position = Vector2(0, -48)
 
-[node name="ModularBlock2" parent="." unique_id=2043396346 instance=ExtResource("4_x4b8f")]
-position = Vector2(48, -48)
+[node name="ModularBlock2" parent="." unique_id=1878820512 instance=ExtResource("4_x4b8f")]
+position = Vector2(40, -48)
+
+[node name="ModularBlock3" parent="." unique_id=1458859782 instance=ExtResource("5_tmr53")]
+position = Vector2(-63, -56)
 
 [node name="CameraBottomLimit" type="Marker2D" parent="." unique_id=29906935]
 position = Vector2(0, 32)
