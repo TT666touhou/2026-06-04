@@ -33,12 +33,12 @@ extends CharacterBody2D
 
 # ── 二段跳（Apex Jump）──────────────────────────────────────────
 @export_group("Double Jump (Apex)")
-## 二段跳初速（建議與第一跳相同以確保等高）
-@export var double_jump_velocity: float = -420.0
 ## ℹ️ 二段跳機制說明：
 ##   上升期按跳躍 → buffer 保存，到達最高點自動觸發
 ##   下降期按跳躍 → 立即觸發（從較低位置，高度較低）
+##   動能重置：velocity.y 恢復為 jump_velocity（與第一跳完全相同）
 ##   耐力消耗在觸發時才發生
+## （無獨立 double_jump_velocity，二段跳高度 = 第一跳高度）
 
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
 @export_group("Wall Jump")
@@ -270,7 +270,8 @@ func _do_normal_jump() -> void:
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
-	velocity.y        = wall_jump_vertical
+	# 蹬牆跳垂直動能重置 = 與第一跳完全相同，確保可到達相同高度
+	velocity.y        = jump_velocity
 	velocity.x        = sign(normal.x) * wall_jump_horizontal
 	_wall_lock_timer  = wall_jump_lock_time
 	_can_double_jump  = true    # 蹬牆後重置二段跳資格
@@ -280,7 +281,8 @@ func _do_wall_jump() -> void:
 	_consume_stamina()
 
 func _do_double_jump() -> void:
-	velocity.y          = double_jump_velocity  # 重置（非疊加）
+	# 動能重置：設回第一跳的初速（非疊加），確保二段跳高度 = 第一跳高度
+	velocity.y          = jump_velocity
 	_can_double_jump    = false
 	_apex_jump_buffered = false
 	_was_ascending      = true   # 二段跳後重新上升

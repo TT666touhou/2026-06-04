@@ -12,7 +12,6 @@ height = 14.0
 script = ExtResource("2_script")
 speed = 60.0
 jump_velocity = -161.0
-double_jump_velocity = -161.0
 gravity = 180.0
 friction = 480.0
 air_friction_factor = 0.55
