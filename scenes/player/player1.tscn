@@ -10,10 +10,10 @@ height = 14.0
 
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
-speed = 72.0
-jump_velocity = -181.0
-gravity = 216.0
-friction = 576.0
+speed = 86.0
+jump_velocity = -198.0
+gravity = 259.0
+friction = 691.0
 air_friction_factor = 0.55
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=659119027]
