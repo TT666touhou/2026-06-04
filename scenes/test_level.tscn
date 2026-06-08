@@ -19,7 +19,10 @@ tile_set = ExtResource("1_world")
 
 [node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(29, -83)
+speed = 100.0
+jump_velocity = -250.0
 gravity = 600.0
+friction = 800.0
 cam_vertical_offset = 0.0
 camera_bottom_marker = NodePath("../CameraBottomLimit")
 
@@ -30,13 +33,18 @@ tile_map_data = PackedByteArray("AADn/wAAAgAIAAcAABDo/wAAAgACABoAAADp/wAAAgALABY
 tile_set = ExtResource("1_world")
 
 [node name="ModularBlock" parent="." unique_id=635298964 instance=ExtResource("3_j6w7d")]
-position = Vector2(0, -48)
+position = Vector2(0, -56)
 
 [node name="ModularBlock2" parent="." unique_id=1878820512 instance=ExtResource("4_x4b8f")]
-position = Vector2(40, -48)
+position = Vector2(40, -56)
 
 [node name="ModularBlock3" parent="." unique_id=1458859782 instance=ExtResource("5_tmr53")]
-position = Vector2(-63, -56)
+position = Vector2(-64, -56)
 
 [node name="CameraBottomLimit" type="Marker2D" parent="." unique_id=29906935]
 position = Vector2(0, 32)
+
+[node name="Floormarker" type="Marker2D" parent="." unique_id=41648272]
+
+[node name="Blockmarker" type="Marker2D" parent="." unique_id=122994934]
+position = Vector2(0, -64)
