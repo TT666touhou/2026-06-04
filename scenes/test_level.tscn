@@ -18,6 +18,7 @@ tile_set = ExtResource("1_world")
 
 [node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(29, -83)
+world_layer = NodePath("../WorldLayer")
 
 [node name="WorldLayer" type="TileMapLayer" parent="." unique_id=914513310]
 texture_filter = 1
