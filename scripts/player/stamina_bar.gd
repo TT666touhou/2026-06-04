@@ -2,22 +2,39 @@ extends Node2D
 ## StaminaBar — 耐力環形 UI
 ## 以 draw_arc() 繪製 3 段弧形，跟隨角色在世界空間中移動（非 CanvasLayer）
 ## 顏色全部取自 VfxMix palette.pal（34 色色票），不使用色票外顏色
+##
+## ═══ 角度系統說明 ═══
+## Godot 的角度 0° = 右方（3點鐘），順時針為正（螢幕座標 Y 向下）
+## 90°  = 下方（6點鐘）
+## 180° = 左方（9點鐘）
+## 270° = 上方（12點鐘）
 
-# ── 弧形外觀參數 ────────────────────────────────────────────────
-## 弧形半徑（遊戲像素）
-@export var arc_radius  : float = 12.0
+# ── 弧形位置與角度（最常需要調整的參數）────────────────────────
+@export_group("弧形角度")
+## 弧形起始角度（度）
+## 推薦值：90=正下方起始 / 120=右下方4點鐘起始 / 45=右下方偏右起始
+## 弧形會從此角度開始，往 arc_span_deg 方向延伸
+@export_range(0.0, 360.0, 1.0) var arc_start_deg: float = 120.0
+## 弧形總涵蓋範圍（度）
+## 推薦值：90=四分之一圓 / 180=半圓 / 120=三分之一圓
+@export_range(10.0, 360.0, 1.0) var arc_span_deg: float = 90.0
+## 段間間隔（度）：每段弧之間的空白，0=無間隙
+@export_range(0.0, 20.0, 0.5) var arc_gap_deg: float = 4.0
+
+# ── 弧形大小（控制圓的大小與粗細）──────────────────────────────
+@export_group("弧形大小")
+## 弧形半徑（遊戲像素，顯示時 × cam_zoom 倍）
+## 推薦值：8~16（遊戲像素）= 顯示 32~64px（zoom=4）
+@export_range(4.0, 64.0, 1.0) var arc_radius: float = 10.0
 ## 弧形線條寬度（遊戲像素）
-@export var arc_width   : float = 2.0
-## 弧形起始角度（4 點鐘方向 = 120°，以 Godot 的 x 軸右為 0° 計算）
-@export var arc_start_deg: float = 115.0
-## 弧形涵蓋範圍（度）
-@export var arc_span_deg : float = 180.0
-## 段間間隔（度）
-@export var arc_gap_deg  : float = 6.0
-## 弧形繪製精細度（點數越多越圓滑）
-@export var arc_points   : int   = 32
+## 推薦值：1~3，太粗會擋住角色
+@export_range(0.5, 8.0, 0.5) var arc_width: float = 1.5
+## 繪製精細度（每段弧用幾個頂點構成）
+## 推薦值：8~16（像素藝術不需要太高，太高反而更糊）
+@export_range(4, 64, 1) var arc_points: int = 8
 
-# ── VfxMix 色票顏色（palette.pal 索引對應，禁止更改為色票外顏色） ──
+# ── VfxMix 色票顏色（禁止使用色票外顏色）────────────────────────
+@export_group("顏色（VfxMix 色票）")
 ## 滿格顏色 — Near White（色票 #34）
 @export var color_full    : Color = Color(0.949, 0.976, 0.973, 1.0)   # #F2F9F8
 ## 恢復中格背景色 — Warm Gray（色票 #23）
@@ -29,9 +46,16 @@ extends Node2D
 ## 耐力不足警告色 — Bright Red（色票 #11）
 @export var color_warning : Color = Color(0.898, 0.361, 0.361, 0.8)   # #E55C5C 80%
 
-# ── 閃爍動畫計時器（每格獨立） ─────────────────────────────────
-## 消耗閃爍持續時間（秒）
-@export var flash_duration: float = 0.15
+# ── 閃爍動畫 ────────────────────────────────────────────────────
+@export_group("動畫")
+## 消耗閃爍持續時間（秒）：消耗耐力後的金黃閃爍動畫長度
+@export_range(0.0, 1.0, 0.01) var flash_duration: float = 0.15
+
+# ── UI 偏移（調整弧形相對於角色中心的位置）──────────────────────
+@export_group("位置偏移")
+## UI 中心相對於角色中心的偏移（遊戲像素）
+## 範例：Vector2(4, 4) = 往右下各 4px
+@export var center_offset: Vector2 = Vector2(0.0, 0.0)
 
 # ── 內部狀態 ────────────────────────────────────────────────────
 ## 來自 player1.gd 的耐力值（0.0 ~ 3.0），由 parent 每幀更新
@@ -41,64 +65,63 @@ var _flash_timers: Array[float] = [0.0, 0.0, 0.0]
 
 # ── 初始化 ──────────────────────────────────────────────────────
 func _ready() -> void:
-	# 確保在 Player 節點前繪製（或後，依需求）
 	z_index = 1
 
-# ── 每幀更新：觸發閃爍 + 觸發重繪 ─────────────────────────────
+# ── 每幀更新 ────────────────────────────────────────────────────
 func _process(delta: float) -> void:
-	# 倒數各格閃爍計時器
 	for i in 3:
 		if _flash_timers[i] > 0.0:
 			_flash_timers[i] = max(0.0, _flash_timers[i] - delta)
 	queue_redraw()
 
-## 由 player1.gd 呼叫：消耗了第幾格時觸發閃爍
-## slot_index 為消耗掉的最高格（0=第一格，1=第二格，2=第三格）
+## 由 player1.gd 呼叫：消耗耐力時觸發指定格的閃爍
 func trigger_flash(slot_index: int) -> void:
 	if slot_index >= 0 and slot_index < 3:
 		_flash_timers[slot_index] = flash_duration
 
 # ── 繪製弧形 ────────────────────────────────────────────────────
 func _draw() -> void:
-	var full_slots   : int   = floori(stamina)              # 完整亮起的格數（0-3）
-	var partial_fill : float = fmod(stamina, 1.0)           # 恢復中的格的進度（0.0-1.0）
-	var is_critical  : bool  = stamina < 1.0               # 耐力不足警告
+	var full_slots   : int   = floori(stamina)
+	var partial_fill : float = fmod(stamina, 1.0)
+	var is_critical  : bool  = stamina < 1.0
 
-	# 每格的弧度計算
-	# arc_span_deg 分成 3 段，段間留 arc_gap_deg
-	var slot_span := (arc_span_deg - arc_gap_deg * 2.0) / 3.0  # 每段的度數
+	# 每段弧的角度寬度（總 span 扣掉所有間隔後均分 3 段）
+	var usable_span : float = arc_span_deg - arc_gap_deg * 2.0
+	var slot_span   : float = usable_span / 3.0
 
 	for i in 3:
-		var start_deg := arc_start_deg + i * (slot_span + arc_gap_deg)
-		var end_deg   := start_deg + slot_span
+		var start_deg : float = arc_start_deg + float(i) * (slot_span + arc_gap_deg)
+		var end_deg   : float = start_deg + slot_span
 
-		# 決定此格的顏色
 		var col: Color
+
 		if _flash_timers[i] > 0.0:
-			# 閃爍中：從 color_flash 淡出到消耗後顏色
-			var t := _flash_timers[i] / flash_duration  # 1.0 → 0.0
+			var t : float = _flash_timers[i] / flash_duration
 			col = color_flash.lerp(color_empty, 1.0 - t)
 		elif i < full_slots:
-			# 完整亮起
 			col = color_full
 		elif i == full_slots and partial_fill > 0.01:
-			# 恢復中的格：顯示恢復進度
-			# 先畫暗色背景
-			_draw_arc_segment(start_deg, end_deg, color_recover)
-			# 再畫進度填充（按 partial_fill 比例縮短弧形）
-			var fill_end_deg: float = start_deg + slot_span * partial_fill
-			_draw_arc_segment(start_deg, fill_end_deg, color_full)
+			# 恢復中格：先畫暗色背景，再疊加進度
+			_draw_segment(start_deg, end_deg, color_recover)
+			var fill_end : float = start_deg + slot_span * partial_fill
+			_draw_segment(start_deg, fill_end, color_full)
 			continue
 		else:
-			# 空格
-			col = color_empty if not is_critical else color_warning
+			col = color_warning if is_critical else color_empty
 
-		_draw_arc_segment(start_deg, end_deg, col)
+		_draw_segment(start_deg, end_deg, col)
 
-## 繪製單段弧形（from_deg → to_deg，角度以度為單位）
-func _draw_arc_segment(from_deg: float, to_deg: float, col: Color) -> void:
+## 繪製單段弧（antialiased=false 確保像素銳利，不模糊）
+func _draw_segment(from_deg: float, to_deg: float, col: Color) -> void:
 	if to_deg <= from_deg:
 		return
-	var from_rad := deg_to_rad(from_deg)
-	var to_rad   := deg_to_rad(to_deg)
-	draw_arc(Vector2.ZERO, arc_radius, from_rad, to_rad, arc_points, col, arc_width, true)
+	draw_arc(
+		center_offset,          # 中心點（加上偏移）
+		arc_radius,             # 半徑
+		deg_to_rad(from_deg),   # 起始角（弧度）
+		deg_to_rad(to_deg),     # 結束角（弧度）
+		arc_points,             # 精細度
+		col,                    # 顏色
+		arc_width,              # 線寬
+		false                   # ← antialiased = FALSE，像素藝術必須關閉，否則模糊
+	)
