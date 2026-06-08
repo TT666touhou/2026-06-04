@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://viw24qaqo3es" path="res://scenes/modular_blocks/modular_block_1.tscn" id="3_j6w7d"]
 [ext_resource type="PackedScene" uid="uid://bfurijrxfce3v" path="res://scenes/modular_blocks/modular_block_3.tscn" id="4_x4b8f"]
 [ext_resource type="PackedScene" uid="uid://dpbw35kh7nlfa" path="res://scenes/modular_blocks/modular_block_4.tscn" id="5_tmr53"]
+[ext_resource type="PackedScene" uid="uid://b1t8am8hwvppf" path="res://scenes/modular_blocks/modular_block_5.tscn" id="6_qcd3b"]
 
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
@@ -19,6 +20,11 @@ tile_set = ExtResource("1_world")
 
 [node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(29, -83)
+speed = 150.0
+jump_velocity = -302.0
+gravity = 600.0
+friction = 1200.0
+air_friction_factor = 0.3
 cam_vertical_offset = 0.0
 camera_bottom_marker = NodePath("../CameraBottomLimit")
 
@@ -37,10 +43,8 @@ position = Vector2(40, -56)
 [node name="ModularBlock3" parent="." unique_id=1458859782 instance=ExtResource("5_tmr53")]
 position = Vector2(-64, -56)
 
+[node name="ModularBlock4" parent="." unique_id=1207929061 instance=ExtResource("6_qcd3b")]
+position = Vector2(120, -120)
+
 [node name="CameraBottomLimit" type="Marker2D" parent="." unique_id=29906935]
 position = Vector2(0, 32)
-
-[node name="Floormarker" type="Marker2D" parent="." unique_id=41648272]
-
-[node name="Blockmarker" type="Marker2D" parent="." unique_id=122994934]
-position = Vector2(0, -64)
