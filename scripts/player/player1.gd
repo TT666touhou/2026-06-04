@@ -1,160 +1,150 @@
 extends CharacterBody2D
-## Player1 — 橫向移動控制器（含耐力系統、二段跳、蹬牆跳、翻滾）
-## 操控：A/D 或 ←/→ 移動；Space / W / ↑ 跳躍；Shift 翻滾
+## Player1 — 標準 2D 橫向移動控制器
+## 操控（可在 Project Settings → Input Map 修改）：
+##   move_left / move_right → 水平移動
+##   jump                   → Space / W / ↑（跳躍 + Apex 二段跳）
+##   roll                   → Shift（翻滾）
 
 # ═══════════════════════════════════════════════════════════════
-# EXPORT 參數區塊（全部可在 Inspector 即時調整）
+# EXPORT 參數（全部可在 Inspector 即時調整）
 # ═══════════════════════════════════════════════════════════════
 
 # ── 移動 ────────────────────────────────────────────────────────
 @export_group("Movement")
 ## 水平最大速度（px/s）
 @export var speed: float = 200.0
-## 跳躍初速（負 = 向上）
-@export var jump_velocity: float = -420.0
 ## 重力加速度（px/s²）
 @export var gravity: float = 980.0
-## 地面制動加速度
+## 地面制動加速度（px/s²）
 @export var friction: float = 800.0
-## 空中水平摩擦倍率（0=無摩擦 1=與地面相同）
+## 空中水平摩擦倍率（0=完全無摩擦，1=與地面相同）
 @export_range(0.0, 1.0, 0.05) var air_friction_factor: float = 0.3
 
-# ── 跳躍手感 ────────────────────────────────────────────────────
-@export_group("Jump Feel")
-## Jump Buffer：提前按跳躍後的容錯時間（秒），落地時自動補觸發
-@export_range(0.0, 0.3, 0.01) var jump_buffer_time: float = 0.15
-## Coyote Time：踩空後仍可跳躍的寬限時間（秒）
-@export_range(0.0, 0.3, 0.01) var coyote_time: float = 0.12
+# ── 跳躍 ────────────────────────────────────────────────────────
+@export_group("Jump")
+## 第一跳初速（負=向上）
+## 計算公式：height = v² / (2 × gravity)
+## -161 @ gravity=180 → 高度 71.97px（中心）/ 底部約 64px
+@export var jump_velocity: float = -420.0
+## Coyote Time：踩空後仍可跳的寬限秒數
+@export_range(0.0, 0.4, 0.01) var coyote_time: float = 0.12
+## Jump Buffer：落地前提早按跳躍的容錯秒數
+@export_range(0.0, 0.4, 0.01) var jump_buffer_time: float = 0.15
 
-# ── 耐力系統 ────────────────────────────────────────────────────
-@export_group("Stamina")
-## 最大耐力格數（float 表示，3.0 = 3 格全滿）
-@export var max_stamina: float = 3.0
-## 耐力恢復速度（格/秒），1.25 秒恢復 1 格
-@export_range(0.1, 3.0, 0.05) var stamina_recovery: float = 0.8
-
-# ── 二段跳 ──────────────────────────────────────────────────────
-@export_group("Double Jump")
-## 二段跳初速（負 = 向上，略低於普通跳）
-@export var double_jump_velocity: float = -320.0
-## 二段跳後重力縮放（短暫輕化感）
-@export_range(0.5, 1.0, 0.05) var double_jump_gravity_scale: float = 0.8
-## 重力縮放持續時間（秒）
-@export_range(0.0, 0.5, 0.02) var double_jump_gravity_duration: float = 0.1
+# ── 二段跳（Apex Jump）──────────────────────────────────────────
+@export_group("Double Jump (Apex)")
+## 二段跳初速（建議與第一跳相同以確保等高）
+@export var double_jump_velocity: float = -420.0
+## ℹ️ 二段跳機制說明：
+##   上升期按跳躍 → buffer 保存，到達最高點自動觸發
+##   下降期按跳躍 → 立即觸發（從較低位置，高度較低）
+##   耐力消耗在觸發時才發生
 
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
 @export_group("Wall Jump")
-## 蹬牆跳垂直速度（負 = 向上）
+## 蹬牆後向上的速度
 @export var wall_jump_vertical: float = -380.0
-## 蹬牆跳水平速度（離牆方向）
+## 蹬牆後離牆的水平速度
 @export var wall_jump_horizontal: float = 180.0
-## 蹬牆跳後水平控制鎖定時間（秒），防止立即貼回牆
-@export_range(0.0, 0.5, 0.02) var wall_jump_lock_time: float = 0.15
+## 蹬牆後水平方向鎖定時間（防止馬上頂回去）
+@export_range(0.0, 0.5, 0.01) var wall_jump_lock_time: float = 0.2
 
 # ── 翻滾 ────────────────────────────────────────────────────────
 @export_group("Roll")
-## 翻滾速度（px/s，跟隨面向方向）
-@export var roll_speed: float = 400.0
+## 翻滾速度（px/s）
+@export var roll_speed: float = 250.0
 ## 翻滾持續時間（秒）
-@export_range(0.05, 0.5, 0.01) var roll_duration: float = 0.2
-## 無敵幀時間（秒，翻滾中段，應 <= roll_duration）
-@export_range(0.0, 0.5, 0.01) var roll_invincible_time: float = 0.12
-## 翻滾後速度緩衝時間（秒）
-@export_range(0.0, 0.3, 0.01) var roll_cooldown: float = 0.1
+@export_range(0.05, 0.5, 0.01) var roll_duration: float = 0.3
+## 翻滾冷卻時間（秒）
+@export_range(0.0, 1.0, 0.05) var roll_cooldown: float = 0.4
+## 無敵幀持續時間（秒，≤ roll_duration）
+@export_range(0.0, 0.4, 0.01) var roll_invincible_duration: float = 0.12
+
+# ── 耐力系統 ────────────────────────────────────────────────────
+@export_group("Stamina")
+## 最大耐力格數
+@export var max_stamina: float = 3.0
+## 耐力恢復速度（格/秒）
+@export_range(0.1, 3.0, 0.05) var stamina_recovery: float = 0.8
 
 # ── 攝影機 ──────────────────────────────────────────────────────
 @export_group("Camera")
-## 縮放倍率（整數像素藝術請保持整數）
-@export var cam_zoom: float = 4.0
-## 攝影機垂直偏移（遊戲像素，負值=鏡頭上移，玩家視覺上偏下方）
-## -40px 使玩家位於畫面約 72% 高度位置（標準平台遊戲慣例）
-@export var cam_vertical_offset: float = -40.0
-## 前瞻最大偏移（tile 單位，1 tile = 8 px）
-@export var look_ahead_tiles: float = 2.0
-## 前瞻追蹤速度（lerp 係數）
+## 攝影機縮放倍率（整數倍才清晰）
+@export_range(1, 8, 1) var cam_zoom: int = 4
+## 前瞻偏移距離（tile 數）
+@export_range(0.0, 8.0, 0.5) var look_ahead_tiles: float = 2.0
+## 前瞻追蹤插值速度
 @export_range(1.0, 20.0, 0.5) var look_ahead_speed: float = 6.0
-## 位置平滑開關
-## ⚠️ 像素藝術遊戲建議關閉：Camera2D 平滑在 render rate 運行
-## 但物理在固定 60Hz，速率不同步會造成背景磚塊抖動
+## 攝影機平滑（關閉 = 硬跟玩家，不抖動；開啟 = 平滑跟隨）
 @export var position_smoothing: bool = false
-## 位置平滑速度
+## 攝影機平滑速度（只在 position_smoothing=true 時有效）
 @export_range(1.0, 30.0, 0.5) var smoothing_speed: float = 10.0
-## 水平拖拽死區開關
+## 攝影機垂直偏移（負=讓玩家偏下方，正=偏上方）
+@export var cam_vertical_offset: float = -40.0
+## 水平拖拽死區
 @export var drag_horizontal: bool = true
-## 拖拽左邊界
 @export_range(0.0, 0.5, 0.05) var drag_left_margin: float = 0.35
-## 拖拽右邊界
 @export_range(0.0, 0.5, 0.05) var drag_right_margin: float = 0.35
-## 將玩家位置四捨五入到最近的整數像素（修正 zoom 倍率下的模糊問題）
-## 原因：物理引擎位置是 float（如 100.7px），在 zoom=4 下顯示座標 402.8px
-##       非整數 display 座標 → NEAREST filter 跨像素採樣 → 角色模糊
-## 建議平台遊戲設為 true
-@export var snap_position_to_pixel: bool = true
-## 下邊界標記節點：將任何 Node2D（建議用 Marker2D）拖入此欄位
-## 攝影機的 limit_bottom = 該節點在世界中的 Y 座標
-## 在場景中拖拉此節點即可即時調整邊界位置
-## 留空則不設定下邊界（無限往下）
+## 下邊界標記節點（Marker2D）：拖入後攝影機不會往下超過此節點的 Y 座標
+## 留空 = 無限往下
 @export var camera_bottom_marker: NodePath = NodePath("")
+## 將玩家位置四捨五入到整數像素（修正 zoom 下的模糊問題）
+@export var snap_position_to_pixel: bool = true
 
 # ═══════════════════════════════════════════════════════════════
-# 節點引用
+# 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
-@onready var _camera    : Camera2D  = $Camera2D
-@onready var _stamina_ui: Node2D    = $StaminaBar
+@onready var _camera: Camera2D = $Camera2D
+@onready var _stamina_ui: Node2D = $StaminaBar
 
 # ═══════════════════════════════════════════════════════════════
-# 內部狀態變數
+# 內部狀態
 # ═══════════════════════════════════════════════════════════════
 
-# ── 通用 ──────────────────────────────────────────────────────
-var _look_offset  : float = 0.0
-var _facing       : float = 1.0
-var _was_on_floor : bool  = false
+# ── 地面狀態 ────────────────────────────────────────────────────
+var _was_on_floor: bool = false
 
-# ── 跳躍手感 ────────────────────────────────────────────────────
-var _prev_space  : bool  = false
-var _prev_w      : bool  = false
-var _prev_up     : bool  = false
-var _jump_buffer : float = 0.0
-var _coyote      : float = 0.0
+# ── 跳躍 ────────────────────────────────────────────────────────
+var _coyote_timer:      float = 0.0
+var _jump_buffer_timer: float = 0.0
 
-# ── 耐力 ────────────────────────────────────────────────────────
-var _stamina: float = 3.0   # 共用 float（0.0 ~ max_stamina）
-
-# ── 二段跳 ──────────────────────────────────────────────────────
-var _air_jump_used        : bool  = false   # 本次起跳是否已用過二段跳
-var _dj_gravity_timer     : float = 0.0    # 二段跳後重力縮放倒數
+# ── Apex 二段跳 ──────────────────────────────────────────────────
+var _can_double_jump:    bool = false  # 本次起跳後可否執行二段跳
+var _apex_jump_buffered: bool = false  # 上升期是否已按跳躍（等待 apex 觸發）
+var _was_ascending:      bool = false  # 上一幀是否在上升（Y 為負）
 
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
-var _wall_jump_lock       : float = 0.0    # > 0 = 水平控制鎖定中
-var _wall_dir             : float = 0.0    # 牆面方向（-1 左牆 / +1 右牆）
+var _wall_lock_timer: float = 0.0
 
 # ── 翻滾 ────────────────────────────────────────────────────────
-var _is_rolling       : bool  = false
-var _roll_timer       : float = 0.0    # 翻滾剩餘時間倒數
-var _roll_cooldown    : float = 0.0    # 翻滾後緩衝倒數
-var _prev_shift       : bool  = false
-## 目前是否處於無敵狀態（外部系統可讀取此屬性）
-var is_invincible     : bool  = false
+var _is_rolling:    bool  = false
+var _roll_timer:    float = 0.0
+var _roll_cooldown: float = 0.0
+var is_invincible:  bool  = false  # 供外部（攻擊判定）讀取
+
+# ── 耐力 ────────────────────────────────────────────────────────
+var _stamina: float = 3.0
+
+# ── 攝影機 ──────────────────────────────────────────────────────
+var _facing:      float = 1.0   # 1=右, -1=左
+var _look_offset: float = 0.0   # 前瞻偏移（插值目標）
 
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
-	_sync_camera_params()
-	_setup_camera_limit()
 	_stamina = max_stamina
+	_apply_camera_settings()
+	_setup_camera_limit()
 
-## 將 Export 參數同步到 Camera2D（可執行期呼叫以即時更新）
-func _sync_camera_params() -> void:
-	_camera.zoom                       = Vector2(cam_zoom, cam_zoom)
-	_camera.position_smoothing_enabled = position_smoothing
-	_camera.position_smoothing_speed   = smoothing_speed
-	_camera.drag_horizontal_enabled    = drag_horizontal
-	_camera.drag_left_margin           = drag_left_margin
-	_camera.drag_right_margin          = drag_right_margin
+func _apply_camera_settings() -> void:
+	_camera.zoom                             = Vector2(cam_zoom, cam_zoom)
+	_camera.position_smoothing_enabled       = position_smoothing
+	_camera.position_smoothing_speed         = smoothing_speed
+	_camera.drag_horizontal_enabled          = drag_horizontal
+	_camera.drag_left_margin                 = drag_left_margin
+	_camera.drag_right_margin                = drag_right_margin
 
-## 根據 camera_bottom_marker 節點的 Y 座標設定攝影機下邊界
 func _setup_camera_limit() -> void:
 	_camera.limit_left   = -10000000
 	_camera.limit_right  =  10000000
@@ -169,211 +159,201 @@ func _setup_camera_limit() -> void:
 		_camera.limit_bottom = 10000000
 		return
 
-	# 直接使用節點的全域 Y 座標作為下邊界（世界像素單位）
 	_camera.limit_bottom = int(marker.global_position.y)
 
 # ═══════════════════════════════════════════════════════════════
-# 物理更新主迴圈
+# 物理更新主迴圈（標準順序）
 # ═══════════════════════════════════════════════════════════════
 func _physics_process(delta: float) -> void:
-	_tick_timers(delta)
+	# 1. 重力
 	_apply_gravity(delta)
 
-	if _is_rolling:
-		_tick_roll(delta)
-	else:
-		_handle_roll_input()
-		_handle_jump()
+	# 2. 耐力恢復
+	_recover_stamina(delta)
+
+	# 3. 跳躍（最優先，可覆蓋重力效果）
+	_handle_jump(delta)
+
+	# 4. 翻滾（覆蓋水平移動）
+	_handle_roll(delta)
+
+	# 5. 水平移動（翻滾中跳過）
+	if not _is_rolling:
 		_handle_horizontal(delta)
 
-	_update_camera(delta)
-	_update_stamina_ui()
+	# 6. 物理移動
 	move_and_slide()
-	# ✅ 修模糊：物理移動後將位置四捨五入到整數遊戲像素
-	# 避免 float 座標在 zoom 倍率下顯示在非整數 display pixel
+
+	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
 		position = position.round()
-	_post_move(delta)
 
-## 落地後重置各種每跳狀態
-func _post_move(_delta: float) -> void:
-	if is_on_floor() and not _was_on_floor:
-		_air_jump_used = false    # 落地重置二段跳
+	# 8. 攝影機 & UI
+	_update_camera(delta)
+	_update_stamina_ui()
+
+	# 9. 地面狀態記錄（供下一幀使用）
 	_was_on_floor = is_on_floor()
-
-# ═══════════════════════════════════════════════════════════════
-# 各計時器倒數
-# ═══════════════════════════════════════════════════════════════
-func _tick_timers(delta: float) -> void:
-	# Jump Buffer
-	_jump_buffer = max(0.0, _jump_buffer - delta)
-
-	# Coyote Time
-	if _was_on_floor and not is_on_floor():
-		_coyote = coyote_time
-	elif is_on_floor():
-		_coyote = 0.0
-	else:
-		_coyote = max(0.0, _coyote - delta)
-
-	# 蹬牆跳控制鎖定
-	_wall_jump_lock = max(0.0, _wall_jump_lock - delta)
-
-	# 二段跳重力縮放
-	_dj_gravity_timer = max(0.0, _dj_gravity_timer - delta)
-
-	# 翻滾後緩衝
-	_roll_cooldown = max(0.0, _roll_cooldown - delta)
-
-	# 耐力恢復（每幀 +stamina_recovery * delta，上限 max_stamina）
-	_stamina = min(_stamina + stamina_recovery * delta, max_stamina)
-
-# ═══════════════════════════════════════════════════════════════
-# 耐力工具函式
-# ═══════════════════════════════════════════════════════════════
-## 是否有足夠耐力（>= 1 格）
-func has_stamina() -> bool:
-	return _stamina >= 1.0
-
-## 消耗 1 格耐力，並通知 UI 播放閃爍
-func consume_stamina() -> void:
-	var slot_before := floori(_stamina)   # 消耗前是第幾格滿
-	_stamina = max(_stamina - 1.0, 0.0)
-	var slot_after := floori(_stamina)    # 消耗後是第幾格滿
-	# 通知消耗掉的那格閃爍
-	var flash_slot := slot_after          # 消耗後最高滿格 = 剛變暗的那格
-	if _stamina_ui != null and _stamina_ui.has_method("trigger_flash"):
-		_stamina_ui.call("trigger_flash", flash_slot)
 
 # ═══════════════════════════════════════════════════════════════
 # 重力
 # ═══════════════════════════════════════════════════════════════
 func _apply_gravity(delta: float) -> void:
-	if is_on_floor():
-		return
-	var g_scale := double_jump_gravity_scale if _dj_gravity_timer > 0.0 else 1.0
-	velocity.y += gravity * g_scale * delta
+	if not is_on_floor():
+		velocity.y += gravity * delta
 
 # ═══════════════════════════════════════════════════════════════
-# 翻滾
+# 跳躍系統（包含 Coyote、Jump Buffer、Apex 二段跳、蹬牆跳）
 # ═══════════════════════════════════════════════════════════════
-func _handle_roll_input() -> void:
-	var cur_shift := Input.is_key_pressed(KEY_SHIFT)
-	var just_shift := cur_shift and not _prev_shift
-	_prev_shift = cur_shift
+func _handle_jump(delta: float) -> void:
+	var jump_pressed := Input.is_action_just_pressed("jump")
+	var on_floor     := is_on_floor()
+	var ascending    := velocity.y < 0.0   # 上升中（Y 負 = 向上）
+	var descending   := velocity.y > 0.0   # 下降中（Y 正 = 向下）
 
-	if just_shift and has_stamina() and _roll_cooldown <= 0.0:
-		_start_roll()
+	# ── 落地後重置所有跳躍狀態 ──────────────────────────────────
+	if on_floor:
+		_can_double_jump    = false
+		_apex_jump_buffered = false
+		_coyote_timer       = coyote_time
+		_was_ascending      = false
+		# Jump buffer 在落地時執行（見下方第 3 段）
 
-func _start_roll() -> void:
-	consume_stamina()
-	_is_rolling  = true
-	_roll_timer  = roll_duration
-	# 翻滾開始時立即進入無敵（在 roll 中段）
-	# 實際無敵在 _tick_roll 中按時間計算
+	# ── Coyote Time 倒數（空中才倒數）──────────────────────────
+	if not on_floor:
+		_coyote_timer = max(0.0, _coyote_timer - delta)
 
-func _tick_roll(delta: float) -> void:
-	_roll_timer = max(0.0, _roll_timer - delta)
+	# ── Jump Buffer 記錄 ─────────────────────────────────────────
+	_jump_buffer_timer = max(0.0, _jump_buffer_timer - delta)
+	if jump_pressed:
+		_jump_buffer_timer = jump_buffer_time
 
-	# 無敵幀：翻滾中段（剩餘時間在 roll_invincible_time 內）
-	is_invincible = (_roll_timer <= roll_invincible_time)
-
-	# 翻滾期間強制水平速度
-	velocity.x = _facing * roll_speed
-
-	if _roll_timer <= 0.0:
-		# 翻滾結束
-		_is_rolling  = false
-		is_invincible = false
-		_roll_cooldown = roll_cooldown
-		# 翻滾後速度回到 speed（讓玩家不衝過頭）
-		velocity.x = _facing * speed
-
-# ═══════════════════════════════════════════════════════════════
-# 跳躍（普通跳 + 二段跳 + 蹬牆跳）
-# ═══════════════════════════════════════════════════════════════
-func _handle_jump() -> void:
-	var cur_space := Input.is_key_pressed(KEY_SPACE)
-	var cur_w     := Input.is_key_pressed(KEY_W)
-	var cur_up    := Input.is_key_pressed(KEY_UP)
-
-	var just_pressed := (
-		(cur_space and not _prev_space) or
-		(cur_w     and not _prev_w)     or
-		(cur_up    and not _prev_up)
-	)
-
-	if just_pressed:
-		_jump_buffer = jump_buffer_time
-
-	# ── 蹬牆跳（優先於普通跳）────────────────────────────────────
-	var on_wall := is_on_wall() and not is_on_floor()
-	if _jump_buffer > 0.0 and on_wall and has_stamina():
-		# 計算牆面方向
-		var wall_normal := get_wall_normal()
-		_wall_dir = sign(wall_normal.x)   # 牆在左則 normal 向右(+1)，牆在右則 normal 向左(-1)
-		velocity.y = wall_jump_vertical
-		velocity.x = _wall_dir * wall_jump_horizontal
-		_wall_jump_lock = wall_jump_lock_time
-		_air_jump_used  = false           # 蹬牆跳重置二段跳次數
-		consume_stamina()
-		_jump_buffer = 0.0
-		_prev_space  = cur_space
-		_prev_w      = cur_w
-		_prev_up     = cur_up
+	# ── 蹬牆跳（最高優先，高於普通跳和二段跳）─────────────────
+	if jump_pressed and is_on_wall_only() and _has_stamina():
+		_do_wall_jump()
 		return
 
-	# ── 普通跳 / Coyote ────────────────────────────────────────
-	var can_normal_jump := is_on_floor() or (_coyote > 0.0)
-	if _jump_buffer > 0.0 and can_normal_jump:
-		velocity.y   = jump_velocity
-		_jump_buffer = 0.0
-		_coyote      = 0.0
-		_prev_space  = cur_space
-		_prev_w      = cur_w
-		_prev_up     = cur_up
+	# ── 普通跳（地面 + Coyote）─────────────────────────────────
+	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
+		_do_normal_jump()
 		return
 
-	# ── 二段跳（空中，且普通跳不成立）────────────────────────────
-	if just_pressed and not is_on_floor() and not _air_jump_used and has_stamina():
-		velocity.y         = double_jump_velocity
-		_air_jump_used     = true
-		_dj_gravity_timer  = double_jump_gravity_duration
-		consume_stamina()
-		_jump_buffer       = 0.0
+	# ── 二段跳（Apex Detection）─────────────────────────────────
+	if _can_double_jump and not on_floor:
 
-	_prev_space = cur_space
-	_prev_w     = cur_w
-	_prev_up    = cur_up
+		# 上升期：接受並 buffer 跳躍輸入（等待最高點自動觸發）
+		if ascending and jump_pressed and _has_stamina():
+			_apex_jump_buffered = true
+
+		# Apex 偵測：上一幀在上升，本幀在下降 = 剛過最高點
+		# → 若有 buffer，在此觸發（最佳時機，完整高度）
+		if _was_ascending and descending and _apex_jump_buffered:
+			_do_double_jump()
+			return
+
+		# 下降期直接按跳躍：立即觸發（從較低位置，總高度較低）
+		if descending and jump_pressed and _has_stamina():
+			_do_double_jump()
+			return
+
+	# ── 更新上升/下降記錄（供下一幀 Apex 偵測使用）────────────
+	_was_ascending = ascending and not on_floor
+
+# ── 跳躍動作子函式 ────────────────────────────────────────────
+func _do_normal_jump() -> void:
+	velocity.y          = jump_velocity
+	_jump_buffer_timer  = 0.0
+	_coyote_timer       = 0.0
+	_can_double_jump    = true   # 起跳後啟用二段跳資格
+	_apex_jump_buffered = false
+	_was_ascending      = true
+
+func _do_wall_jump() -> void:
+	var normal       := get_wall_normal()
+	velocity.y        = wall_jump_vertical
+	velocity.x        = sign(normal.x) * wall_jump_horizontal
+	_wall_lock_timer  = wall_jump_lock_time
+	_can_double_jump  = true    # 蹬牆後重置二段跳資格
+	_apex_jump_buffered = false
+	_was_ascending    = true
+	_jump_buffer_timer = 0.0
+	_consume_stamina()
+
+func _do_double_jump() -> void:
+	velocity.y          = double_jump_velocity  # 重置（非疊加）
+	_can_double_jump    = false
+	_apex_jump_buffered = false
+	_was_ascending      = true   # 二段跳後重新上升
+	_consume_stamina()
 
 # ═══════════════════════════════════════════════════════════════
 # 水平移動
 # ═══════════════════════════════════════════════════════════════
 func _handle_horizontal(delta: float) -> void:
-	# 蹬牆跳後鎖定水平控制
-	if _wall_jump_lock > 0.0:
+	# 蹬牆跳後鎖定水平方向一段時間
+	if _wall_lock_timer > 0.0:
+		_wall_lock_timer = max(0.0, _wall_lock_timer - delta)
 		return
 
-	var dir := float(
-		int(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) -
-		int(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT))
-	)
+	var dir := Input.get_axis("move_left", "move_right")
 
 	if dir != 0.0:
-		_facing    = sign(dir)
+		_facing = sign(dir)
 		velocity.x = dir * speed
 	else:
+		# 制動：地面全力煞車，空中摩擦較少
 		var decel := friction if is_on_floor() else friction * air_friction_factor
 		velocity.x = move_toward(velocity.x, 0.0, decel * delta)
+
+# ═══════════════════════════════════════════════════════════════
+# 翻滾
+# ═══════════════════════════════════════════════════════════════
+func _handle_roll(delta: float) -> void:
+	# 冷卻倒數
+	_roll_cooldown = max(0.0, _roll_cooldown - delta)
+
+	if _is_rolling:
+		_roll_timer -= delta
+		# 無敵幀在翻滾前段生效
+		is_invincible = _roll_timer > (roll_duration - roll_invincible_duration)
+		# 翻滾期間鎖定水平速度
+		velocity.x = _facing * roll_speed
+
+		if _roll_timer <= 0.0:
+			_is_rolling  = false
+			is_invincible = false
+	else:
+		# 觸發翻滾：地面 + 有冷卻時間 + 有耐力
+		if Input.is_action_just_pressed("roll") and is_on_floor() \
+		   and _roll_cooldown <= 0.0 and _has_stamina():
+			_is_rolling    = true
+			_roll_timer    = roll_duration
+			_roll_cooldown = roll_cooldown
+			_consume_stamina()
+
+# ═══════════════════════════════════════════════════════════════
+# 耐力系統
+# ═══════════════════════════════════════════════════════════════
+func _recover_stamina(delta: float) -> void:
+	_stamina = minf(_stamina + stamina_recovery * delta, max_stamina)
+
+func _has_stamina() -> bool:
+	return _stamina >= 1.0
+
+func _consume_stamina() -> void:
+	if _stamina >= 1.0:
+		_stamina -= 1.0
+		# 通知 UI 閃爍
+		if _stamina_ui != null:
+			var slot := clampi(int(_stamina), 0, 2)
+			_stamina_ui.trigger_flash(slot)
 
 # ═══════════════════════════════════════════════════════════════
 # 攝影機更新
 # ═══════════════════════════════════════════════════════════════
 func _update_camera(delta: float) -> void:
-	var look_ahead_px := look_ahead_tiles * 8.0
-	var target        := _facing * look_ahead_px
-	_look_offset       = lerp(_look_offset, target, delta * look_ahead_speed)
-	# 同時套用前瞻偏移（X）和垂直偏移（Y，讓玩家在畫面偏下方）
+	var target    := _facing * look_ahead_tiles * 8.0
+	_look_offset   = lerp(_look_offset, target, delta * look_ahead_speed)
 	_camera.offset = Vector2(_look_offset, cam_vertical_offset)
 
 # ═══════════════════════════════════════════════════════════════
