@@ -1,0 +1,15 @@
+[gd_scene format=4 uid="uid://damcrcc2e64k2"]
+
+[ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="1_gs265"]
+
+[node name="ModularBlock" type="AnimatableBody2D" unique_id=635298964]
+
+[node name="BaseLayer" type="TileMapLayer" parent="." unique_id=197678315]
+texture_filter = 1
+tile_map_data = PackedByteArray("AAD/////EgAKABUAAAD//wAAEgALABUAAAAAAP//EgALABUAACAAAAAAEgANABUAAAD//wEAEgANABUAAAAAAAEAEgAMABUAAAD//wIAEgAMABUAAEAAAAIAEgAKABUAAAA=")
+tile_set = ExtResource("1_gs265")
+
+[node name="DecorLayer" type="TileMapLayer" parent="." unique_id=357626378]
+texture_filter = 1
+tile_map_data = PackedByteArray("AAD//wEAFAABABcAAAD//wAAFAABABYAABD/////FAACABoAABD///7/FAAKAA4AAAAAAP//FAACABoAAAAAAAAAFAANAAIAAAAAAAEAFAACABcAAAAAAAIAFAACABgAAAD//wIAFAABABgAAAA=")
+tile_set = ExtResource("1_gs265")
