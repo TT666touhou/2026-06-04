@@ -18,7 +18,9 @@ tile_set = ExtResource("1_world")
 
 [node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(29, -83)
-world_layer = NodePath("../WorldLayer")
+gravity = 600.0
+cam_vertical_offset = 0.0
+camera_bottom_marker = NodePath("../CameraBottomLimit")
 
 [node name="WorldLayer" type="TileMapLayer" parent="." unique_id=914513310]
 texture_filter = 1
@@ -31,3 +33,6 @@ position = Vector2(0, -48)
 
 [node name="ModularBlock2" parent="." unique_id=2043396346 instance=ExtResource("4_x4b8f")]
 position = Vector2(48, -48)
+
+[node name="CameraBottomLimit" type="Marker2D" parent="." unique_id=29906935]
+position = Vector2(0, 32)
