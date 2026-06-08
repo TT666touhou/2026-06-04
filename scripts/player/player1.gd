@@ -123,6 +123,8 @@ var _stamina: float = 3.0   # 共用 float（0.0 ~ max_stamina）
 
 # ── 二段跳 ──────────────────────────────────────────────────────
 var _air_jump_used        : bool  = false   # 本次起跳是否已用過二段跳
+var _air_jump_queued      : bool  = false   # 二段跳已在上升段排程，等到最高點自動執行
+var _prev_ascending       : bool  = false   # 上幀是否在上升（用來偵測最高點边緣）
 var _dj_gravity_timer     : float = 0.0    # 二段跳後重力縮放倒數
 
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
@@ -198,7 +200,9 @@ func _physics_process(delta: float) -> void:
 ## 落地後重置各種每跳狀態
 func _post_move(_delta: float) -> void:
 	if is_on_floor() and not _was_on_floor:
-		_air_jump_used = false    # 落地重置二段跳
+		_air_jump_used   = false
+		_air_jump_queued = false
+		_prev_ascending  = false
 	_was_on_floor = is_on_floor()
 
 # ═══════════════════════════════════════════════════════════════
@@ -306,16 +310,17 @@ func _handle_jump() -> void:
 	if just_pressed:
 		_jump_buffer = jump_buffer_time
 
-	# ── 蹬牆跳（優先於普通跳）────────────────────────────────────
+	# ── 蹬牆跳（最高優先）────────────────────────────────────────
 	var on_wall := is_on_wall() and not is_on_floor()
 	if _jump_buffer > 0.0 and on_wall and has_stamina():
-		# 計算牆面方向
 		var wall_normal := get_wall_normal()
-		_wall_dir = sign(wall_normal.x)   # 牆在左則 normal 向右(+1)，牆在右則 normal 向左(-1)
-		velocity.y = wall_jump_vertical
-		velocity.x = _wall_dir * wall_jump_horizontal
-		_wall_jump_lock = wall_jump_lock_time
-		_air_jump_used  = false           # 蹬牆跳重置二段跳次數
+		_wall_dir = sign(wall_normal.x)
+		velocity.y       = wall_jump_vertical
+		velocity.x       = _wall_dir * wall_jump_horizontal
+		_wall_jump_lock  = wall_jump_lock_time
+		_air_jump_used   = false
+		_air_jump_queued = false
+		_prev_ascending  = true
 		consume_stamina()
 		_jump_buffer = 0.0
 		_prev_space  = cur_space
@@ -323,24 +328,57 @@ func _handle_jump() -> void:
 		_prev_up     = cur_up
 		return
 
-	# ── 普通跳 / Coyote ────────────────────────────────────────
+	# ── 普通跳 / Coyote ──────────────────────────────────────────
 	var can_normal_jump := is_on_floor() or (_coyote > 0.0)
 	if _jump_buffer > 0.0 and can_normal_jump:
-		velocity.y   = jump_velocity
-		_jump_buffer = 0.0
-		_coyote      = 0.0
-		_prev_space  = cur_space
-		_prev_w      = cur_w
-		_prev_up     = cur_up
+		velocity.y       = jump_velocity
+		_jump_buffer     = 0.0
+		_coyote          = 0.0
+		_air_jump_used   = false
+		_air_jump_queued = false
+		_prev_ascending  = true   # 剛跳起，標記上升中
+		_prev_space = cur_space
+		_prev_w     = cur_w
+		_prev_up    = cur_up
 		return
 
-	# ── 二段跳（空中，且普通跳不成立）────────────────────────────
-	if just_pressed and not is_on_floor() and not _air_jump_used and has_stamina():
-		velocity.y         = double_jump_velocity
-		_air_jump_used     = true
-		_dj_gravity_timer  = double_jump_gravity_duration
-		consume_stamina()
-		_jump_buffer       = 0.0
+	# ── 二段跳：峰值觸發機制 ──────────────────────────────────────
+	# 上升段按跳躍 → 保存排程，到最高點（速度從負轉零/正）自動釋放
+	# 下墜段才按   → 立即執行，但因位置已低，高度不如峰值觸發
+	if not is_on_floor() and not _air_jump_used:
+		var is_ascending : bool = velocity.y < 0.0
+		var just_peaked  : bool = _prev_ascending and not is_ascending
+
+		if is_ascending:
+			# 上升段：保存跳躍輸入，不立即執行
+			if just_pressed and has_stamina():
+				_air_jump_queued = true
+
+		# 到達最高點（速度剛從負切換到零/正）
+		if just_peaked:
+			if _air_jump_queued and has_stamina():
+				# 自動釋放排程中的二段跳
+				velocity.y        = double_jump_velocity
+				_air_jump_used    = true
+				_air_jump_queued  = false
+				_dj_gravity_timer = double_jump_gravity_duration
+				consume_stamina()
+			elif just_pressed and has_stamina():
+				# 恰好在最高點按下（沒有排程）
+				velocity.y        = double_jump_velocity
+				_air_jump_used    = true
+				_dj_gravity_timer = double_jump_gravity_duration
+				consume_stamina()
+		elif not is_ascending:
+			# 下墜段：直接執行（高度不如峰值觸發）
+			if just_pressed and has_stamina():
+				velocity.y        = double_jump_velocity
+				_air_jump_used    = true
+				_air_jump_queued  = false
+				_dj_gravity_timer = double_jump_gravity_duration
+				consume_stamina()
+
+		_prev_ascending = is_ascending
 
 	_prev_space = cur_space
 	_prev_w     = cur_w
