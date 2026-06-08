@@ -74,7 +74,9 @@ extends CharacterBody2D
 ## 前瞻追蹤速度（lerp 係數）
 @export_range(1.0, 20.0, 0.5) var look_ahead_speed: float = 6.0
 ## 位置平滑開關
-@export var position_smoothing: bool = true
+## ⚠️ 像素藝術遊戲建議關閉：Camera2D 平滑在 render rate 運行
+## 但物理在固定 60Hz，速率不同步會造成背景磚塊抖動
+@export var position_smoothing: bool = false
 ## 位置平滑速度
 @export_range(1.0, 30.0, 0.5) var smoothing_speed: float = 10.0
 ## 水平拖拽死區開關
@@ -83,6 +85,11 @@ extends CharacterBody2D
 @export_range(0.0, 0.5, 0.05) var drag_left_margin: float = 0.35
 ## 拖拽右邊界
 @export_range(0.0, 0.5, 0.05) var drag_right_margin: float = 0.35
+## 將玩家位置四捨五入到最近的整數像素（修正 zoom 倍率下的模糊問題）
+## 原因：物理引擎位置是 float（如 100.7px），在 zoom=4 下顯示座標 402.8px
+##       非整數 display 座標 → NEAREST filter 跨像素採樣 → 角色模糊
+## 建議平台遊戲設為 true
+@export var snap_position_to_pixel: bool = true
 ## 下邊界標記節點：將任何 Node2D（建議用 Marker2D）拖入此欄位
 ## 攝影機的 limit_bottom = 該節點在世界中的 Y 座標
 ## 在場景中拖拉此節點即可即時調整邊界位置
@@ -182,6 +189,10 @@ func _physics_process(delta: float) -> void:
 	_update_camera(delta)
 	_update_stamina_ui()
 	move_and_slide()
+	# ✅ 修模糊：物理移動後將位置四捨五入到整數遊戲像素
+	# 避免 float 座標在 zoom 倍率下顯示在非整數 display pixel
+	if snap_position_to_pixel:
+		position = position.round()
 	_post_move(delta)
 
 ## 落地後重置各種每跳狀態
