@@ -83,9 +83,11 @@ extends CharacterBody2D
 @export_range(0.0, 0.5, 0.05) var drag_left_margin: float = 0.35
 ## 拖拽右邊界
 @export_range(0.0, 0.5, 0.05) var drag_right_margin: float = 0.35
-## 下邊界基準：指向用來計算 limit_bottom 的 TileMapLayer 節點
-## 留空則不設定 limit_bottom
-@export var world_layer: NodePath = NodePath("")
+## 下邊界標記節點：將任何 Node2D（建議用 Marker2D）拖入此欄位
+## 攝影機的 limit_bottom = 該節點在世界中的 Y 座標
+## 在場景中拖拉此節點即可即時調整邊界位置
+## 留空則不設定下邊界（無限往下）
+@export var camera_bottom_marker: NodePath = NodePath("")
 
 # ═══════════════════════════════════════════════════════════════
 # 節點引用
@@ -145,27 +147,23 @@ func _sync_camera_params() -> void:
 	_camera.drag_left_margin           = drag_left_margin
 	_camera.drag_right_margin          = drag_right_margin
 
-## 根據 world_layer 動態計算攝影機下邊界（limit_bottom）
+## 根據 camera_bottom_marker 節點的 Y 座標設定攝影機下邊界
 func _setup_camera_limit() -> void:
 	_camera.limit_left   = -10000000
 	_camera.limit_right  =  10000000
 	_camera.limit_top    = -10000000
 
-	if world_layer.is_empty():
+	if camera_bottom_marker.is_empty():
 		_camera.limit_bottom = 10000000
 		return
 
-	var wl_node := get_node_or_null(world_layer)
-	if wl_node == null or not wl_node is TileMapLayer:
+	var marker := get_node_or_null(camera_bottom_marker)
+	if marker == null:
 		_camera.limit_bottom = 10000000
 		return
 
-	var wl : TileMapLayer = wl_node
-	var used_rect  := wl.get_used_rect()                   # tile 座標
-	var tile_size  := wl.tile_set.tile_size if wl.tile_set else Vector2i(8, 8)
-	# limit_bottom = 最底 tile 的下緣（世界像素座標）
-	var bottom_tile_y := used_rect.end.y                   # tile 最底的 Y + 1
-	_camera.limit_bottom = bottom_tile_y * tile_size.y
+	# 直接使用節點的全域 Y 座標作為下邊界（世界像素單位）
+	_camera.limit_bottom = int(marker.global_position.y)
 
 # ═══════════════════════════════════════════════════════════════
 # 物理更新主迴圈
