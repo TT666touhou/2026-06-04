@@ -5,10 +5,6 @@ extends CharacterBody2D
 ##   jump                   → Space / W / ↑（跳躍 + Apex 二段跳）
 ##   roll                   → Shift（翻滾）
 
-const _DUST_SCENE := preload("res://scenes/VFX/PlayerDust.tscn")
-## 落地煙塵出現位置的 Y 軸偏移（相對於 Player 中心，正=往下）
-@export var dust_foot_offset: float = 6.0
-
 # ═══════════════════════════════════════════════════════════════
 # EXPORT 參數（全部可在 Inspector 即時調整）
 # ═══════════════════════════════════════════════════════════════
@@ -77,7 +73,9 @@ const _DUST_SCENE := preload("res://scenes/VFX/PlayerDust.tscn")
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
-@onready var _stamina_ui: Node2D = $StaminaBar
+@onready var _stamina_ui: Node2D     = $StaminaBar
+@onready var _dust_vfx:   Node2D     = $PlayerDust
+@onready var _floor_cast: ShapeCast2D = $FloorCast
 
 # ═══════════════════════════════════════════════════════════════
 # 內部狀態
@@ -139,9 +137,10 @@ func _physics_process(delta: float) -> void:
 	# 6. 物理移動
 	move_and_slide()
 
-	# 6.5. 落地偵測：上一幀在空中，本幀觸地 → 生成煙塵
+	# 6.5. 落地偵測：上一幀在空中，本幀觸地 → 落地煙塵雲
 	if not _was_on_floor and is_on_floor():
-		_spawn_landing_dust()
+		if abs(velocity.x) > 10.0:
+			_dust_vfx.emit_dust(sign(velocity.x))
 
 	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
@@ -222,9 +221,12 @@ func _do_normal_jump() -> void:
 	velocity.y          = jump_velocity
 	_jump_buffer_timer  = 0.0
 	_coyote_timer       = 0.0
-	_can_double_jump    = true   # 起跳後啟用二段跳資格
+	_can_double_jump    = true
 	_apex_jump_buffered = false
 	_was_ascending      = true
+	# BrickDebris：地面起跳才觸發（排除 coyote jump 後空中已離地的情況）
+	if _was_on_floor:
+		_dust_vfx.emit_bricks(Vector2.UP, velocity, _get_floor_color())
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
@@ -237,6 +239,8 @@ func _do_wall_jump() -> void:
 	_was_ascending    = true
 	_jump_buffer_timer = 0.0
 	_consume_stamina()
+	# BrickDebris：牆壁節屑，以牆壁法線做反射方向
+	_dust_vfx.emit_bricks(normal, velocity, Color.GRAY)
 
 func _do_double_jump() -> void:
 	# 動能重置：設回第一跳的初速（非疊加），確保二段跳高度 = 第一跳高度
@@ -290,6 +294,8 @@ func _handle_roll(delta: float) -> void:
 			_roll_timer    = roll_duration
 			_roll_cooldown = roll_cooldown
 			_consume_stamina()
+			# BrickDebris：翻滾起軌时踢裂地面
+			_dust_vfx.emit_bricks(Vector2.UP, velocity, _get_floor_color())
 
 # ═══════════════════════════════════════════════════════════════
 # 耐力系統
@@ -316,11 +322,35 @@ func _update_stamina_ui() -> void:
 		_stamina_ui.stamina = _stamina
 
 # ═══════════════════════════════════════════════════════════════
-# 落地煙塵
+# 地板顏色採樣（ShapeCast2D → TileMapLayer Atlas 直接像素取樣）
 # ═══════════════════════════════════════════════════════════════
-func _spawn_landing_dust() -> void:
-	var dust: Node2D = _DUST_SCENE.instantiate()
-	# 加到父節點（世界座標），避免跟著 Player 移動
-	get_parent().add_child(dust)
-	# 定位到玩家腳底
-	dust.global_position = global_position + Vector2(0.0, dust_foot_offset)
+func _get_floor_color() -> Color:
+	const _FALLBACK := Color(0.65, 0.65, 0.65)  # 灰色，無法採樣時使用
+	_floor_cast.force_shapecast_update()
+	if not _floor_cast.is_colliding():
+		return _FALLBACK
+	for i in _floor_cast.get_collision_count():
+		var col := _floor_cast.get_collider(i)
+		if not col is TileMapLayer:
+			continue
+		var tilemap  := col as TileMapLayer
+		var local_pt := tilemap.to_local(_floor_cast.get_collision_point(i))
+		var cell     := tilemap.local_to_map(local_pt)
+		var src_id   := tilemap.get_cell_source_id(cell)
+		if src_id < 0:
+			continue
+		var ts     := tilemap.tile_set
+		var source := ts.get_source(src_id) as TileSetAtlasSource
+		if source == null or source.texture == null:
+			continue
+		var atlas_c  := tilemap.get_cell_atlas_coords(cell)
+		var tile_sz  := ts.tile_size
+		# 磚塊在 Atlas 貼圖中的左上角（考慮 margins 與 separation）
+		var origin   := source.margins + atlas_c * (tile_sz + source.separation)
+		var px       := origin.x + tile_sz.x / 2
+		var py       := origin.y + tile_sz.y / 2
+		var img      := source.texture.get_image()
+		if img == null:
+			continue  # 貼圖影像無法讀取（VRAM壓縮）→ 賭下一個碰撞體
+		return img.get_pixel(px, py)
+	return _FALLBACK

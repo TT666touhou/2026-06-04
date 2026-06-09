@@ -3,10 +3,14 @@
 [ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
 [ext_resource type="Script" uid="uid://cgxc5o3rdglr5" path="res://scripts/player/player1.gd" id="2_script"]
 [ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
+[ext_resource type="PackedScene" uid="uid://c031iasmaeovd" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 4.0
 height = 14.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(10, 2)
 
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
@@ -27,3 +31,11 @@ shape = SubResource("CapsuleShape2D_1")
 
 [node name="StaminaBar" type="Node2D" parent="." unique_id=-2060399406]
 script = ExtResource("3_stambar")
+
+[node name="FloorCast" type="ShapeCast2D" parent="." unique_id=114271836]
+position = Vector2(0, 6)
+target_position = Vector2(0, 4)
+shape = SubResource("RectangleShape2D_floor")
+collision_mask = 1
+
+[node name="PlayerDust" parent="." instance=ExtResource("4_dust") unique_id=559034821]
