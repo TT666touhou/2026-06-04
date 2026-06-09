@@ -456,21 +456,22 @@ func _get_floor_ramp() -> GradientTexture1D:
 				if not img: continue
 				
 				var atlas_c  := tm.get_cell_atlas_coords(cell)
-				var tile_sz  := ts.tile_size
-				var origin   := source.margins + atlas_c * (tile_sz + source.separation)
-				var region   := Rect2i(origin, tile_sz)
+				var alt_tile := tm.get_cell_alternative_tile(cell)
+				# 網路建議的最佳實踐：直接向 TileSetAtlasSource 獲取該磁磚真正的 Rect2i，避免手動計算 margin/separation 導致的偏移錯誤
+				var region: Rect2i = source.get_tile_texture_region(atlas_c, alt_tile)
 				
-				# 精準接觸點採樣：計算該 probe_pt 在單一磁磚內的精準像素偏移量
-				# (假設正方形磁磚，local_to_map 等同於 floor(local_pt / tile_sz))
-				var pixel_offset_x = int(floor(local_pt.x)) - (cell.x * tile_sz.x)
-				var pixel_offset_y = int(floor(local_pt.y)) - (cell.y * tile_sz.y)
+				# 算出碰撞點相對於「該格子中心」的偏移量
+				var cell_center_local = tm.map_to_local(cell)
+				var offset_from_center = local_pt - cell_center_local
 				
-				# 在 Atlas 上的實際中心像素座標
-				var center_px = origin.x + pixel_offset_x
-				var center_py = origin.y + pixel_offset_y
+				# 在 Atlas 上的實際中心像素座標 (加上偏移)
+				var atlas_center = Vector2(region.position) + Vector2(region.size) / 2.0
+				var center_px = int(atlas_center.x + offset_from_center.x)
+				var center_py = int(atlas_center.y + offset_from_center.y)
 				
-				# 採樣該精準接觸點及其周圍 3x3 範圍，捕捉真實接觸面的顏色
 				var valid_pixels: Array[Color] = []
+				
+				# 1. 優先：精準接觸點採樣 (3x3 範圍)
 				for dx in range(-1, 2):
 					for dy in range(-1, 2):
 						var px = center_px + dx
@@ -478,12 +479,22 @@ func _get_floor_ramp() -> GradientTexture1D:
 						if px >= region.position.x and px < region.end.x and py >= region.position.y and py < region.end.y:
 							if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
 								var c := img.get_pixel(px, py)
-								# 提高 alpha 閾值，避免取樣到 PNG 邊緣的高亮半透明像素
-								if c.a > 0.8:
+								if c.a > 0.8 and c.get_luminance() < 0.98:
 									c.a = 1.0 # 強制不透明
-									# 過濾掉極端接近純白的點
-									if c.get_luminance() < 0.98:
-										valid_pixels.append(c)
+									valid_pixels.append(c)
+				
+				# 2. 穩定性防呆機制：如果精準採樣失敗 (例如戳到透明邊緣、或是發生翻轉導致座標錯位)
+				# 則立刻在「該磁磚的有效區域」內隨機取樣，保證絕對不會回傳空陣列而變成預設白底灰塵！
+				if valid_pixels.is_empty():
+					for s in range(5):
+						var rx = randi_range(region.position.x, region.end.x - 1)
+						var ry = randi_range(region.position.y, region.end.y - 1)
+						if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
+							var c := img.get_pixel(rx, ry)
+							# 放寬條件，只要有顏色就好
+							if c.a > 0.1:
+								c.a = 1.0
+								valid_pixels.append(c)
 										
 				collected_colors.append_array(valid_pixels)
 
