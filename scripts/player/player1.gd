@@ -12,7 +12,7 @@ extends CharacterBody2D
 # ── 移動 ────────────────────────────────────────────────────────
 @export_group("Movement")
 ## 水平最大速度（px/s）
-@export var speed: float = 200.0
+@export var speed: float = 100.0
 ## 重力加速度（px/s²）
 @export var gravity: float = 980.0
 ## 地面制動加速度（px/s²）
@@ -24,8 +24,8 @@ extends CharacterBody2D
 @export_group("Jump")
 ## 第一跳初速（負=向上）
 ## 計算公式：height = v² / (2 × gravity)
-## -161 @ gravity=180 → 高度 71.97px（中心）/ 底部約 64px
-@export var jump_velocity: float = -420.0
+## -297 @ gravity=980 → 高度約 45px (原為 90px)
+@export var jump_velocity: float = -297.0
 ## Coyote Time：踩空後仍可跳的寬限秒數
 @export_range(0.0, 0.4, 0.01) var coyote_time: float = 0.12
 ## Jump Buffer：落地前提早按跳躍的容錯秒數
@@ -43,16 +43,16 @@ extends CharacterBody2D
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
 @export_group("Wall Jump")
 ## 蹬牆後向上的速度
-@export var wall_jump_vertical: float = -380.0
+@export var wall_jump_vertical: float = -268.7
 ## 蹬牆後離牆的水平速度
-@export var wall_jump_horizontal: float = 180.0
+@export var wall_jump_horizontal: float = 90.0
 ## 蹬牆後水平方向鎖定時間（防止馬上頂回去）
 @export_range(0.0, 0.5, 0.01) var wall_jump_lock_time: float = 0.2
 
 # ── 翻滾 ────────────────────────────────────────────────────────
 @export_group("Roll")
 ## 翻滾速度（px/s）
-@export var roll_speed: float = 250.0
+@export var roll_speed: float = 125.0
 ## 翻滾持續時間（秒）
 @export_range(0.05, 0.5, 0.01) var roll_duration: float = 0.3
 ## 翻滾冷卻時間（秒）
@@ -237,7 +237,7 @@ func _do_normal_jump() -> void:
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
-	velocity.y        = jump_velocity
+	velocity.y        = wall_jump_vertical
 	velocity.x        = sign(normal.x) * wall_jump_horizontal
 	_wall_lock_timer  = wall_jump_lock_time
 	_can_double_jump  = true
