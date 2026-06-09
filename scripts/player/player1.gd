@@ -121,9 +121,6 @@ var _floor_color_timer: float = 0.0
 func _ready() -> void:
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
-	if _floor_cast.shape is RectangleShape2D:
-		_floor_cast.shape = _floor_cast.shape.duplicate()
-		_floor_cast.shape.size.x += 16.0
 
 # ═══════════════════════════════════════════════════════════════
 # 物理更新主迴圈（標準順序）
@@ -247,7 +244,7 @@ func _do_wall_jump() -> void:
 	_was_ascending    = true
 	_jump_buffer_timer = 0.0
 	_consume_stamina()
-	# BurstDust：牆壁碎屑，以牆壁法線做方向，並取樣牆壁顏色
+	# BurstDust：牆壁節屑，以牆壁法線做反射方向，並從擴大的 FloorCast 採樣牆壁顏色
 	_dust_vfx.emit_burst(normal, velocity, _get_floor_ramp())
 
 func _do_double_jump() -> void:
@@ -389,16 +386,10 @@ func _get_floor_ramp() -> GradientTexture1D:
 		var cell     := tilemap.local_to_map(local_pt)
 		var src_id   := tilemap.get_cell_source_id(cell)
 		if src_id < 0:
-			# 檢查周圍十字，避免邊緣誤差（包含踩地與蹬牆的情境）
-			var found = false
-			for offset in [Vector2i(0, 1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1)]:
-				var neighbor = cell + offset
-				src_id = tilemap.get_cell_source_id(neighbor)
-				if src_id >= 0:
-					cell = neighbor
-					found = true
-					break
-			if not found:
+			# 向下找一格，避免邊緣誤差
+			cell.y += 1
+			src_id = tilemap.get_cell_source_id(cell)
+			if src_id < 0:
 				continue
 		var ts     := tilemap.tile_set
 		var source := ts.get_source(src_id) as TileSetAtlasSource

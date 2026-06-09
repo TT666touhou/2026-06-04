@@ -66,10 +66,10 @@ var _scale_curve_tex: CurveTexture
 
 # ═══════════════════════════════════════════════════════════
 func _ready() -> void:
-	# 將特效節點向下偏移 8 像素，使其對齊 16x16 玩家的腳底
-	position = Vector2(0, 8)
-	# 提高 z_index 確保在平地時不會被地圖圖層遮擋
-	z_index = 10
+	# 將特效節點向下偏移 6 像素，接近腳底但不會陷入地板
+	position = Vector2(0, 6)
+	# 提高 z_index 確保絕對不會被地圖或背景遮擋
+	z_index = 100
 	
 	# 建立隨壽命縮小的曲線
 	var curve := Curve.new()
