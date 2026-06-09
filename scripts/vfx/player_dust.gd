@@ -66,8 +66,8 @@ var _scale_curve_tex: CurveTexture
 
 # ═══════════════════════════════════════════════════════════
 func _ready() -> void:
-	# 將特效節點向下偏移 8 像素，使其對齊 16x16 玩家的腳底
-	position = Vector2(0, 8)
+	# 將特效節點向下偏移 6 像素（避免偏移到 8 像素導致生成在地板內部被遮擋）
+	position = Vector2(0, 6)
 	
 	# 建立隨壽命縮小的曲線
 	var curve := Curve.new()
@@ -131,9 +131,9 @@ func _setup_burst() -> void:
 func set_trail_active(active: bool,
 					  color_ramp: GradientTexture1D = null,
 					  move_dir: float = 0.0) -> void:
-	# 根據移動方向調整軌跡粒子的噴出方向（更貼近地面 + 往後踢）
+	# 根據移動方向調整軌跡粒子的噴出方向（更貼近地面 + 往後踢 + 往上揚避免被地板蓋住）
 	if active and move_dir != 0.0:
-		var d := Vector3(-move_dir * 0.8, -0.5, 0.0).normalized()
+		var d := Vector3(-move_dir * 0.8, -0.8, 0.0).normalized()
 		_trail_mat.direction = d
 
 	if color_ramp:

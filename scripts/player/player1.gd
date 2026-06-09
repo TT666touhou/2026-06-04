@@ -244,8 +244,16 @@ func _do_wall_jump() -> void:
 	_was_ascending    = true
 	_jump_buffer_timer = 0.0
 	_consume_stamina()
-	# BurstDust：牆壁節屑，以牆壁法線做反射方向
-	_dust_vfx.emit_burst(normal, velocity, _fallback_ramp())
+	# BurstDust：牆壁碎屑，以牆壁法線做反射方向，並嘗試從碰撞物件採樣顏色
+	var wall_ramp := _fallback_ramp()
+	for i in get_slide_collision_count():
+		var col := get_slide_collision(i)
+		if col.get_normal().x != 0.0 and col.get_collider() is TileMapLayer:
+			var ramp = _sample_tilemap_ramp(col.get_collider() as TileMapLayer, col.get_position())
+			if ramp != null:
+				wall_ramp = ramp
+				break
+	_dust_vfx.emit_burst(normal, velocity, wall_ramp)
 
 func _do_double_jump() -> void:
 	# 動能重置：設回第一跳的初速（非疊加），確保二段跳高度 = 第一跳高度
@@ -375,72 +383,74 @@ func _fallback_ramp() -> GradientTexture1D:
 
 func _get_floor_ramp() -> GradientTexture1D:
 	_floor_cast.force_shapecast_update()
-	if not _floor_cast.is_colliding():
-		return _fallback_ramp()
-	for i in _floor_cast.get_collision_count():
-		var col := _floor_cast.get_collider(i)
-		if not col is TileMapLayer:
-			continue
-		var tilemap  := col as TileMapLayer
-		var local_pt := tilemap.to_local(_floor_cast.get_collision_point(i))
-		var cell     := tilemap.local_to_map(local_pt)
-		var src_id   := tilemap.get_cell_source_id(cell)
-		if src_id < 0:
-			# 向下找一格，避免邊緣誤差
-			cell.y += 1
-			src_id = tilemap.get_cell_source_id(cell)
-			if src_id < 0:
-				continue
-		var ts     := tilemap.tile_set
-		var source := ts.get_source(src_id) as TileSetAtlasSource
-		if source == null or source.texture == null:
-			continue
-		var atlas_c  := tilemap.get_cell_atlas_coords(cell)
-		var tile_sz  := ts.tile_size
-		# 磚塊在 Atlas 貼圖中的左上角（考慮 margins 與 separation）
-		var origin   := source.margins + atlas_c * (tile_sz + source.separation)
-		var img      := source.texture.get_image()
-		if img == null:
-			continue  # 貼圖影像無法讀取（VRAM壓縮）→ 賭下一個碰撞體
-			
-		# 4x4 取樣並統計頻率
-		var colors := []
-		for y in range(4):
-			for x in range(4):
-				var px = origin.x + int(tile_sz.x * (x + 0.5) / 4.0)
-				var py = origin.y + int(tile_sz.y * (y + 0.5) / 4.0)
-				var c = img.get_pixel(px, py)
-				if c.a > 0.1:
-					colors.append(c)
-		
-		if colors.is_empty():
-			continue
-			
-		var freq := {}
-		for c in colors:
-			var hex = c.to_html(false)
-			if not freq.has(hex):
-				freq[hex] = {"color": c, "count": 0}
-			freq[hex].count += 1
-			
-		var grad := Gradient.new()
-		grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
-		var offsets := PackedFloat32Array()
-		var grad_colors := PackedColorArray()
-		
-		var curr_offset := 0.0
-		for key in freq:
-			var data = freq[key]
-			offsets.append(curr_offset)
-			grad_colors.append(data.color)
-			curr_offset += float(data.count) / float(colors.size())
-			
-		grad.offsets = offsets
-		grad.colors = grad_colors
-		
-		var tex := GradientTexture1D.new()
-		tex.gradient = grad
-		tex.width = 16
-		return tex
-		
+	if _floor_cast.is_colliding():
+		for i in _floor_cast.get_collision_count():
+			var col := _floor_cast.get_collider(i)
+			if col is TileMapLayer:
+				var ramp = _sample_tilemap_ramp(col as TileMapLayer, _floor_cast.get_collision_point(i))
+				if ramp != null:
+					return ramp
+				# 若找不到，向下偏移一格再試（處理邊緣誤差）
+				var pt_down = _floor_cast.get_collision_point(i) + Vector2(0, 8)
+				ramp = _sample_tilemap_ramp(col as TileMapLayer, pt_down)
+				if ramp != null:
+					return ramp
 	return _fallback_ramp()
+
+func _sample_tilemap_ramp(tilemap: TileMapLayer, global_pos: Vector2) -> GradientTexture1D:
+	var local_pt := tilemap.to_local(global_pos)
+	var cell     := tilemap.local_to_map(local_pt)
+	var src_id   := tilemap.get_cell_source_id(cell)
+	if src_id < 0:
+		return null
+	var ts     := tilemap.tile_set
+	var source := ts.get_source(src_id) as TileSetAtlasSource
+	if source == null or source.texture == null:
+		return null
+	var atlas_c  := tilemap.get_cell_atlas_coords(cell)
+	var tile_sz  := ts.tile_size
+	# 磚塊在 Atlas 貼圖中的左上角（考慮 margins 與 separation）
+	var origin   := source.margins + atlas_c * (tile_sz + source.separation)
+	var img      := source.texture.get_image()
+	if img == null:
+		return null
+		
+	# 4x4 取樣並統計頻率
+	var colors := []
+	for y in range(4):
+		for x in range(4):
+			var px = origin.x + int(tile_sz.x * (x + 0.5) / 4.0)
+			var py = origin.y + int(tile_sz.y * (y + 0.5) / 4.0)
+			var c = img.get_pixel(px, py)
+			if c.a > 0.1:
+				colors.append(c)
+	
+	if colors.is_empty():
+		return null
+		
+	var freq := {}
+	for c in colors:
+		var hex = c.to_html(false)
+		if not freq.has(hex):
+			freq[hex] = {"color": c, "count": 0}
+		freq[hex].count += 1
+		
+	var grad := Gradient.new()
+	grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	var offsets := PackedFloat32Array()
+	var grad_colors := PackedColorArray()
+	
+	var curr_offset := 0.0
+	for key in freq:
+		var data = freq[key]
+		offsets.append(curr_offset)
+		grad_colors.append(data.color)
+		curr_offset += float(data.count) / float(colors.size())
+		
+	grad.offsets = offsets
+	grad.colors = grad_colors
+	
+	var tex := GradientTexture1D.new()
+	tex.gradient = grad
+	tex.width = 16
+	return tex
