@@ -368,8 +368,7 @@ func _fallback_ramp() -> GradientTexture1D:
 	var grad := Gradient.new()
 	grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
 	grad.set_color(0, Color.DARK_GRAY)
-	# Godot Gradient 預設有兩個點，索引 1 預設是白色，必須明確覆寫！
-	grad.set_color(1, Color.DARK_GRAY)
+	grad.set_color(1, Color.GRAY)
 	_fallback_tex = GradientTexture1D.new()
 	_fallback_tex.gradient = grad
 	_fallback_tex.width = 16
@@ -400,15 +399,12 @@ func _get_floor_ramp() -> GradientTexture1D:
 		var base_pt = pt - n * 2.0
 		
 		# 十字探測法 (Cross Probe) - 徹底解決切線邊界與浮點數誤差
-		# 穿透探測所有 TileMapLayer (包含 DecorLayer)
+		# 同時也是「以碰撞點為中心的多點採樣」
 		var probe_offsets = [
 			Vector2.ZERO,
-			Vector2(4, 0), Vector2(-4, 0),
-			Vector2(0, 4), Vector2(0, -4)
+			Vector2(2, 0), Vector2(-2, 0),
+			Vector2(0, 2), Vector2(0, -2)
 		]
-		
-		# 記錄已經採樣過的格子，避免同一個 TileMapLayer 的同一格被過度加權
-		var sampled_cells = {}
 		
 		for offset in probe_offsets:
 			var probe_pt = base_pt + offset
@@ -421,17 +417,9 @@ func _get_floor_ramp() -> GradientTexture1D:
 				var lname = tm.name.to_upper()
 				if not ("BLOCK" in lname or "WORLD" in lname or "CEIL" in lname or "DECOR" in lname):
 					continue
-				
-				var tm_id = tm.get_instance_id()
-				if not sampled_cells.has(tm_id):
-					sampled_cells[tm_id] = {}
 					
 				var local_pt := tm.to_local(probe_pt)
 				var cell     := tm.local_to_map(local_pt)
-				
-				if sampled_cells[tm_id].has(cell):
-					continue
-				sampled_cells[tm_id][cell] = true
 				
 				var src_id := tm.get_cell_source_id(cell)
 				if src_id < 0:
@@ -456,31 +444,33 @@ func _get_floor_ramp() -> GradientTexture1D:
 				var atlas_c  := tm.get_cell_atlas_coords(cell)
 				var tile_sz  := ts.tile_size
 				var origin   := source.margins + atlas_c * (tile_sz + source.separation)
+				var region   := Rect2i(origin, tile_sz)
 				
-				# 計算精準的像素座標
-				var cell_center = tm.map_to_local(cell)
-				var cell_top_left = cell_center - Vector2(tile_sz) / 2.0
-				var offset_in_tile = local_pt - cell_top_left
+				# 精準接觸點採樣：計算該 probe_pt 在單一磁磚內的精準像素偏移量
+				# (假設正方形磁磚，local_to_map 等同於 floor(local_pt / tile_sz))
+				var pixel_offset_x = int(floor(local_pt.x)) - (cell.x * tile_sz.x)
+				var pixel_offset_y = int(floor(local_pt.y)) - (cell.y * tile_sz.y)
 				
-				var px = clamp(int(offset_in_tile.x), 0, tile_sz.x - 1)
-				var py = clamp(int(offset_in_tile.y), 0, tile_sz.y - 1)
+				# 在 Atlas 上的實際中心像素座標
+				var center_px = origin.x + pixel_offset_x
+				var center_py = origin.y + pixel_offset_y
 				
-				# 為了確保取到顏色，我們以該精準點為中心，取 2x2 的微小範圍 (4個像素)
+				# 採樣該精準接觸點及其周圍 3x3 範圍，捕捉真實接觸面的顏色
 				var valid_pixels: Array[Color] = []
-				for dx in range(2):
-					for dy in range(2):
-						var rx = origin.x + clamp(px + dx, 0, tile_sz.x - 1)
-						var ry = origin.y + clamp(py + dy, 0, tile_sz.y - 1)
-						
-						if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
-							var c := img.get_pixel(rx, ry)
-							# 提高 alpha 閾值 (0.1 -> 0.8)，避免取樣到 PNG 邊緣的高亮半透明像素 (常導致白色污染)
-							if c.a > 0.8:
-								c.a = 1.0 # 強制不透明
-								# 過濾掉極端接近純白的點
-								if c.get_luminance() < 0.98:
-									valid_pixels.append(c)
-									
+				for dx in range(-1, 2):
+					for dy in range(-1, 2):
+						var px = center_px + dx
+						var py = center_py + dy
+						if px >= region.position.x and px < region.end.x and py >= region.position.y and py < region.end.y:
+							if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+								var c := img.get_pixel(px, py)
+								# 提高 alpha 閾值，避免取樣到 PNG 邊緣的高亮半透明像素
+								if c.a > 0.8:
+									c.a = 1.0 # 強制不透明
+									# 過濾掉極端接近純白的點
+									if c.get_luminance() < 0.98:
+										valid_pixels.append(c)
+										
 				collected_colors.append_array(valid_pixels)
 
 	if collected_colors.is_empty():
