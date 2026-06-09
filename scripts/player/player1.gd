@@ -67,34 +67,12 @@ extends CharacterBody2D
 ## 耐力恢復速度（格/秒）
 @export_range(0.1, 3.0, 0.05) var stamina_recovery: float = 0.8
 
-# ── 攝影機 ──────────────────────────────────────────────────────
-@export_group("Camera")
-## 攝影機縮放倍率（整數倍才清晰）
-@export_range(1, 8, 1) var cam_zoom: int = 4
-## 前瞻偏移距離（tile 數）
-@export_range(0.0, 8.0, 0.5) var look_ahead_tiles: float = 2.0
-## 前瞻追蹤插值速度
-@export_range(1.0, 20.0, 0.5) var look_ahead_speed: float = 6.0
-## 攝影機平滑（關閉 = 硬跟玩家，不抖動；開啟 = 平滑跟隨）
-@export var position_smoothing: bool = false
-## 攝影機平滑速度（只在 position_smoothing=true 時有效）
-@export_range(1.0, 30.0, 0.5) var smoothing_speed: float = 10.0
-## 攝影機垂直偏移（負=讓玩家偏下方，正=偏上方）
-@export var cam_vertical_offset: float = -40.0
-## 水平拖拽死區
-@export var drag_horizontal: bool = true
-@export_range(0.0, 0.5, 0.05) var drag_left_margin: float = 0.35
-@export_range(0.0, 0.5, 0.05) var drag_right_margin: float = 0.35
-## 下邊界標記節點（Marker2D）：拖入後攝影機不會往下超過此節點的 Y 座標
-## 留空 = 無限往下
-@export var camera_bottom_marker: NodePath = NodePath("")
 ## 將玩家位置四捨五入到整數像素（修正 zoom 下的模糊問題）
 @export var snap_position_to_pixel: bool = true
 
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
-@onready var _camera: Camera2D = $Camera2D
 @onready var _stamina_ui: Node2D = $StaminaBar
 
 # ═══════════════════════════════════════════════════════════════
@@ -125,41 +103,14 @@ var is_invincible:  bool  = false  # 供外部（攻擊判定）讀取
 # ── 耐力 ────────────────────────────────────────────────────────
 var _stamina: float = 3.0
 
-# ── 攝影機 ──────────────────────────────────────────────────────
-var _facing:      float = 1.0   # 1=右, -1=左
-var _look_offset: float = 0.0   # 前瞻偏移（插值目標）
+# ── 翻滚朝向（供 roll 使用） ──────────────────────────────────────
+var _facing: float = 1.0   # 1=右, -1=左
 
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
 	_stamina = max_stamina
-	_apply_camera_settings()
-	_setup_camera_limit()
-
-func _apply_camera_settings() -> void:
-	_camera.zoom                             = Vector2(cam_zoom, cam_zoom)
-	_camera.position_smoothing_enabled       = position_smoothing
-	_camera.position_smoothing_speed         = smoothing_speed
-	_camera.drag_horizontal_enabled          = drag_horizontal
-	_camera.drag_left_margin                 = drag_left_margin
-	_camera.drag_right_margin                = drag_right_margin
-
-func _setup_camera_limit() -> void:
-	_camera.limit_left   = -10000000
-	_camera.limit_right  =  10000000
-	_camera.limit_top    = -10000000
-
-	if camera_bottom_marker.is_empty():
-		_camera.limit_bottom = 10000000
-		return
-
-	var marker := get_node_or_null(camera_bottom_marker)
-	if marker == null:
-		_camera.limit_bottom = 10000000
-		return
-
-	_camera.limit_bottom = int(marker.global_position.y)
 
 # ═══════════════════════════════════════════════════════════════
 # 物理更新主迴圈（標準順序）
@@ -188,8 +139,7 @@ func _physics_process(delta: float) -> void:
 	if snap_position_to_pixel:
 		position = position.round()
 
-	# 8. 攝影機 & UI
-	_update_camera(delta)
+	# 8. UI
 	_update_stamina_ui()
 
 	# 9. 地面狀態記錄（供下一幀使用）
@@ -349,14 +299,6 @@ func _consume_stamina() -> void:
 		if _stamina_ui != null:
 			var slot := clampi(int(_stamina), 0, 2)
 			_stamina_ui.trigger_flash(slot)
-
-# ═══════════════════════════════════════════════════════════════
-# 攝影機更新
-# ═══════════════════════════════════════════════════════════════
-func _update_camera(delta: float) -> void:
-	var target    := _facing * look_ahead_tiles * 8.0
-	_look_offset   = lerp(_look_offset, target, delta * look_ahead_speed)
-	_camera.offset = Vector2(_look_offset, cam_vertical_offset)
 
 # ═══════════════════════════════════════════════════════════════
 # 耐力 UI 更新

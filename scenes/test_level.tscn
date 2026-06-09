@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://bfurijrxfce3v" path="res://scenes/modular_blocks/modular_block_3.tscn" id="4_x4b8f"]
 [ext_resource type="PackedScene" uid="uid://dpbw35kh7nlfa" path="res://scenes/modular_blocks/modular_block_4.tscn" id="5_tmr53"]
 [ext_resource type="PackedScene" uid="uid://b1t8am8hwvppf" path="res://scenes/modular_blocks/modular_block_5.tscn" id="6_qcd3b"]
+[ext_resource type="Script" path="res://scripts/camera/scene_camera.gd" id="7_cam"]
 
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
@@ -20,8 +21,11 @@ tile_set = ExtResource("1_world")
 
 [node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(29, -83)
-cam_vertical_offset = 0.0
-camera_bottom_marker = NodePath("../CameraBottomLimit")
+speed = 120.0
+jump_velocity = -270.0
+gravity = 480.0
+friction = 960.0
+air_friction_factor = 0.3
 
 [node name="WorldLayer" type="TileMapLayer" parent="." unique_id=914513310]
 texture_filter = 1
@@ -41,5 +45,22 @@ position = Vector2(-64, -56)
 [node name="ModularBlock4" parent="." unique_id=1207929061 instance=ExtResource("6_qcd3b")]
 position = Vector2(120, -120)
 
-[node name="CameraBottomLimit" type="Marker2D" parent="." unique_id=29906935]
+[node name="CamLimitBottom" type="Marker2D" parent="." unique_id=29906935]
 position = Vector2(0, 32)
+
+[node name="CamLimitTop" type="Marker2D" parent="." unique_id=29906936]
+position = Vector2(0, -512)
+
+[node name="CamLimitLeft" type="Marker2D" parent="." unique_id=29906937]
+position = Vector2(-512, 0)
+
+[node name="CamLimitRight" type="Marker2D" parent="." unique_id=29906938]
+position = Vector2(512, 0)
+
+[node name="SceneCamera" type="Camera2D" parent="." unique_id=29906939]
+script = ExtResource("7_cam")
+player = NodePath("../Player1")
+limit_top_marker = NodePath("../CamLimitTop")
+limit_bottom_marker = NodePath("../CamLimitBottom")
+limit_left_marker = NodePath("../CamLimitLeft")
+limit_right_marker = NodePath("../CamLimitRight")
