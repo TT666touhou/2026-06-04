@@ -26,31 +26,32 @@ const _BRICK_TEX := preload("res://assets/vfxmix/particle/brick_gray.png")
 @export_range(0.0, 720.0, 10.0) var brick_ang_max: float = 200.0
 ## 重力加速度（px/s²）
 @export_range(0.0, 1000.0, 10.0) var brick_gravity: float = 300.0
-## 縮放最小值
-@export_range(0.1, 2.0, 0.05) var brick_scale_min: float = 0.7
-## 縮放最大值
-@export_range(0.1, 3.0, 0.05) var brick_scale_max: float = 1.1
+## 磚塊紹素材大小 24×22px，玩家 16×16，讓磚塊變小有真實感
+## 縮放範圍：0.15~0.35 = 实際 3.6~8.4px
+@export_range(0.05, 1.0, 0.01) var brick_scale_min: float = 0.15
+## 縮放最大値
+@export_range(0.05, 2.0, 0.01) var brick_scale_max: float = 0.35
 ## 散射角度（度）
 @export_range(0.0, 90.0, 1.0) var brick_spread: float = 30.0
 
 # ── DustCloud 參數 ────────────────────────────────────────────────
 @export_group("DustCloud")
 ## 粒子數
-@export var dust_amount: int = 12
+@export var dust_amount: int = 18
 ## 粒子壽命（秒）
-@export_range(0.1, 2.0, 0.01) var dust_lifetime: float = 0.50
+@export_range(0.1, 2.0, 0.01) var dust_lifetime: float = 0.60
 ## 爆發集中度
 @export_range(0.0, 1.0, 0.05) var dust_explosiveness: float = 0.90
-## 初速最小值（px/s）
-@export_range(5.0, 200.0, 5.0) var dust_vel_min: float = 15.0
-## 初速最大值（px/s）
-@export_range(5.0, 300.0, 5.0) var dust_vel_max: float = 40.0
+## 初速最小値（px/s）
+@export_range(5.0, 200.0, 5.0) var dust_vel_min: float = 25.0
+## 初速最大値（px/s）
+@export_range(5.0, 300.0, 5.0) var dust_vel_max: float = 60.0
 ## 重力加速度（px/s²）
-@export_range(0.0, 500.0, 10.0) var dust_gravity: float = 150.0
-## 縮放最小值
-@export_range(0.1, 2.0, 0.05) var dust_scale_min: float = 0.3
-## 縮放最大值
-@export_range(0.1, 2.0, 0.05) var dust_scale_max: float = 0.8
+@export_range(0.0, 500.0, 10.0) var dust_gravity: float = 120.0
+## 縮放最小値（無貼圖 = 點粒子渲染大小）
+@export_range(0.1, 5.0, 0.05) var dust_scale_min: float = 1.5
+## 縮放最大値
+@export_range(0.1, 5.0, 0.05) var dust_scale_max: float = 3.5
 ## 散射角度（度）
 @export_range(0.0, 120.0, 1.0) var dust_spread: float = 55.0
 ## 灰塵顏色（固定）
