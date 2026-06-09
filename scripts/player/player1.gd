@@ -381,25 +381,37 @@ func _update_floor_ramp_cache() -> GradientTexture1D:
 func _get_floor_ramp() -> GradientTexture1D:
 	_floor_cast.force_shapecast_update()
 	if not _floor_cast.is_colliding():
+		print("[VFX DUST] _floor_cast.is_colliding() == false. 使用預設灰塵。")
 		return _fallback_ramp()
+		
 	for i in _floor_cast.get_collision_count():
 		var col := _floor_cast.get_collider(i)
 		if not col is TileMapLayer:
+			print("[VFX DUST] 碰撞體不是 TileMapLayer: ", col.name if col else "null")
 			continue
+			
 		var tilemap  := col as TileMapLayer
 		var pt := _floor_cast.get_collision_point(i)
 		var n  := _floor_cast.get_collision_normal(i)
+		print("[VFX DUST] 碰撞到 TileMapLayer。原始碰撞點 pt: ", pt, ", 法線 normal: ", n)
+		
 		# 將採樣點往法線反方向（物體內部）推進 2 像素，徹底解決邊緣取樣到空磚塊的浮點數誤差
 		pt -= n * 2.0
 		var local_pt := tilemap.to_local(pt)
 		var cell     := tilemap.local_to_map(local_pt)
 		var src_id   := tilemap.get_cell_source_id(cell)
+		print("[VFX DUST] 推移後座標 pt: ", pt, ", 轉換地圖格 cell: ", cell, ", 資源 src_id: ", src_id)
+		
 		if src_id < 0:
+			print("[VFX DUST] 該格 (src_id < 0) 為空磁磚，跳過此次採樣。")
 			continue
+			
 		var ts     := tilemap.tile_set
 		var source := ts.get_source(src_id) as TileSetAtlasSource
 		if source == null or source.texture == null:
+			print("[VFX DUST] 找不到 AtlasSource 或是沒有圖片，跳過。")
 			continue
+			
 		var atlas_c  := tilemap.get_cell_atlas_coords(cell)
 		var tile_sz  := ts.tile_size
 		# 磚塊在 Atlas 貼圖中的左上角（考慮 margins 與 separation）
@@ -446,6 +458,8 @@ func _get_floor_ramp() -> GradientTexture1D:
 		var tex := GradientTexture1D.new()
 		tex.gradient = grad
 		tex.width = 16
+		print("[VFX DUST] 採樣成功！生成了混合顏色漸層。")
 		return tex
 		
+	print("[VFX DUST] 迴圈結束，沒有任何 TileMapLayer 的碰撞點成功採樣，使用預設灰塵。")
 	return _fallback_ramp()
