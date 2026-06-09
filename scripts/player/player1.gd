@@ -24,7 +24,7 @@ extends CharacterBody2D
 @export_group("Jump")
 ## 第一跳初速（負=向上）
 ## 計算公式：height = v² / (2 × gravity)
-## -297 @ gravity=980 → 高度約 45px (原為 90px)
+## -161 @ gravity=180 → 高度 71.97px（中心）/ 底部約 64px
 @export var jump_velocity: float = -297.0
 ## Coyote Time：踩空後仍可跳的寬限秒數
 @export_range(0.0, 0.4, 0.01) var coyote_time: float = 0.12
@@ -43,7 +43,7 @@ extends CharacterBody2D
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
 @export_group("Wall Jump")
 ## 蹬牆後向上的速度
-@export var wall_jump_vertical: float = -268.7
+@export var wall_jump_vertical: float = -269.0
 ## 蹬牆後離牆的水平速度
 @export var wall_jump_horizontal: float = 90.0
 ## 蹬牆後水平方向鎖定時間（防止馬上頂回去）
@@ -237,7 +237,7 @@ func _do_normal_jump() -> void:
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
-	velocity.y        = wall_jump_vertical
+	velocity.y        = jump_velocity
 	velocity.x        = sign(normal.x) * wall_jump_horizontal
 	_wall_lock_timer  = wall_jump_lock_time
 	_can_double_jump  = true
