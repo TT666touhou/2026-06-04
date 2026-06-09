@@ -163,7 +163,7 @@ func _physics_process(delta: float) -> void:
 # 重力
 # ═══════════════════════════════════════════════════════════════
 func _apply_gravity(delta: float) -> void:
-	if not is_on_floor():
+	if not is_on_floor() and not _is_rolling:
 		velocity.y += gravity * delta
 
 # ═══════════════════════════════════════════════════════════════
@@ -231,6 +231,8 @@ func _do_normal_jump() -> void:
 	_can_double_jump    = true
 	_apex_jump_buffered = false
 	_was_ascending      = true
+	_is_rolling         = false
+	is_invincible       = false
 	# BurstDust：地面起跳（強制立即採樣目前地板顏色）
 	if _was_on_floor:
 		_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
@@ -244,6 +246,8 @@ func _do_wall_jump() -> void:
 	_apex_jump_buffered = false
 	_was_ascending    = true
 	_jump_buffer_timer = 0.0
+	_is_rolling        = false
+	is_invincible      = false
 	_consume_stamina()
 	# BurstDust：牆壁節屑，以牆壁法線做反射方向，並從擴大的 FloorCast 採樣牆壁顏色
 	_dust_vfx.emit_burst(normal, velocity, _get_floor_ramp())
@@ -254,6 +258,8 @@ func _do_double_jump() -> void:
 	_can_double_jump    = false
 	_apex_jump_buffered = false
 	_was_ascending      = true   # 二段跳後重新上升
+	_is_rolling         = false
+	is_invincible       = false
 	_consume_stamina()
 
 # ═══════════════════════════════════════════════════════════════
@@ -293,12 +299,13 @@ func _handle_roll(delta: float) -> void:
 			_is_rolling  = false
 			is_invincible = false
 	else:
-		# 觸發翻滾：地面 + 有冷卻時間 + 有耐力
-		if Input.is_action_just_pressed("roll") and is_on_floor() \
+		# 觸發翻滾：有冷卻時間 + 有耐力（空中/地面皆可）
+		if Input.is_action_just_pressed("roll") \
 		   and _roll_cooldown <= 0.0 and _has_stamina():
 			_is_rolling    = true
 			_roll_timer    = roll_duration
 			_roll_cooldown = roll_cooldown
+			velocity.y     = 0.0 # 起步時重置垂直速度（讓空中衝刺平穩，且允許中途跳躍）
 			_consume_stamina()
 			# BurstDust：翻滾起軌（強制立即採樣目前地板顏色）
 			_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
