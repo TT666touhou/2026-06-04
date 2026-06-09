@@ -56,16 +56,17 @@ var _look_offset: float = 0.0   # 前瞻偏移（插值目標）
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
+	# 確保此 Camera 成為 active camera
+	make_current()
 	_apply_settings()
 	_apply_limits()
 
 func _apply_settings() -> void:
-	zoom                       = Vector2(cam_zoom, cam_zoom)
-	position_smoothing_enabled = position_smoothing
-	position_smoothing_speed   = smoothing_speed
-	drag_horizontal_enabled    = drag_horizontal
-	drag_left_margin           = drag_margin_left
-	drag_right_margin          = drag_margin_right
+	zoom = Vector2(cam_zoom, cam_zoom)
+	# 手動追蹤模式：關閉 drag 與 smoothing（與 global_position 手動賦值衝突）
+	position_smoothing_enabled = false
+	drag_horizontal_enabled    = false
+	drag_vertical_enabled      = false
 
 func _apply_limits() -> void:
 	limit_left   = int(limit_left_marker.global_position.x)   if limit_left_marker   != null else -10_000_000
