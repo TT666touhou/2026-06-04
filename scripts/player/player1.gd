@@ -460,8 +460,12 @@ func _get_floor_ramp() -> GradientTexture1D:
 					var ry = randi_range(region.position.y, region.end.y - 1)
 					if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
 						var c := img.get_pixel(rx, ry)
-						if c.a > 0.1:
-							valid_pixels.append(c)
+						# 提高 alpha 閾值 (0.1 -> 0.8)，避免取樣到 PNG 邊緣的高亮半透明像素 (常導致白色污染)
+						if c.a > 0.8:
+							c.a = 1.0 # 強制不透明
+							# 過濾掉極端接近純白的點 (極高機率是繪圖軟體的透明背景遺留雜訊)
+							if c.get_luminance() < 0.98:
+								valid_pixels.append(c)
 							
 				collected_colors.append_array(valid_pixels)
 
