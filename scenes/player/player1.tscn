@@ -10,7 +10,7 @@ radius = 4.0
 height = 14.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
-size = Vector2(16, 2)
+size = Vector2(19.2, 2.4)
 
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
