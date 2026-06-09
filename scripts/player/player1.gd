@@ -109,6 +109,13 @@ var _stamina: float = 3.0
 var _facing: float = 1.0   # 1=右, -1=左
 
 # ═══════════════════════════════════════════════════════════════
+# 地板顏色快取將（每 0.1s 更新一次，減少 ShapeCast 像素讀取频率）
+# ═══════════════════════════════════════════════════════════════
+const _FLOOR_COLOR_INTERVAL: float = 0.1
+var _cached_floor_color: Color = Color(0.65, 0.65, 0.65)
+var _floor_color_timer: float = 0.0
+
+# ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
@@ -137,10 +144,8 @@ func _physics_process(delta: float) -> void:
 	# 6. 物理移動
 	move_and_slide()
 
-	# 6.5. 落地偵測：上一幀在空中，本幀觸地 → 落地煙塵雲
-	if not _was_on_floor and is_on_floor():
-		if abs(velocity.x) > 10.0:
-			_dust_vfx.emit_dust(sign(velocity.x))
+	# 6.5. VFX 更新
+	_update_vfx(delta)
 
 	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
@@ -224,23 +229,22 @@ func _do_normal_jump() -> void:
 	_can_double_jump    = true
 	_apex_jump_buffered = false
 	_was_ascending      = true
-	# BrickDebris：地面起跳才觸發（排除 coyote jump 後空中已離地的情況）
+	# BurstDust：地面起跳
 	if _was_on_floor:
-		_dust_vfx.emit_bricks(Vector2.UP, velocity, _get_floor_color())
+		_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_color)
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
-	# 蹬牆跳垂直動能重置 = 與第一跳完全相同，確保可到達相同高度
 	velocity.y        = jump_velocity
 	velocity.x        = sign(normal.x) * wall_jump_horizontal
 	_wall_lock_timer  = wall_jump_lock_time
-	_can_double_jump  = true    # 蹬牆後重置二段跳資格
+	_can_double_jump  = true
 	_apex_jump_buffered = false
 	_was_ascending    = true
 	_jump_buffer_timer = 0.0
 	_consume_stamina()
-	# BrickDebris：牆壁節屑，以牆壁法線做反射方向
-	_dust_vfx.emit_bricks(normal, velocity, Color.GRAY)
+	# BurstDust：牆壁節屑，以牆壁法線做反射方向
+	_dust_vfx.emit_burst(normal, velocity, Color.GRAY)
 
 func _do_double_jump() -> void:
 	# 動能重置：設回第一跳的初速（非疊加），確保二段跳高度 = 第一跳高度
@@ -294,8 +298,8 @@ func _handle_roll(delta: float) -> void:
 			_roll_timer    = roll_duration
 			_roll_cooldown = roll_cooldown
 			_consume_stamina()
-			# BrickDebris：翻滾起軌时踢裂地面
-			_dust_vfx.emit_bricks(Vector2.UP, velocity, _get_floor_color())
+			# BurstDust：翻滾起軌
+			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_color)
 
 # ═══════════════════════════════════════════════════════════════
 # 耐力系統
@@ -320,6 +324,37 @@ func _consume_stamina() -> void:
 func _update_stamina_ui() -> void:
 	if _stamina_ui != null:
 		_stamina_ui.stamina = _stamina
+
+# ═══════════════════════════════════════════════════════════════
+# VFX 更新（對正 move_and_slide 後的狀態）
+# ═══════════════════════════════════════════════════════════════
+func _update_vfx(delta: float) -> void:
+	var on_floor := is_on_floor()
+
+	# ── 地板顏色快取：地面且移動時每 0.1s 更新 ────────────────────
+	if on_floor and abs(velocity.x) > trail_speed_threshold_ref():
+		_floor_color_timer -= delta
+		if _floor_color_timer <= 0.0:
+			_cached_floor_color = _get_floor_color()
+			_floor_color_timer  = _FLOOR_COLOR_INTERVAL
+
+	# ── 幹跡煩塵：地面且移動時開啟 ─────────────────────────────────
+	var moving_on_floor: bool = on_floor and abs(velocity.x) > trail_speed_threshold_ref()
+	_dust_vfx.set_trail_active(moving_on_floor, _cached_floor_color, sign(velocity.x))
+
+	# ── 落地偵測：上一幀在空中，本幀觸地 → BurstDust ─────────────────
+	if not _was_on_floor and on_floor:
+		# 在空中有水平速度 OR 垂直速度超過閾値 = 瞬間爆發
+		if abs(velocity.x) > 10.0 or abs(velocity.y) > 80.0:
+			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_color)
+
+## 輔助：取得 TrailDust 速度閾値（轉發至 PlayerDust export 參數）
+func trail_speed_threshold_ref() -> float:
+	var pd := _dust_vfx as Node
+	if pd and pd.has_method("get"):
+		var v = pd.get("trail_speed_threshold")
+		if v != null: return float(v)
+	return 20.0
 
 # ═══════════════════════════════════════════════════════════════
 # 地板顏色採樣（ShapeCast2D → TileMapLayer Atlas 直接像素取樣）

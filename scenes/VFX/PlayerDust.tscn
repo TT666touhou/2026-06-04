@@ -5,12 +5,12 @@
 [node name="PlayerDust" type="Node2D" unique_id=1925333682]
 script = ExtResource("1_script")
 
-[node name="BrickDebris" type="GPUParticles2D" parent="." unique_id=384712059]
+[node name="TrailDust" type="GPUParticles2D" parent="." unique_id=384712059]
 emitting = false
-one_shot = true
+one_shot = false
 local_coords = false
 
-[node name="DustCloud" type="GPUParticles2D" parent="." unique_id=720183647]
+[node name="BurstDust" type="GPUParticles2D" parent="." unique_id=720183647]
 emitting = false
 one_shot = true
 local_coords = false
