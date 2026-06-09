@@ -5,6 +5,10 @@ extends CharacterBody2D
 ##   jump                   → Space / W / ↑（跳躍 + Apex 二段跳）
 ##   roll                   → Shift（翻滾）
 
+const _DUST_SCENE := preload("res://scenes/VFX/PlayerDust.tscn")
+## 落地煙塵出現位置的 Y 軸偏移（相對於 Player 中心，正=往下）
+@export var dust_foot_offset: float = 6.0
+
 # ═══════════════════════════════════════════════════════════════
 # EXPORT 參數（全部可在 Inspector 即時調整）
 # ═══════════════════════════════════════════════════════════════
@@ -134,6 +138,10 @@ func _physics_process(delta: float) -> void:
 
 	# 6. 物理移動
 	move_and_slide()
+
+	# 6.5. 落地偵測：上一幀在空中，本幀觸地 → 生成煙塵
+	if not _was_on_floor and is_on_floor():
+		_spawn_landing_dust()
 
 	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
@@ -306,3 +314,13 @@ func _consume_stamina() -> void:
 func _update_stamina_ui() -> void:
 	if _stamina_ui != null:
 		_stamina_ui.stamina = _stamina
+
+# ═══════════════════════════════════════════════════════════════
+# 落地煙塵
+# ═══════════════════════════════════════════════════════════════
+func _spawn_landing_dust() -> void:
+	var dust: Node2D = _DUST_SCENE.instantiate()
+	# 加到父節點（世界座標），避免跟著 Player 移動
+	get_parent().add_child(dust)
+	# 定位到玩家腳底
+	dust.global_position = global_position + Vector2(0.0, dust_foot_offset)
