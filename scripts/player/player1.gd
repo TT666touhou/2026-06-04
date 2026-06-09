@@ -456,9 +456,9 @@ func _get_floor_ramp() -> GradientTexture1D:
 				if not img: continue
 				
 				var atlas_c  := tm.get_cell_atlas_coords(cell)
-				var alt_tile := tm.get_cell_alternative_tile(cell)
-				# 網路建議的最佳實踐：直接向 TileSetAtlasSource 獲取該磁磚真正的 Rect2i，避免手動計算 margin/separation 導致的偏移錯誤
-				var region: Rect2i = source.get_tile_texture_region(atlas_c, alt_tile)
+				# 網路建議的最佳實踐：直接向 TileSetAtlasSource 獲取該磁磚真正的 Rect2i
+				# 註：第二個參數是 animation frame 而非 alternative_tile，因此不需要傳入 alternative_tile！
+				var region: Rect2i = source.get_tile_texture_region(atlas_c)
 				
 				# 算出碰撞點相對於「該格子中心」的偏移量
 				var cell_center_local = tm.map_to_local(cell)
@@ -526,8 +526,8 @@ func _get_floor_ramp() -> GradientTexture1D:
 	grad.offsets = offsets
 	grad.colors = grad_colors
 	
-	var tex := GradientTexture1D.new()
-	tex.gradient = grad
-	tex.width = 16
+	var out_tex := GradientTexture1D.new()
+	out_tex.gradient = grad
+	out_tex.width = 16
 	print("[VFX DUST] 全局十字探測成功！混合了 ", display_colors.size(), " 種顏色。")
-	return tex
+	return out_tex
