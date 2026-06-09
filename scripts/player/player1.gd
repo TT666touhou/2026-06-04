@@ -398,12 +398,14 @@ func _get_floor_ramp() -> GradientTexture1D:
 		# 物理內推，確保進入實體內部
 		var base_pt = pt - n * 2.0
 		
-		# 十字探測法 (Cross Probe) - 徹底解決切線邊界與浮點數誤差
-		# 穿透探測所有 TileMapLayer (包含 DecorLayer)
+		# 根據法線計算切線與向內深度的探測點，絕對避免往空氣(法線正向)探測而抓到背景雲朵或牆壁
+		var tangent = Vector2(n.y, -n.x)
 		var probe_offsets = [
 			Vector2.ZERO,
-			Vector2(4, 0), Vector2(-4, 0),
-			Vector2(0, 4), Vector2(0, -4)
+			tangent * 4.0,    # 沿著表面向左/上
+			-tangent * 4.0,   # 沿著表面向右/下
+			-n * 4.0,         # 往實體內部更深處探測
+			-n * 8.0          # 確保絕對能命中
 		]
 		
 		# 記錄已經採樣過的格子，避免同一個 TileMapLayer 的同一格被過度加權
@@ -460,11 +462,11 @@ func _get_floor_ramp() -> GradientTexture1D:
 					var ry = randi_range(region.position.y, region.end.y - 1)
 					if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
 						var c := img.get_pixel(rx, ry)
-						# 提高 alpha 閾值 (0.1 -> 0.8)，避免取樣到 PNG 邊緣的高亮半透明像素 (常導致白色污染)
+						# 提高 alpha 閾值，避免透明邊緣
 						if c.a > 0.8:
 							c.a = 1.0 # 強制不透明
-							# 過濾掉極端接近純白的點 (極高機率是繪圖軟體的透明背景遺留雜訊)
-							if c.get_luminance() < 0.98:
+							# 嚴格過濾掉高亮度且低飽和度的顏色 (白色、淺灰)，這通常是背景層或透明去背沒去乾淨的雜訊
+							if not (c.v > 0.85 and c.s < 0.15):
 								valid_pixels.append(c)
 							
 				collected_colors.append_array(valid_pixels)
