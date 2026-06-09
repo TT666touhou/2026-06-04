@@ -230,9 +230,9 @@ func _do_normal_jump() -> void:
 	_can_double_jump    = true
 	_apex_jump_buffered = false
 	_was_ascending      = true
-	# BurstDust：地面起跳
+	# BurstDust：地面起跳（強制立即採樣目前地板顏色）
 	if _was_on_floor:
-		_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_ramp)
+		_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
@@ -299,8 +299,8 @@ func _handle_roll(delta: float) -> void:
 			_roll_timer    = roll_duration
 			_roll_cooldown = roll_cooldown
 			_consume_stamina()
-			# BurstDust：翻滾起軌
-			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_ramp)
+			# BurstDust：翻滾起軌（強制立即採樣目前地板顏色）
+			_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
 
 # ═══════════════════════════════════════════════════════════════
 # 耐力系統
@@ -345,9 +345,9 @@ func _update_vfx(delta: float) -> void:
 
 	# ── 落地偵測：上一幀在空中，本幀觸地 → BurstDust ─────────────────
 	if not _was_on_floor and on_floor:
-		# 在空中有水平速度 OR 垂直速度超過閾値 = 瞬間爆發
+		# 在空中有水平速度 OR 垂直速度超過閾値 = 瞬間爆發（強制立即採樣目前地板顏色）
 		if abs(velocity.x) > 10.0 or abs(velocity.y) > 80.0:
-			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_ramp)
+			_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
 
 ## 輔助：取得 TrailDust 速度閾値（轉發至 PlayerDust export 參數）
 func trail_speed_threshold_ref() -> float:
@@ -366,12 +366,17 @@ func _fallback_ramp() -> GradientTexture1D:
 		return _fallback_tex
 	var grad := Gradient.new()
 	grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
-	grad.offsets = PackedFloat32Array([0.0])
-	grad.colors = PackedColorArray([Color(0.65, 0.65, 0.65)])
+	grad.set_color(0, Color.DARK_GRAY)
+	grad.set_color(1, Color.GRAY)
 	_fallback_tex = GradientTexture1D.new()
 	_fallback_tex.gradient = grad
 	_fallback_tex.width = 16
 	return _fallback_tex
+
+func _update_floor_ramp_cache() -> GradientTexture1D:
+	_cached_floor_ramp = _get_floor_ramp()
+	_floor_color_timer = _FLOOR_COLOR_INTERVAL
+	return _cached_floor_ramp
 
 func _get_floor_ramp() -> GradientTexture1D:
 	_floor_cast.force_shapecast_update()
