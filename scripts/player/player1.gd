@@ -114,6 +114,7 @@ var _facing: float = 1.0   # 1=右, -1=左
 const _FLOOR_COLOR_INTERVAL: float = 0.1
 var _cached_floor_ramp: GradientTexture1D
 var _floor_color_timer: float = 0.0
+var _atlas_cache: Dictionary = {}
 
 # ═══════════════════════════════════════════════════════════════
 # 初始化
@@ -383,102 +384,117 @@ func _get_floor_ramp() -> GradientTexture1D:
 	if not _floor_cast.is_colliding():
 		print("[VFX DUST] _floor_cast.is_colliding() == false. 使用預設灰塵。")
 		return _fallback_ramp()
-		
+
+	# 獲取場景中所有的 TileMapLayer (包含 Ground, Decor 等)
+	var tilemaps := get_tree().current_scene.find_children("*", "TileMapLayer", true, false)
+	if tilemaps.is_empty():
+		return _fallback_ramp()
+
+	var collected_colors: Array[Color] = []
+
 	for i in _floor_cast.get_collision_count():
-		var col := _floor_cast.get_collider(i)
-		if not col is TileMapLayer:
-			print("[VFX DUST] 碰撞體不是 TileMapLayer: ", col.name if col else "null")
-			continue
-			
-		var tilemap  := col as TileMapLayer
 		var pt := _floor_cast.get_collision_point(i)
 		var n  := _floor_cast.get_collision_normal(i)
-		print("[VFX DUST] 碰撞到 TileMapLayer。原始碰撞點 pt: ", pt, ", 法線 normal: ", n)
+		# 物理內推，確保進入實體內部
+		var base_pt = pt - n * 2.0
 		
-		# 將採樣點往法線反方向（物體內部）推進 2 像素，徹底解決邊緣取樣到空磚塊的浮點數誤差
-		pt -= n * 2.0
-		var local_pt := tilemap.to_local(pt)
-		var cell     := tilemap.local_to_map(local_pt)
-		var src_id   := tilemap.get_cell_source_id(cell)
-		print("[VFX DUST] 推移後座標 pt: ", pt, ", 轉換地圖格 cell: ", cell, ", 資源 src_id: ", src_id)
+		# 十字探測法 (Cross Probe) - 徹底解決切線邊界與浮點數誤差
+		# 穿透探測所有 TileMapLayer (包含 DecorLayer)
+		var probe_offsets = [
+			Vector2.ZERO,
+			Vector2(4, 0), Vector2(-4, 0),
+			Vector2(0, 4), Vector2(0, -4)
+		]
 		
-		if src_id < 0:
-			# 因為剛好踩在磁磚交界處（切線方向的浮點數誤差），往切線方向尋找相鄰實體磚
-			var found := false
-			var offsets := []
-			if abs(n.y) > abs(n.x):
-				offsets = [Vector2i(1, 0), Vector2i(-1, 0)] # 地板/天花板，找左右
-			else:
-				offsets = [Vector2i(0, 1), Vector2i(0, -1)] # 牆壁，找上下
+		# 記錄已經採樣過的格子，避免同一個 TileMapLayer 的同一格被過度加權
+		var sampled_cells = {}
+		
+		for offset in probe_offsets:
+			var probe_pt = base_pt + offset
+			
+			for tm_node in tilemaps:
+				var tm := tm_node as TileMapLayer
+				if not tm.visible: continue
 				
-			for offset in offsets:
-				var neighbor_cell = cell + offset
-				var check_id = tilemap.get_cell_source_id(neighbor_cell)
-				if check_id >= 0:
-					cell = neighbor_cell
-					src_id = check_id
-					found = true
-					print("[VFX DUST] 切線邊緣校正成功！改用相鄰實體格: ", cell)
-					break
+				var tm_id = tm.get_instance_id()
+				if not sampled_cells.has(tm_id):
+					sampled_cells[tm_id] = {}
 					
-			if not found:
-				print("[VFX DUST] 該格與相鄰切線格皆為空磁磚，跳過此次採樣。")
-				continue
-			
-		var ts     := tilemap.tile_set
-		var source := ts.get_source(src_id) as TileSetAtlasSource
-		if source == null or source.texture == null:
-			print("[VFX DUST] 找不到 AtlasSource 或是沒有圖片，跳過。")
-			continue
-			
-		var atlas_c  := tilemap.get_cell_atlas_coords(cell)
-		var tile_sz  := ts.tile_size
-		# 磚塊在 Atlas 貼圖中的左上角（考慮 margins 與 separation）
-		var origin   := source.margins + atlas_c * (tile_sz + source.separation)
-		var img      := source.texture.get_image()
-		if img == null:
-			continue  # 貼圖影像無法讀取（VRAM壓縮）→ 賭下一個碰撞體
-			
-		# 4x4 取樣並統計頻率
-		var colors := []
-		for y in range(4):
-			for x in range(4):
-				var px = origin.x + int(tile_sz.x * (x + 0.5) / 4.0)
-				var py = origin.y + int(tile_sz.y * (y + 0.5) / 4.0)
-				var c = img.get_pixel(px, py)
-				if c.a > 0.1:
-					colors.append(c)
+				var local_pt := tm.to_local(probe_pt)
+				var cell     := tm.local_to_map(local_pt)
+				
+				if sampled_cells[tm_id].has(cell):
+					continue
+				sampled_cells[tm_id][cell] = true
+				
+				var src_id := tm.get_cell_source_id(cell)
+				if src_id < 0:
+					continue
+					
+				var ts := tm.tile_set
+				if not ts: continue
+				var source := ts.get_source(src_id) as TileSetAtlasSource
+				if not source or not source.texture: continue
+				
+				var tex := source.texture
+				var img: Image
+				if _atlas_cache.has(tex):
+					img = _atlas_cache[tex]
+				else:
+					img = tex.get_image()
+					if img:
+						_atlas_cache[tex] = img
+						
+				if not img: continue
+				
+				var atlas_c  := tm.get_cell_atlas_coords(cell)
+				var tile_sz  := ts.tile_size
+				var origin   := source.margins + atlas_c * (tile_sz + source.separation)
+				var region   := Rect2i(origin, tile_sz)
+				
+				# 隨機抽取顏色
+				var valid_pixels: Array[Color] = []
+				var samples = 4
+				for s in range(samples):
+					var rx = randi_range(region.position.x, region.end.x - 1)
+					var ry = randi_range(region.position.y, region.end.y - 1)
+					if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
+						var c := img.get_pixel(rx, ry)
+						if c.a > 0.1:
+							valid_pixels.append(c)
+							
+				collected_colors.append_array(valid_pixels)
+
+	if collected_colors.is_empty():
+		print("[VFX DUST] 迴圈結束，沒有任何 TileMapLayer 的碰撞點成功採樣，使用預設灰塵。")
+		return _fallback_ramp()
+
+	# 混合並產生漸層
+	collected_colors.shuffle()
+	var display_colors: Array[Color] = []
+	for i in range(min(3, collected_colors.size())):
+		display_colors.append(collected_colors[i])
 		
-		if colors.is_empty():
-			continue
-			
-		var freq := {}
-		for c in colors:
-			var hex = c.to_html(false)
-			if not freq.has(hex):
-				freq[hex] = {"color": c, "count": 0}
-			freq[hex].count += 1
-			
-		var grad := Gradient.new()
-		grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
-		var offsets := PackedFloat32Array()
-		var grad_colors := PackedColorArray()
+	if display_colors.size() == 1:
+		display_colors.append(display_colors[0].darkened(0.2))
 		
-		var curr_offset := 0.0
-		for key in freq:
-			var data = freq[key]
-			offsets.append(curr_offset)
-			grad_colors.append(data.color)
-			curr_offset += float(data.count) / float(colors.size())
-			
-		grad.offsets = offsets
-		grad.colors = grad_colors
+	display_colors.sort_custom(func(a, b): return a.get_luminance() < b.get_luminance())
+	
+	var grad := Gradient.new()
+	grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	var offsets := PackedFloat32Array()
+	var grad_colors := PackedColorArray()
+	var step = 1.0 / display_colors.size()
+	
+	for i in range(display_colors.size()):
+		offsets.append(i * step)
+		grad_colors.append(display_colors[i])
 		
-		var tex := GradientTexture1D.new()
-		tex.gradient = grad
-		tex.width = 16
-		print("[VFX DUST] 採樣成功！生成了混合顏色漸層。")
-		return tex
-		
-	print("[VFX DUST] 迴圈結束，沒有任何 TileMapLayer 的碰撞點成功採樣，使用預設灰塵。")
-	return _fallback_ramp()
+	grad.offsets = offsets
+	grad.colors = grad_colors
+	
+	var tex := GradientTexture1D.new()
+	tex.gradient = grad
+	tex.width = 16
+	print("[VFX DUST] 全局十字探測成功！混合了 ", display_colors.size(), " 種顏色。")
+	return tex
