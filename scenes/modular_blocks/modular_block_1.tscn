@@ -4,6 +4,11 @@
 
 [node name="ModularBlock" type="AnimatableBody2D" unique_id=635298964]
 
+[node name="BackLayer" type="TileMapLayer" parent="." unique_id=1954571333]
+visible = false
+tile_map_data = PackedByteArray("AAD/////FQAfAB8AAAAAAP//FQAfAB8AAAAAAAAAFQAfAB8AAAD//wAAFQAfAB8AAAA=")
+tile_set = ExtResource("1_0gb1n")
+
 [node name="BaseLayer" type="TileMapLayer" parent="." unique_id=197678315]
 texture_filter = 1
 tile_map_data = PackedByteArray("AAD/////EgAKABUAAAD//wAAEgAMABUAAAAAAP//EgALABUAAAAAAAAAEgANABUAAAA=")

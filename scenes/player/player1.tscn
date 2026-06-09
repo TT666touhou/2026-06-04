@@ -2,7 +2,7 @@
 
 [ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
 [ext_resource type="Script" uid="uid://cgxc5o3rdglr5" path="res://scripts/player/player1.gd" id="2_script"]
-[ext_resource type="Script" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
+[ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 4.0
@@ -11,10 +11,9 @@ height = 14.0
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
 speed = 120.0
-jump_velocity = -270.0
 gravity = 480.0
 friction = 960.0
-air_friction_factor = 0.3
+jump_velocity = -270.0
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=659119027]
 texture_filter = 1
@@ -26,6 +25,7 @@ tile_set = ExtResource("2_33ho1")
 shape = SubResource("CapsuleShape2D_1")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1117571298]
+zoom = Vector2(0.8, 0.8)
 
-[node name="StaminaBar" type="Node2D" parent="." unique_id=2234567890]
+[node name="StaminaBar" type="Node2D" parent="." unique_id=-2060399406]
 script = ExtResource("3_stambar")

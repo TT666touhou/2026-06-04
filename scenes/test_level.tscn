@@ -20,11 +20,6 @@ tile_set = ExtResource("1_world")
 
 [node name="Player1" parent="." unique_id=1399862358 instance=ExtResource("1_player")]
 position = Vector2(29, -83)
-speed = 120.0
-jump_velocity = -270.0
-gravity = 480.0
-friction = 960.0
-air_friction_factor = 0.3
 cam_vertical_offset = 0.0
 camera_bottom_marker = NodePath("../CameraBottomLimit")
 
