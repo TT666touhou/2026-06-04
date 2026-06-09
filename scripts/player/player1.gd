@@ -368,7 +368,8 @@ func _fallback_ramp() -> GradientTexture1D:
 	var grad := Gradient.new()
 	grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
 	grad.set_color(0, Color.DARK_GRAY)
-	grad.set_color(1, Color.GRAY)
+	# Godot Gradient 預設有兩個點，索引 1 預設是白色，必須明確覆寫！
+	grad.set_color(1, Color.DARK_GRAY)
 	_fallback_tex = GradientTexture1D.new()
 	_fallback_tex.gradient = grad
 	_fallback_tex.width = 16
@@ -455,23 +456,31 @@ func _get_floor_ramp() -> GradientTexture1D:
 				var atlas_c  := tm.get_cell_atlas_coords(cell)
 				var tile_sz  := ts.tile_size
 				var origin   := source.margins + atlas_c * (tile_sz + source.separation)
-				var region   := Rect2i(origin, tile_sz)
 				
-				# 隨機抽取顏色
+				# 計算精準的像素座標
+				var cell_center = tm.map_to_local(cell)
+				var cell_top_left = cell_center - Vector2(tile_sz) / 2.0
+				var offset_in_tile = local_pt - cell_top_left
+				
+				var px = clamp(int(offset_in_tile.x), 0, tile_sz.x - 1)
+				var py = clamp(int(offset_in_tile.y), 0, tile_sz.y - 1)
+				
+				# 為了確保取到顏色，我們以該精準點為中心，取 2x2 的微小範圍 (4個像素)
 				var valid_pixels: Array[Color] = []
-				var samples = 4
-				for s in range(samples):
-					var rx = randi_range(region.position.x, region.end.x - 1)
-					var ry = randi_range(region.position.y, region.end.y - 1)
-					if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
-						var c := img.get_pixel(rx, ry)
-						# 提高 alpha 閾值 (0.1 -> 0.8)，避免取樣到 PNG 邊緣的高亮半透明像素 (常導致白色污染)
-						if c.a > 0.8:
-							c.a = 1.0 # 強制不透明
-							# 過濾掉極端接近純白的點 (極高機率是繪圖軟體的透明背景遺留雜訊)
-							if c.get_luminance() < 0.98:
-								valid_pixels.append(c)
-							
+				for dx in range(2):
+					for dy in range(2):
+						var rx = origin.x + clamp(px + dx, 0, tile_sz.x - 1)
+						var ry = origin.y + clamp(py + dy, 0, tile_sz.y - 1)
+						
+						if rx >= 0 and rx < img.get_width() and ry >= 0 and ry < img.get_height():
+							var c := img.get_pixel(rx, ry)
+							# 提高 alpha 閾值 (0.1 -> 0.8)，避免取樣到 PNG 邊緣的高亮半透明像素 (常導致白色污染)
+							if c.a > 0.8:
+								c.a = 1.0 # 強制不透明
+								# 過濾掉極端接近純白的點
+								if c.get_luminance() < 0.98:
+									valid_pixels.append(c)
+									
 				collected_colors.append_array(valid_pixels)
 
 	if collected_colors.is_empty():
