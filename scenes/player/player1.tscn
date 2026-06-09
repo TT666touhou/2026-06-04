@@ -14,11 +14,10 @@ size = Vector2(19.2, 2.4)
 
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
-speed = 120.0
-jump_velocity = -270.0
+speed = 60.0
 gravity = 480.0
 friction = 960.0
-air_friction_factor = 0.3
+jump_velocity = -191.0
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=659119027]
 texture_filter = 1
@@ -34,8 +33,7 @@ script = ExtResource("3_stambar")
 
 [node name="FloorCast" type="ShapeCast2D" parent="." unique_id=114271836]
 position = Vector2(0, 6)
-target_position = Vector2(0, 4)
 shape = SubResource("RectangleShape2D_floor")
-collision_mask = 1
+target_position = Vector2(0, 4)
 
-[node name="PlayerDust" parent="." instance=ExtResource("4_dust") unique_id=559034821]
+[node name="PlayerDust" parent="." unique_id=559034821 instance=ExtResource("4_dust")]

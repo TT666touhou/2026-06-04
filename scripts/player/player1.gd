@@ -43,7 +43,7 @@ extends CharacterBody2D
 # ── 蹬牆跳 ──────────────────────────────────────────────────────
 @export_group("Wall Jump")
 ## 蹬牆後向上的速度
-@export var wall_jump_vertical: float = -269.0
+@export var wall_jump_vertical: float = -268.7
 ## 蹬牆後離牆的水平速度
 @export var wall_jump_horizontal: float = 90.0
 ## 蹬牆後水平方向鎖定時間（防止馬上頂回去）
