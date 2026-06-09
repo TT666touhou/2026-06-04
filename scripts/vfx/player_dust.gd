@@ -23,19 +23,19 @@ var _scale_curve_tex: CurveTexture
 # ── TrailDust ────────────────────────────────────────────────
 @export_group("TrailDust")
 ## 粒子池大小（決定同時存在的最大粒子數）
-@export var trail_amount: int = 6
+@export var trail_amount: int = 15
 ## 粒子壽命（秒）—— 越長軌跡越長
 @export_range(0.2, 2.0, 0.01) var trail_lifetime: float = 0.35
 ## 粒子初速最小值（px/s）
-@export_range(0.0, 100.0, 1.0) var trail_vel_min: float = 10.0
+@export_range(0.0, 100.0, 1.0) var trail_vel_min: float = 15.0
 ## 粒子初速最大值（px/s）
-@export_range(0.0, 200.0, 1.0) var trail_vel_max: float = 30.0
+@export_range(0.0, 200.0, 1.0) var trail_vel_max: float = 40.0
 ## 重力（px/s²，讓方塊緩緩落下）
 @export_range(0.0, 400.0, 5.0) var trail_gravity: float = 150.0
 ## 最小方塊縮放（以 1x1 像素為基礎，1.0 = 1px）
-@export_range(1.0, 4.0, 0.5) var trail_scale_min: float = 1.0
+@export_range(1.0, 4.0, 0.5) var trail_scale_min: float = 1.5
 ## 最大方塊縮放
-@export_range(1.0, 6.0, 0.5) var trail_scale_max: float = 2.0
+@export_range(1.0, 6.0, 0.5) var trail_scale_max: float = 3.0
 ## 散射角度（度）
 @export_range(0.0, 120.0, 1.0) var trail_spread: float = 45.0
 ## 移動速度閾值（速度超過此值才發射軌跡）
@@ -66,8 +66,9 @@ var _scale_curve_tex: CurveTexture
 
 # ═══════════════════════════════════════════════════════════
 func _ready() -> void:
-	# 將特效節點向下偏移 6 像素（避免偏移到 8 像素導致生成在地板內部被遮擋）
-	position = Vector2(0, 6)
+	# 將特效節點向下偏移 7 像素，對齊腳底但略高於地磚，並設定 Z-Index 以免被遮蔽
+	position = Vector2(0, 7)
+	z_index = 1
 	
 	# 建立隨壽命縮小的曲線
 	var curve := Curve.new()
@@ -131,9 +132,9 @@ func _setup_burst() -> void:
 func set_trail_active(active: bool,
 					  color_ramp: GradientTexture1D = null,
 					  move_dir: float = 0.0) -> void:
-	# 根據移動方向調整軌跡粒子的噴出方向（更貼近地面 + 往後踢 + 往上揚避免被地板蓋住）
+	# 根據移動方向調整軌跡粒子的噴出方向（更貼近地面 + 往後踢）
 	if active and move_dir != 0.0:
-		var d := Vector3(-move_dir * 0.8, -0.8, 0.0).normalized()
+		var d := Vector3(-move_dir * 0.5, -0.8, 0.0).normalized()
 		_trail_mat.direction = d
 
 	if color_ramp:
