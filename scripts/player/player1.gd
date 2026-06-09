@@ -380,9 +380,23 @@ func _update_floor_ramp_cache() -> GradientTexture1D:
 	return _cached_floor_ramp
 
 func _get_floor_ramp() -> GradientTexture1D:
+	var contact_points: Array[Vector2] = []
+	var contact_normals: Array[Vector2] = []
+	
+	# 1. 優先使用真實的物理碰撞點 (包含 move_and_slide 觸發的蹬牆跳、落地等)
+	for i in get_slide_collision_count():
+		var col = get_slide_collision(i)
+		contact_points.append(col.get_position())
+		contact_normals.append(col.get_normal())
+		
+	# 2. 補充使用 FloorCast 確保隨時能抓到地板 (例如在地上跑但 y 軸沒有擠壓碰撞時)
 	_floor_cast.force_shapecast_update()
-	if not _floor_cast.is_colliding():
-		print("[VFX DUST] _floor_cast.is_colliding() == false. 使用預設灰塵。")
+	for i in _floor_cast.get_collision_count():
+		contact_points.append(_floor_cast.get_collision_point(i))
+		contact_normals.append(_floor_cast.get_collision_normal(i))
+		
+	if contact_points.is_empty():
+		print("[VFX DUST] 沒有任何物理碰撞或探測點。使用預設灰塵。")
 		return _fallback_ramp()
 
 	# 獲取場景中所有的 TileMapLayer (包含 Ground, Decor 等)
@@ -392,9 +406,9 @@ func _get_floor_ramp() -> GradientTexture1D:
 
 	var collected_colors: Array[Color] = []
 
-	for i in _floor_cast.get_collision_count():
-		var pt := _floor_cast.get_collision_point(i)
-		var n  := _floor_cast.get_collision_normal(i)
+	for i in range(contact_points.size()):
+		var pt := contact_points[i]
+		var n  := contact_normals[i]
 		# 物理內推，確保進入實體內部
 		var base_pt = pt - n * 2.0
 		
