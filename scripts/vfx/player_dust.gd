@@ -10,8 +10,11 @@ extends Node2D
 @onready var _trail: GPUParticles2D = $TrailDust
 @onready var _burst: GPUParticles2D = $BurstDust
 
-# ── 方塊貼圖（4×4 白色正方形，程式化生成）──────────────────
-var _square_tex: ImageTexture
+# ── 內部 ────────────────────────────────────────────────────
+var _trail_mat: ParticleProcessMaterial
+var _burst_mat:  ParticleProcessMaterial
+var _trail_active: bool = false   # 目前是否正在發射
+var _scale_curve_tex: CurveTexture
 
 # ═══════════════════════════════════════════════════════════
 # EXPORT 參數（Inspector 即時調整）
@@ -29,10 +32,10 @@ var _square_tex: ImageTexture
 @export_range(0.0, 200.0, 1.0) var trail_vel_max: float = 18.0
 ## 重力（px/s²，讓方塊緩緩落下）
 @export_range(0.0, 400.0, 5.0) var trail_gravity: float = 50.0
-## 最小方塊縮放（4px × scale = 實際大小）
-@export_range(0.05, 3.0, 0.05) var trail_scale_min: float = 0.5
+## 最小方塊縮放（以 1x1 像素為基礎，1.0 = 1px）
+@export_range(1.0, 4.0, 0.5) var trail_scale_min: float = 1.0
 ## 最大方塊縮放
-@export_range(0.05, 6.0, 0.05) var trail_scale_max: float = 2.5
+@export_range(1.0, 6.0, 0.5) var trail_scale_max: float = 3.0
 ## 散射角度（度）
 @export_range(0.0, 120.0, 1.0) var trail_spread: float = 65.0
 ## 移動速度閾值（速度超過此值才發射軌跡）
@@ -53,32 +56,29 @@ var _square_tex: ImageTexture
 ## 重力（px/s²）
 @export_range(0.0, 600.0, 10.0) var burst_gravity: float = 200.0
 ## 最小方塊縮放（比 Trail 更大）
-@export_range(0.1, 5.0, 0.05) var burst_scale_min: float = 2.0
+@export_range(1.0, 6.0, 0.5) var burst_scale_min: float = 2.0
 ## 最大方塊縮放
-@export_range(0.1, 10.0, 0.05) var burst_scale_max: float = 5.5
+@export_range(2.0, 12.0, 0.5) var burst_scale_max: float = 6.0
 ## 散射角度（度）
 @export_range(0.0, 120.0, 1.0) var burst_spread: float = 75.0
 
-# ── 內部 ────────────────────────────────────────────────────
-var _trail_mat: ParticleProcessMaterial
-var _burst_mat:  ParticleProcessMaterial
-var _trail_active: bool = false   # 目前是否正在發射
+
 
 # ═══════════════════════════════════════════════════════════
 func _ready() -> void:
-	_square_tex = _make_square_texture(4)
+	# 建立隨壽命縮小的曲線
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 1))
+	curve.add_point(Vector2(1, 0))
+	_scale_curve_tex = CurveTexture.new()
+	_scale_curve_tex.curve = curve
+
 	_setup_trail()
 	_setup_burst()
 
-# ── 生成 4×4 白色正方形貼圖 ──────────────────────────────────
-func _make_square_texture(px_size: int) -> ImageTexture:
-	var img := Image.create(px_size, px_size, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	return ImageTexture.create_from_image(img)
-
 # ── 初始化 TrailDust ─────────────────────────────────────────
 func _setup_trail() -> void:
-	_trail.texture      = _square_tex
+	_trail.texture      = null # 使用預設的 1x1 像素方塊
 	_trail.amount       = trail_amount
 	_trail.lifetime     = trail_lifetime
 	_trail.one_shot     = false
@@ -93,11 +93,12 @@ func _setup_trail() -> void:
 	_trail_mat.gravity              = Vector3(0.0, trail_gravity, 0.0)
 	_trail_mat.scale_min            = trail_scale_min
 	_trail_mat.scale_max            = trail_scale_max
+	_trail_mat.scale_curve          = _scale_curve_tex
 	_trail.process_material         = _trail_mat
 
 # ── 初始化 BurstDust ─────────────────────────────────────────
 func _setup_burst() -> void:
-	_burst.texture        = _square_tex
+	_burst.texture        = null
 	_burst.amount         = burst_amount
 	_burst.lifetime       = burst_lifetime
 	_burst.explosiveness  = burst_explosiveness
@@ -113,6 +114,7 @@ func _setup_burst() -> void:
 	_burst_mat.gravity              = Vector3(0.0, burst_gravity, 0.0)
 	_burst_mat.scale_min            = burst_scale_min
 	_burst_mat.scale_max            = burst_scale_max
+	_burst_mat.scale_curve          = _scale_curve_tex
 	_burst.process_material         = _burst_mat
 
 # ═══════════════════════════════════════════════════════════
@@ -124,14 +126,16 @@ func _setup_burst() -> void:
 ## floor_color : 地板採樣顏色（由 _get_floor_color() 傳入）
 ## move_dir    : 移動方向（1=右，-1=左），用於讓方塊往後飄
 func set_trail_active(active: bool,
-					  floor_color: Color = Color.GRAY,
+					  color_ramp: GradientTexture1D = null,
 					  move_dir: float = 0.0) -> void:
 	# 根據移動方向調整軌跡粒子的噴出方向（向上 + 略往反方向）
 	if active and move_dir != 0.0:
 		var d := Vector3(-move_dir * 0.25, -1.0, 0.0).normalized()
 		_trail_mat.direction = d
 
-	_trail.modulate = floor_color
+	if color_ramp:
+		_trail_mat.color_initial_ramp = color_ramp
+		_trail.modulate = Color.WHITE # 重置 node 的 modulate，避免雙重染色
 
 	# 僅在狀態改變時修改 emitting（避免每幀重設）
 	if active != _trail_active:
@@ -144,11 +148,15 @@ func set_trail_active(active: bool,
 ## floor_color    : 地板 / 牆壁 顏色
 func emit_burst(terrain_normal: Vector2,
 				launch_velocity: Vector2,
-				floor_color: Color) -> void:
+				color_ramp: GradientTexture1D = null) -> void:
 	# 計算粒子爆發主方向（velocity 在地形法線的反射）
 	var dir := _calc_burst_direction(terrain_normal, launch_velocity)
 	_burst_mat.direction = dir
-	_burst.modulate      = floor_color
+	
+	if color_ramp:
+		_burst_mat.color_initial_ramp = color_ramp
+		_burst.modulate = Color.WHITE
+		
 	_burst.restart()
 
 # ── 輔助：計算爆發方向 ───────────────────────────────────────

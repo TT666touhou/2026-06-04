@@ -112,13 +112,14 @@ var _facing: float = 1.0   # 1=右, -1=左
 # 地板顏色快取將（每 0.1s 更新一次，減少 ShapeCast 像素讀取频率）
 # ═══════════════════════════════════════════════════════════════
 const _FLOOR_COLOR_INTERVAL: float = 0.1
-var _cached_floor_color: Color = Color(0.65, 0.65, 0.65)
+var _cached_floor_ramp: GradientTexture1D
 var _floor_color_timer: float = 0.0
 
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
+	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
 
 # ═══════════════════════════════════════════════════════════════
@@ -231,7 +232,7 @@ func _do_normal_jump() -> void:
 	_was_ascending      = true
 	# BurstDust：地面起跳
 	if _was_on_floor:
-		_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_color)
+		_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_ramp)
 
 func _do_wall_jump() -> void:
 	var normal       := get_wall_normal()
@@ -244,7 +245,7 @@ func _do_wall_jump() -> void:
 	_jump_buffer_timer = 0.0
 	_consume_stamina()
 	# BurstDust：牆壁節屑，以牆壁法線做反射方向
-	_dust_vfx.emit_burst(normal, velocity, Color.GRAY)
+	_dust_vfx.emit_burst(normal, velocity, _fallback_ramp())
 
 func _do_double_jump() -> void:
 	# 動能重置：設回第一跳的初速（非疊加），確保二段跳高度 = 第一跳高度
@@ -299,7 +300,7 @@ func _handle_roll(delta: float) -> void:
 			_roll_cooldown = roll_cooldown
 			_consume_stamina()
 			# BurstDust：翻滾起軌
-			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_color)
+			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_ramp)
 
 # ═══════════════════════════════════════════════════════════════
 # 耐力系統
@@ -335,18 +336,18 @@ func _update_vfx(delta: float) -> void:
 	if on_floor and abs(velocity.x) > trail_speed_threshold_ref():
 		_floor_color_timer -= delta
 		if _floor_color_timer <= 0.0:
-			_cached_floor_color = _get_floor_color()
+			_cached_floor_ramp = _get_floor_ramp()
 			_floor_color_timer  = _FLOOR_COLOR_INTERVAL
 
 	# ── 幹跡煩塵：地面且移動時開啟 ─────────────────────────────────
 	var moving_on_floor: bool = on_floor and abs(velocity.x) > trail_speed_threshold_ref()
-	_dust_vfx.set_trail_active(moving_on_floor, _cached_floor_color, sign(velocity.x))
+	_dust_vfx.set_trail_active(moving_on_floor, _cached_floor_ramp, sign(velocity.x))
 
 	# ── 落地偵測：上一幀在空中，本幀觸地 → BurstDust ─────────────────
 	if not _was_on_floor and on_floor:
 		# 在空中有水平速度 OR 垂直速度超過閾値 = 瞬間爆發
 		if abs(velocity.x) > 10.0 or abs(velocity.y) > 80.0:
-			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_color)
+			_dust_vfx.emit_burst(Vector2.UP, velocity, _cached_floor_ramp)
 
 ## 輔助：取得 TrailDust 速度閾値（轉發至 PlayerDust export 參數）
 func trail_speed_threshold_ref() -> float:
@@ -357,13 +358,25 @@ func trail_speed_threshold_ref() -> float:
 	return 20.0
 
 # ═══════════════════════════════════════════════════════════════
-# 地板顏色採樣（ShapeCast2D → TileMapLayer Atlas 直接像素取樣）
+# 地板顏色比例採樣（ShapeCast2D → TileMapLayer Atlas 多點取樣）
 # ═══════════════════════════════════════════════════════════════
-func _get_floor_color() -> Color:
-	const _FALLBACK := Color(0.65, 0.65, 0.65)  # 灰色，無法採樣時使用
+var _fallback_tex: GradientTexture1D
+func _fallback_ramp() -> GradientTexture1D:
+	if _fallback_tex != null:
+		return _fallback_tex
+	var grad := Gradient.new()
+	grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	grad.offsets = PackedFloat32Array([0.0])
+	grad.colors = PackedColorArray([Color(0.65, 0.65, 0.65)])
+	_fallback_tex = GradientTexture1D.new()
+	_fallback_tex.gradient = grad
+	_fallback_tex.width = 16
+	return _fallback_tex
+
+func _get_floor_ramp() -> GradientTexture1D:
 	_floor_cast.force_shapecast_update()
 	if not _floor_cast.is_colliding():
-		return _FALLBACK
+		return _fallback_ramp()
 	for i in _floor_cast.get_collision_count():
 		var col := _floor_cast.get_collider(i)
 		if not col is TileMapLayer:
@@ -373,7 +386,11 @@ func _get_floor_color() -> Color:
 		var cell     := tilemap.local_to_map(local_pt)
 		var src_id   := tilemap.get_cell_source_id(cell)
 		if src_id < 0:
-			continue
+			# 向下找一格，避免邊緣誤差
+			cell.y += 1
+			src_id = tilemap.get_cell_source_id(cell)
+			if src_id < 0:
+				continue
 		var ts     := tilemap.tile_set
 		var source := ts.get_source(src_id) as TileSetAtlasSource
 		if source == null or source.texture == null:
@@ -382,10 +399,48 @@ func _get_floor_color() -> Color:
 		var tile_sz  := ts.tile_size
 		# 磚塊在 Atlas 貼圖中的左上角（考慮 margins 與 separation）
 		var origin   := source.margins + atlas_c * (tile_sz + source.separation)
-		var px       := origin.x + tile_sz.x / 2
-		var py       := origin.y + tile_sz.y / 2
 		var img      := source.texture.get_image()
 		if img == null:
 			continue  # 貼圖影像無法讀取（VRAM壓縮）→ 賭下一個碰撞體
-		return img.get_pixel(px, py)
-	return _FALLBACK
+			
+		# 4x4 取樣並統計頻率
+		var colors := []
+		for y in range(4):
+			for x in range(4):
+				var px = origin.x + int(tile_sz.x * (x + 0.5) / 4.0)
+				var py = origin.y + int(tile_sz.y * (y + 0.5) / 4.0)
+				var c = img.get_pixel(px, py)
+				if c.a > 0.1:
+					colors.append(c)
+		
+		if colors.is_empty():
+			continue
+			
+		var freq := {}
+		for c in colors:
+			var hex = c.to_html(false)
+			if not freq.has(hex):
+				freq[hex] = {"color": c, "count": 0}
+			freq[hex].count += 1
+			
+		var grad := Gradient.new()
+		grad.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+		var offsets := PackedFloat32Array()
+		var grad_colors := PackedColorArray()
+		
+		var curr_offset := 0.0
+		for key in freq:
+			var data = freq[key]
+			offsets.append(curr_offset)
+			grad_colors.append(data.color)
+			curr_offset += float(data.count) / float(colors.size())
+			
+		grad.offsets = offsets
+		grad.colors = grad_colors
+		
+		var tex := GradientTexture1D.new()
+		tex.gradient = grad
+		tex.width = 16
+		return tex
+		
+	return _fallback_ramp()
