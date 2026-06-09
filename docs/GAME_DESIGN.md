@@ -24,6 +24,7 @@
 | 戰鬥系統 | [DRAFT] | 2026-06-06 |
 | 音效/音樂 | [DRAFT] | 2026-06-06 |
 | 技術限制 | [DRAFT] | 2026-06-06 |
+| **VFX 視覺特效系統** | **[CONFIRMED]** | **2026-06-09** |
 
 ---
 
@@ -243,6 +244,45 @@
 | MRMOTEXT 染色版（34色） | `assets/tilesets/mrmotext/colored/` | 顏色變體 |
 | VfxMix | `assets/vfxmix/` | 全套特效資源 |
 | VfxMix 調色盤 | `assets/vfxmix/palette.pal` | 34色標準調色盤 |
+
+---
+
+## ✨ VFX 視覺特效系統 [CONFIRMED]
+
+### PlayerDust — 玩家行動煙塵特效
+
+#### BrickDebris（磚塊碎片）[CONFIRMED]
+
+| 項目 | 規格 |
+|---|---|
+| 素材 | `assets/vfxmix/particle/brick_gray.png`（144×22，**6幀**，每幀 24×22px） |
+| 觸發條件 | 消耗耐力的地形接觸動作：正常跳躍、翻滾（Shift）、蹬牆跳 |
+| 地形接觸要求 | is_on_floor（跳/翻滾）或 is_on_wall（蹬牆）|
+| 排除條件 | 二段跳（空中無地形接觸） |
+| 飛出方向 | 地板法線反射：`velocity.bounce(terrain_normal)` |
+| 顏色 | ShapeCast2D 採樣脚底磚塊中心像素，fallback 為灰色 |
+| 粒子數 | 6 |
+| 壽命 | 0.45s |
+| 旋轉 | 每顆粒子隨機角速，产生在空中翻滾動感 |
+
+#### DustCloud（落地煙塵雲）[CONFIRMED]
+
+| 項目 | 規格 |
+|---|---|
+| 素材 | 程式化圓點粒子（無貼圖） |
+| 觸發條件 | 落地瞬間 `not _was_on_floor and is_on_floor()` 且 `abs(velocity.x) > 10` |
+| 顏色 | 固定灰色 `#AAAAAA` |
+| 排除條件 | 衿落（velocity.x 接近零）、翻滾落地 |
+| 飛出方向 | 略寬扇形向上，隔平地面 |
+| 粒子數 | 12 |
+| 壽命 | 0.5s |
+
+#### 地板顏色偵測 [CONFIRMED]
+
+- 使用 `ShapeCast2D`（矩形 10×2px，向下 4px）
+- 取 TileMapLayer Atlas 貼圖磚塊中心像素顏色
+- **不需要修改 TileSet**
+- fallback：`Color(0.65, 0.65, 0.65)`
 
 ---
 
