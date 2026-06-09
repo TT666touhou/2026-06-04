@@ -83,7 +83,7 @@ func _apply_limits() -> void:
 	limit_bottom = int(_lim_bottom.global_position.y)  if _lim_bottom != null else  10_000_000
 
 # ═══════════════════════════════════════════════════════════════
-# 每幀更新：追蹤 Player + 前瞻偏移
+# 每幀更新：追蹤 Player + 前瞻偏移（含手動 limit clamp）
 # ═══════════════════════════════════════════════════════════════
 func _process(delta: float) -> void:
 	if _player == null:
@@ -99,6 +99,32 @@ func _process(delta: float) -> void:
 	var target_look := _facing * look_ahead_tiles * 8.0
 	_look_offset     = lerp(_look_offset, target_look, delta * look_ahead_speed)
 
-	# 追蹤 Player 位置
-	global_position = _player.global_position
-	offset          = Vector2(_look_offset, vertical_offset)
+	# ── 計算理想視窗中心（player 位置 + 所有偏移）────────────────
+	var cx: float = _player.global_position.x + _look_offset
+	var cy: float = _player.global_position.y + vertical_offset
+
+	# ── 取得視窗半尺寸（世界單位）────────────────────────────────
+	var vp      := get_viewport().get_visible_rect().size
+	var half_w  := vp.x / (2.0 * zoom.x)
+	var half_h  := vp.y / (2.0 * zoom.y)
+
+	# ── 手動 clamp：確保 viewport 邊緣不超出 limit ───────────────
+	# 水平
+	var l_min_x := float(limit_left)  + half_w
+	var l_max_x := float(limit_right) - half_w
+	if l_min_x <= l_max_x:
+		cx = clamp(cx, l_min_x, l_max_x)
+	else:
+		# limit 範圍比視窗小：置中顯示
+		cx = (float(limit_left) + float(limit_right)) * 0.5
+	# 垂直
+	var l_min_y := float(limit_top)    + half_h
+	var l_max_y := float(limit_bottom) - half_h
+	if l_min_y <= l_max_y:
+		cy = clamp(cy, l_min_y, l_max_y)
+	else:
+		cy = (float(limit_top) + float(limit_bottom)) * 0.5
+
+	# ── 直接以 clamped center 設定攝影機位置，offset 歸零 ────────
+	global_position = Vector2(cx, cy)
+	offset          = Vector2.ZERO
