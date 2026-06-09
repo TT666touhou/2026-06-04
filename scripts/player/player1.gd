@@ -382,15 +382,15 @@ func _get_floor_ramp() -> GradientTexture1D:
 		if not col is TileMapLayer:
 			continue
 		var tilemap  := col as TileMapLayer
-		var local_pt := tilemap.to_local(_floor_cast.get_collision_point(i))
+		var pt := _floor_cast.get_collision_point(i)
+		var n  := _floor_cast.get_collision_normal(i)
+		# 將採樣點往法線反方向（物體內部）推進 2 像素，徹底解決邊緣取樣到空磚塊的浮點數誤差
+		pt -= n * 2.0
+		var local_pt := tilemap.to_local(pt)
 		var cell     := tilemap.local_to_map(local_pt)
 		var src_id   := tilemap.get_cell_source_id(cell)
 		if src_id < 0:
-			# 向下找一格，避免邊緣誤差
-			cell.y += 1
-			src_id = tilemap.get_cell_source_id(cell)
-			if src_id < 0:
-				continue
+			continue
 		var ts     := tilemap.tile_set
 		var source := ts.get_source(src_id) as TileSetAtlasSource
 		if source == null or source.texture == null:
