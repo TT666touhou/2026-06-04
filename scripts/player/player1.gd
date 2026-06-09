@@ -403,8 +403,27 @@ func _get_floor_ramp() -> GradientTexture1D:
 		print("[VFX DUST] 推移後座標 pt: ", pt, ", 轉換地圖格 cell: ", cell, ", 資源 src_id: ", src_id)
 		
 		if src_id < 0:
-			print("[VFX DUST] 該格 (src_id < 0) 為空磁磚，跳過此次採樣。")
-			continue
+			# 因為剛好踩在磁磚交界處（切線方向的浮點數誤差），往切線方向尋找相鄰實體磚
+			var found := false
+			var offsets := []
+			if abs(n.y) > abs(n.x):
+				offsets = [Vector2i(1, 0), Vector2i(-1, 0)] # 地板/天花板，找左右
+			else:
+				offsets = [Vector2i(0, 1), Vector2i(0, -1)] # 牆壁，找上下
+				
+			for offset in offsets:
+				var neighbor_cell = cell + offset
+				var check_id = tilemap.get_cell_source_id(neighbor_cell)
+				if check_id >= 0:
+					cell = neighbor_cell
+					src_id = check_id
+					found = true
+					print("[VFX DUST] 切線邊緣校正成功！改用相鄰實體格: ", cell)
+					break
+					
+			if not found:
+				print("[VFX DUST] 該格與相鄰切線格皆為空磁磚，跳過此次採樣。")
+				continue
 			
 		var ts     := tilemap.tile_set
 		var source := ts.get_source(src_id) as TileSetAtlasSource
