@@ -1,19 +1,39 @@
-[gd_scene format=3 uid="uid://dln827yoptipy"]
+[gd_scene load_steps=8 format=3 uid="uid://enemy3id0000000"]
 
-[ext_resource type="TileSet" uid="uid://d2qfp8a4t5xh2" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_spyje"]
+[ext_resource type="Script" path="res://scripts/enemy/enemy3.gd" id="1_script"]
+[ext_resource type="Resource" path="res://resources/enemy/basic_enemy_stats.tres" id="2_stats"]
+[ext_resource type="Texture2D" uid="uid://d0xm7n7xmox5q" path="res://assets/tilesets/mrmotext/MRMOTEXT_EX.png" id="3_texture"]
+[ext_resource type="PackedScene" uid="uid://bulletid00000" path="res://scenes/enemy/Bullet.tscn" id="4_bullet"]
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dqbur"]
-radius = 7.015744
-height = 15.997763
+[sub_resource type="AtlasTexture" id="AtlasTexture_appearance"]
+atlas = ExtResource("3_texture")
+region = Rect2(24, 16, 8, 8)
 
-[node name="Enemy3" type="CharacterBody2D" unique_id=1977865432]
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 4.0
 
-[node name="Appearance" type="TileMapLayer" parent="." unique_id=1153893746]
+[sub_resource type="CircleShape2D" id="CircleShape2D_detect"]
+radius = 300.0
+
+[node name="Enemy3" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+motion_mode = 1
+script = ExtResource("1_script")
+stats = ExtResource("2_stats")
+bullet_scene = ExtResource("4_bullet")
+
+[node name="Appearance" type="Sprite2D" parent="."]
+unique_name_in_owner = true
 texture_filter = 1
-texture_repeat = 1
-tile_map_data = PackedByteArray(0, 0, 0, 0, 255, 255, 44, 0, 10, 0, 15, 0, 0, 32, 255, 255, 255, 255, 32, 0, 6, 0, 21, 0, 0, 0, 255, 255, 0, 0, 28, 0, 10, 0, 19, 0, 0, 32, 0, 0, 0, 0, 28, 0, 11, 0, 17, 0, 0, 0)
-tile_set = ExtResource("1_spyje")
+texture = SubResource("AtlasTexture_appearance")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1270304979]
-rotation = -1.554072
-shape = SubResource("CapsuleShape2D_dqbur")
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="PlayerDetector" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetector"]
+shape = SubResource("CircleShape2D_detect")
