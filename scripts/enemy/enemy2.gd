@@ -4,7 +4,7 @@ enum State { PATROL, TELEGRAPH, SHOOT, COOLDOWN }
 
 @export var stats: EnemyStats
 @export var attack_range: float = 160.0
-@export var telegraph_duration: float = 0.8
+@export var telegraph_duration: float = 2.5
 @export var shoot_duration: float = 0.3
 @export var cooldown_duration: float = 1.2
 
@@ -86,19 +86,21 @@ func _process_telegraph(delta: float) -> void:
 	# 更新紅色瞄準警告線
 	var player = get_tree().current_scene.find_child("Player1", true, false)
 	if player:
-		# 警告線動態鎖定玩家中心
-		var local_player_pos = to_local(player.global_position)
-		warning_line.points = [Vector2.ZERO, local_player_pos]
+		# 發射前 1.5 秒就該停止追蹤。因此當 state_timer > 1.5 時，瞄準線跟隨玩家
+		if state_timer > 1.5:
+			target_laser_point = player.global_position
+			
+		var local_laser_pos = to_local(target_laser_point)
+		warning_line.points = [Vector2.ZERO, local_laser_pos]
 		warning_line.visible = true
 	else:
-		warning_line.visible = false
+		# 如果沒有玩家，若在追蹤期內則設為前方預設位置
+		if state_timer > 1.5:
+			target_laser_point = global_position + Vector2(direction * attack_range, 0)
+		var local_laser_pos = to_local(target_laser_point)
+		warning_line.points = [Vector2.ZERO, local_laser_pos]
 		
 	if state_timer <= 0.0:
-		if player:
-			# 鎖定射擊方向
-			target_laser_point = player.global_position
-		else:
-			target_laser_point = global_position + Vector2(direction * attack_range, 0)
 		_change_state(State.SHOOT)
 
 func _process_shoot(_delta: float) -> void:
@@ -150,6 +152,12 @@ func _change_state(new_state: State) -> void:
 		State.TELEGRAPH:
 			state_timer = telegraph_duration
 			warning_line.visible = true
+			# 當進入預警狀態時，先立刻將 target_laser_point 設為當前玩家的位置
+			var player = get_tree().current_scene.find_child("Player1", true, false)
+			if player:
+				target_laser_point = player.global_position
+			else:
+				target_laser_point = global_position + Vector2(direction * attack_range, 0)
 		State.SHOOT:
 			state_timer = shoot_duration
 			damage_dealt_this_shot = false
