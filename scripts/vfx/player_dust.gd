@@ -23,7 +23,7 @@ var _scale_curve_tex: CurveTexture
 # ── TrailDust ────────────────────────────────────────────────
 @export_group("TrailDust")
 ## 粒子池大小（決定同時存在的最大粒子數）
-@export var trail_amount: int = 6
+@export var trail_amount: int = 15
 ## 粒子壽命（秒）—— 越長軌跡越長
 @export_range(0.2, 2.0, 0.01) var trail_lifetime: float = 0.35
 ## 粒子初速最小值（px/s）
@@ -33,9 +33,9 @@ var _scale_curve_tex: CurveTexture
 ## 重力（px/s²，讓方塊緩緩落下）
 @export_range(0.0, 400.0, 5.0) var trail_gravity: float = 150.0
 ## 最小方塊縮放（以 1x1 像素為基礎，1.0 = 1px）
-@export_range(1.0, 4.0, 0.5) var trail_scale_min: float = 1.0
+@export_range(1.0, 4.0, 0.5) var trail_scale_min: float = 2.0
 ## 最大方塊縮放
-@export_range(1.0, 6.0, 0.5) var trail_scale_max: float = 2.0
+@export_range(1.0, 6.0, 0.5) var trail_scale_max: float = 4.0
 ## 散射角度（度）
 @export_range(0.0, 120.0, 1.0) var trail_spread: float = 45.0
 ## 移動速度閾值（速度超過此值才發射軌跡）
@@ -78,12 +78,16 @@ func _ready() -> void:
 	_scale_curve_tex = CurveTexture.new()
 	_scale_curve_tex.curve = curve
 
-	_setup_trail()
-	_setup_burst()
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(Color.WHITE)
+	var tex := ImageTexture.create_from_image(img)
+
+	_setup_trail(tex)
+	_setup_burst(tex)
 
 # ── 初始化 TrailDust ─────────────────────────────────────────
-func _setup_trail() -> void:
-	_trail.texture      = null # 使用預設的 1x1 像素方塊
+func _setup_trail(tex: Texture2D) -> void:
+	_trail.texture      = tex
 	_trail.amount       = trail_amount
 	_trail.lifetime     = trail_lifetime
 	_trail.one_shot     = false
@@ -102,8 +106,8 @@ func _setup_trail() -> void:
 	_trail.process_material         = _trail_mat
 
 # ── 初始化 BurstDust ─────────────────────────────────────────
-func _setup_burst() -> void:
-	_burst.texture        = null
+func _setup_burst(tex: Texture2D) -> void:
+	_burst.texture        = tex
 	_burst.amount         = burst_amount
 	_burst.lifetime       = burst_lifetime
 	_burst.explosiveness  = burst_explosiveness

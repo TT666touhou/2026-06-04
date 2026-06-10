@@ -144,10 +144,11 @@ func _physics_process(delta: float) -> void:
 		_handle_horizontal(delta)
 
 	# 6. 物理移動
+	var pre_move_vel_y := velocity.y
 	move_and_slide()
 
 	# 6.5. VFX 更新
-	_update_vfx(delta)
+	_update_vfx(delta, pre_move_vel_y)
 
 	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
@@ -163,7 +164,7 @@ func _physics_process(delta: float) -> void:
 # 重力
 # ═══════════════════════════════════════════════════════════════
 func _apply_gravity(delta: float) -> void:
-	if not is_on_floor() and not _is_rolling:
+	if not is_on_floor():
 		velocity.y += gravity * delta
 
 # ═══════════════════════════════════════════════════════════════
@@ -231,8 +232,6 @@ func _do_normal_jump() -> void:
 	_can_double_jump    = true
 	_apex_jump_buffered = false
 	_was_ascending      = true
-	_is_rolling         = false
-	is_invincible       = false
 	# BurstDust：地面起跳（強制立即採樣目前地板顏色）
 	if _was_on_floor:
 		_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
@@ -246,8 +245,6 @@ func _do_wall_jump() -> void:
 	_apex_jump_buffered = false
 	_was_ascending    = true
 	_jump_buffer_timer = 0.0
-	_is_rolling        = false
-	is_invincible      = false
 	_consume_stamina()
 	# BurstDust：牆壁節屑，以牆壁法線做反射方向，並從擴大的 FloorCast 採樣牆壁顏色
 	_dust_vfx.emit_burst(normal, velocity, _get_floor_ramp())
@@ -258,8 +255,6 @@ func _do_double_jump() -> void:
 	_can_double_jump    = false
 	_apex_jump_buffered = false
 	_was_ascending      = true   # 二段跳後重新上升
-	_is_rolling         = false
-	is_invincible       = false
 	_consume_stamina()
 
 # ═══════════════════════════════════════════════════════════════
@@ -299,13 +294,12 @@ func _handle_roll(delta: float) -> void:
 			_is_rolling  = false
 			is_invincible = false
 	else:
-		# 觸發翻滾：有冷卻時間 + 有耐力（空中/地面皆可）
-		if Input.is_action_just_pressed("roll") \
+		# 觸發翻滾：地面 + 有冷卻時間 + 有耐力
+		if Input.is_action_just_pressed("roll") and is_on_floor() \
 		   and _roll_cooldown <= 0.0 and _has_stamina():
 			_is_rolling    = true
 			_roll_timer    = roll_duration
 			_roll_cooldown = roll_cooldown
-			velocity.y     = 0.0 # 起步時重置垂直速度（讓空中衝刺平穩，且允許中途跳躍）
 			_consume_stamina()
 			# BurstDust：翻滾起軌（強制立即採樣目前地板顏色）
 			_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
@@ -337,7 +331,7 @@ func _update_stamina_ui() -> void:
 # ═══════════════════════════════════════════════════════════════
 # VFX 更新（對正 move_and_slide 後的狀態）
 # ═══════════════════════════════════════════════════════════════
-func _update_vfx(delta: float) -> void:
+func _update_vfx(delta: float, pre_move_vel_y: float) -> void:
 	var on_floor := is_on_floor()
 
 	# ── 地板顏色快取：地面且移動時每 0.1s 更新 ────────────────────
@@ -351,10 +345,10 @@ func _update_vfx(delta: float) -> void:
 	var moving_on_floor: bool = on_floor and abs(velocity.x) > trail_speed_threshold_ref()
 	_dust_vfx.set_trail_active(moving_on_floor, _cached_floor_ramp, sign(velocity.x))
 
-	# ── 落地偵測：上一幀在空中，本幀觸地 → BurstDust ─────────────────
+	# ── 落地偵測（上一幀在空中，本幀觸地）→ BurstDust ─────────────────
 	if not _was_on_floor and on_floor:
-		# 在空中有水平速度 OR 垂直速度超過閾値 = 瞬間爆發（強制立即採樣目前地板顏色）
-		if abs(velocity.x) > 10.0 or abs(velocity.y) > 80.0:
+		# 在空中有水平速度 OR 垂直速度達閾值 = 瞬間爆發（強制立即採樣目前地板顏色）
+		if abs(velocity.x) > 10.0 or pre_move_vel_y > 40.0:
 			_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
 
 ## 輔助：取得 TrailDust 速度閾値（轉發至 PlayerDust export 參數）
