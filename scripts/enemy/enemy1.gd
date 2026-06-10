@@ -47,6 +47,7 @@ func _physics_process(delta: float) -> void:
 			# 射線阻擋檢測 (Mask 1 = 地形/牆壁)
 			var space_state = get_world_2d().direct_space_state
 			var query = PhysicsRayQueryParameters2D.create(global_position, player.global_position, 1)
+			query.exclude = [get_rid(), player.get_rid()]
 			var result = space_state.intersect_ray(query)
 			
 			if result.is_empty():
