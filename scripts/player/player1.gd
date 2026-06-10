@@ -628,4 +628,3 @@ func _handle_invincibility(delta: float) -> void:
 	else:
 		if _visual_pivot and _visual_pivot.modulate.a != 1.0:
 			_visual_pivot.modulate.a = 1.0
-

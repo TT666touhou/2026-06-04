@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://dg32y28u3vj3"]
+[gd_scene format=3 uid="uid://dg32y28u3vj3"]
 
 [ext_resource type="Script" path="res://scripts/enemy/bullet.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://c4osqrsnd0d5j" path="res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png" id="2_tex"]
