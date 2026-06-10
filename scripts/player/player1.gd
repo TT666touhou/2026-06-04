@@ -5,15 +5,12 @@ extends CharacterBody2D
 ##   jump                   → Space / W / ↑（跳躍 + Apex 二段跳）
 ##   roll                   → Shift（翻滾）
 
+signal health_changed(current_hp: int, max_hp: int)
+signal died()
+
 # ═══════════════════════════════════════════════════════════════
 # EXPORT 參數（全部可在 Inspector 即時調整）
 # ═══════════════════════════════════════════════════════════════
-
-@export_group("Stats")
-@export var max_health: int = 3
-var current_health: int = 3
-var invulnerable: bool = false
-var hud_instance: CanvasLayer
 
 # ── 移動 ────────────────────────────────────────────────────────
 @export_group("Movement")
@@ -89,6 +86,12 @@ var hud_instance: CanvasLayer
 ## 最大傾斜角度（度）
 @export var sway_max_angle: float = 25.0
 
+# ── 戰鬥 (Combat) ────────────────────────────────────────────────
+@export_group("Combat")
+@export var max_health: int = 3
+var current_health: int = 3
+var invincible: bool = false
+
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
@@ -96,7 +99,6 @@ var hud_instance: CanvasLayer
 @onready var _dust_vfx:   Node2D      = $PlayerDust
 @onready var _floor_cast: ShapeCast2D = $FloorCast
 @onready var _visual_pivot: Node2D    = $VisualPivot
-@onready var appearance: Node2D       = $VisualPivot # 假設視覺層在 pivot 下
 
 # ═══════════════════════════════════════════════════════════════
 # 內部狀態
@@ -141,22 +143,15 @@ const _FLOOR_COLOR_INTERVAL: float = 0.1
 var _cached_floor_ramp: GradientTexture1D
 var _floor_color_timer: float = 0.0
 var _atlas_cache: Dictionary = {}
-var default_gravity: float
 
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
-	default_gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
-	_cached_floor_ramp = _fallback_ramp()
-	_stamina = max_stamina
 	current_health = max_health
 	
-	# 初始化 HUD
-	var hud_scene = preload("res://scenes/ui/HUD.tscn")
-	if hud_scene:
-		hud_instance = hud_scene.instantiate()
-		add_child(hud_instance)
+	if not Engine.is_editor_hint():_cached_floor_ramp = _fallback_ramp()
+	_stamina = max_stamina
 
 # ═══════════════════════════════════════════════════════════════
 # 物理更新主迴圈（標準順序）
@@ -597,34 +592,3 @@ func _get_floor_ramp() -> GradientTexture1D:
 	out_tex.width = 16
 	print("[VFX DUST] 全局十字探測成功！混合了 ", display_colors.size(), " 種顏色。")
 	return out_tex
-
-# ── 戰鬥系統 (Combat) ────────────────────────────────────────────────
-func take_damage(amount: int) -> void:
-	if invulnerable or current_health <= 0:
-		return
-		
-	current_health -= amount
-	current_health = max(0, current_health)
-	
-	if hud_instance:
-		hud_instance.update_health(current_health, max_health)
-		
-	if current_health <= 0:
-		die()
-	else:
-		# 觸發受擊無敵與特效
-		invulnerable = true
-		
-		# 半透明閃爍特效
-		var tween = create_tween()
-		tween.set_loops(5) # 閃爍5次 (總共約1秒)
-		tween.tween_property(appearance, "modulate:a", 0.3, 0.1)
-		tween.tween_property(appearance, "modulate:a", 1.0, 0.1)
-		
-		await get_tree().create_timer(1.0).timeout
-		invulnerable = false
-
-func die() -> void:
-	print("Player Died!")
-	# 可加上死亡動畫或重新載入場景邏輯
-	get_tree().reload_current_scene()
