@@ -1,12 +1,18 @@
-[gd_scene format=3 uid="uid://ckwaiokq8idid"]
+[gd_scene load_steps=6 format=3 uid="uid://ckwaiokq8idid"]
 
 [ext_resource type="TileSet" uid="uid://d2qfp8a4t5xh2" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_n7yhm"]
+[ext_resource type="Script" path="res://scripts/enemy/enemy2.gd" id="2_script"]
+[ext_resource type="Resource" path="res://resources/enemy/basic_enemy_stats.tres" id="3_stats"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dqbur"]
 radius = 7.015744
 height = 15.997763
 
 [node name="Enemy2" type="CharacterBody2D" unique_id=1977865432]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("2_script")
+stats = ExtResource("3_stats")
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=1153893746]
 texture_filter = 1
@@ -17,3 +23,23 @@ tile_set = ExtResource("1_n7yhm")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1270304979]
 rotation = -1.554072
 shape = SubResource("CapsuleShape2D_dqbur")
+
+[node name="WallDetector" type="RayCast2D" parent="."]
+target_position = Vector2(-14, 0)
+
+[node name="LaserRaycast" type="RayCast2D" parent="."]
+target_position = Vector2(-160, 0)
+collision_mask = 3
+
+[node name="WarningLine" type="Line2D" parent="."]
+visible = false
+width = 1.0
+
+[node name="LaserOuter" type="Line2D" parent="."]
+visible = false
+width = 4.0
+
+[node name="LaserInner" type="Line2D" parent="."]
+visible = false
+width = 1.5
+
