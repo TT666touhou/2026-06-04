@@ -80,7 +80,7 @@ func take_damage(damage: int) -> void:
 	print("Enemy1 took %d damage! Health remaining: %d" % [damage, current_health])
 	
 	# 簡單受擊視覺回饋 (可選)
-	var tween = create_tween()
+	var tween: Tween = create_tween()
 	appearance.modulate = Color(10, 10, 10, 1) # 閃白
 	tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
 	

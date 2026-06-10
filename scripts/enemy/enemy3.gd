@@ -121,7 +121,7 @@ func take_damage(damage: int) -> void:
 	current_health -= damage
 	print("Enemy3 took %d damage! HP: %d" % [damage, current_health])
 	
-	var tween = create_tween()
+	var tween: Tween = create_tween()
 	appearance.modulate = Color(10, 10, 10, 1) # 閃白
 	tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
 	
