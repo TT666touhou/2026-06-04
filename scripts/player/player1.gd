@@ -5,8 +5,6 @@ extends CharacterBody2D
 ##   jump                   → Space / W / ↑（跳躍 + Apex 二段跳）
 ##   roll                   → Shift（翻滾）
 
-signal health_changed(current_hp: int, max_hp: int)
-
 # ═══════════════════════════════════════════════════════════════
 # EXPORT 參數（全部可在 Inspector 即時調整）
 # ═══════════════════════════════════════════════════════════════
@@ -85,12 +83,6 @@ signal health_changed(current_hp: int, max_hp: int)
 ## 最大傾斜角度（度）
 @export var sway_max_angle: float = 25.0
 
-# ── 戰鬥 (Combat) ────────────────────────────────────────────────
-@export_group("Combat")
-@export var max_health: int = 3
-var current_health: int = 3
-var invincible: bool = false
-
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
@@ -147,15 +139,7 @@ var _atlas_cache: Dictionary = {}
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
-	current_health = max_health
-	
-	var PlayerHUDClass = preload("res://scripts/ui/player_hud.gd")
-	var hud = PlayerHUDClass.new()
-	add_child(hud)
-	health_changed.connect(hud.update_health)
-	
-	if not Engine.is_editor_hint():
-		_cached_floor_ramp = _fallback_ramp()
+	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
 
 # ═══════════════════════════════════════════════════════════════

@@ -1,76 +1,58 @@
 extends CharacterBody2D
 
-@export var stats: Resource
+@export var stats: EnemyStats
 
-@onready var appearance: Node2D = %Appearance if has_node("%Appearance") else self
-@onready var wall_detector: RayCast2D = $WallDetector if has_node("WallDetector") else RayCast2D.new()
-@onready var ledge_detector: RayCast2D = $LedgeDetector if has_node("LedgeDetector") else RayCast2D.new()
-@onready var player_detector: RayCast2D = RayCast2D.new()
+@onready var appearance: TileMapLayer = %Appearance
+@onready var wall_detector: RayCast2D = $WallDetector
+@onready var ledge_detector: RayCast2D = $LedgeDetector
 
-var StateMachineClass = preload("res://scripts/state_machine/state_machine.gd")
-var PatrolStateClass = preload("res://scripts/enemy/enemy1/enemy1_patrol_state.gd")
-var NoticeStateClass = preload("res://scripts/enemy/enemy1/enemy1_notice_state.gd")
-var ChargeStateClass = preload("res://scripts/enemy/enemy1/enemy1_charge_state.gd")
-
-var state_machine
-
+# 取得重力
 var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 
 var current_health: int = 1
-var direction: float = -1.0
+var direction: float = -1.0 # 初始往左走
 
 func _ready() -> void:
-	if not has_node("WallDetector"):
-		add_child(wall_detector)
-	if not has_node("LedgeDetector"):
-		add_child(ledge_detector)
-		
-	if stats and "max_health" in stats:
+	if stats:
 		current_health = stats.max_health
+
+func _physics_process(delta: float) -> void:
+	# 1. 處理重力
+	if not is_on_floor():
+		velocity.y += gravity * delta
 		
-	player_detector.target_position = Vector2(-100, 0)
-	player_detector.collision_mask = 2
-	add_child(player_detector)
+	# 2. 邊緣與牆壁偵測 (若在地面上才判定)
+	if is_on_floor():
+		wall_detector.force_raycast_update()
+		ledge_detector.force_raycast_update()
+		if wall_detector.is_colliding() or is_on_wall() or not ledge_detector.is_colliding():
+			_turn_around()
+			
+	# 3. 水平移動
+	var move_speed = stats.speed if stats else 50.0
+	velocity.x = direction * move_speed
 	
-	state_machine = StateMachineClass.new()
-	state_machine.name = "StateMachine"
-	
-	var patrol = PatrolStateClass.new()
-	patrol.name = "PatrolState"
-	state_machine.add_child(patrol)
-	
-	var notice = NoticeStateClass.new()
-	notice.name = "NoticeState"
-	state_machine.add_child(notice)
-	
-	var charge = ChargeStateClass.new()
-	charge.name = "ChargeState"
-	state_machine.add_child(charge)
-	
-	state_machine.initial_state = patrol.get_path()
-	add_child(state_machine)
-	state_machine.init(self)
+	move_and_slide()
 
-func _physics_process(_delta: float) -> void:
-	pass
-
-func turn_around() -> void:
+func _turn_around() -> void:
 	direction *= -1.0
+	# 確保判定射線朝向與移動方向一致 (加長射線到 14，確保它能穿透邊界提早碰到牆壁)
 	wall_detector.target_position.x = 14.0 * direction
 	ledge_detector.position.x = 10.0 * direction
-	player_detector.target_position.x = 100.0 * direction
-	if appearance and "scale" in appearance:
-		appearance.scale.x = -direction
+	appearance.scale.x = -direction # 假設原本向左(scale.x=1)，向右時(scale.x=-1)
 
 func take_damage(damage: int) -> void:
 	current_health -= damage
+	print("Enemy1 took %d damage! Health remaining: %d" % [damage, current_health])
+	
+	# 簡單受擊視覺回饋 (可選)
 	var tween = create_tween()
-	if appearance and "modulate" in appearance:
-		appearance.modulate = Color(10, 10, 10, 1)
-		tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
+	appearance.modulate = Color(10, 10, 10, 1) # 閃白
+	tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
 	
 	if current_health <= 0:
 		die()
 
 func die() -> void:
+	print("Enemy1 died!")
 	queue_free()
