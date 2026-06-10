@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://qp735yrnv0g0"]
+
+[ext_resource type="TileSet" uid="uid://d2qfp8a4t5xh2" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_dqbur"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dqbur"]
+radius = 7.9988813
+height = 23.963196
+
+[node name="Enemy1" type="CharacterBody2D" unique_id=1977865432]
+
+[node name="Appearance" type="TileMapLayer" parent="." unique_id=1153893746]
+texture_filter = 1
+texture_repeat = 1
+tile_map_data = PackedByteArray(0, 0, 255, 255, 255, 255, 21, 0, 4, 0, 10, 0, 0, 0, 1, 0, 255, 255, 28, 0, 10, 0, 0, 0, 0, 0, 0, 0, 255, 255, 28, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 3, 0, 7, 0, 0, 0, 255, 255, 0, 0, 21, 0, 3, 0, 7, 0, 0, 0)
+tile_set = ExtResource("1_dqbur")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1270304979]
+position = Vector2(2, 0)
+rotation = -1.554072
+shape = SubResource("CapsuleShape2D_dqbur")

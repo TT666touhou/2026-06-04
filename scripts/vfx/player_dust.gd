@@ -14,7 +14,10 @@ extends Node2D
 var _trail_mat: ParticleProcessMaterial
 var _burst_mat:  ParticleProcessMaterial
 var _trail_active: bool = false   # 目前是否正在發射
-var _scale_curve_tex: CurveTexture
+
+var _trail_scale_curve_tex: CurveTexture
+var _burst_scale_curve_tex: CurveTexture
+var _alpha_ramp: GradientTexture1D
 
 # ═══════════════════════════════════════════════════════════
 # EXPORT 參數（Inspector 即時調整）
@@ -25,42 +28,42 @@ var _scale_curve_tex: CurveTexture
 ## 粒子池大小（決定同時存在的最大粒子數）
 @export var trail_amount: int = 15
 ## 粒子壽命（秒）—— 越長軌跡越長
-@export_range(0.2, 2.0, 0.01) var trail_lifetime: float = 0.35
+@export_range(0.2, 2.0, 0.01) var trail_lifetime: float = 0.6
 ## 粒子初速最小值（px/s）
-@export_range(0.0, 100.0, 1.0) var trail_vel_min: float = 10.0
+@export_range(0.0, 100.0, 1.0) var trail_vel_min: float = 5.0
 ## 粒子初速最大值（px/s）
-@export_range(0.0, 200.0, 1.0) var trail_vel_max: float = 30.0
-## 重力（px/s²，讓方塊緩緩落下）
-@export_range(0.0, 400.0, 5.0) var trail_gravity: float = 150.0
+@export_range(0.0, 200.0, 1.0) var trail_vel_max: float = 20.0
+## 重力（px/s²，輕微向上飄）
+@export_range(-200.0, 400.0, 5.0) var trail_gravity: float = -15.0
 ## 最小方塊縮放（以 1x1 像素為基礎，1.0 = 1px）
-@export_range(1.0, 4.0, 0.5) var trail_scale_min: float = 2.0
+@export_range(1.0, 10.0, 0.5) var trail_scale_min: float = 2.0
 ## 最大方塊縮放
-@export_range(1.0, 6.0, 0.5) var trail_scale_max: float = 4.0
+@export_range(1.0, 10.0, 0.5) var trail_scale_max: float = 5.0
 ## 散射角度（度）
-@export_range(0.0, 120.0, 1.0) var trail_spread: float = 45.0
+@export_range(0.0, 120.0, 1.0) var trail_spread: float = 60.0
 ## 移動速度閾值（速度超過此值才發射軌跡）
 @export_range(0.0, 100.0, 5.0) var trail_speed_threshold: float = 20.0
 
 # ── BurstDust ────────────────────────────────────────────────
 @export_group("BurstDust")
 ## 爆發粒子數
-@export var burst_amount: int = 20
+@export var burst_amount: int = 12
 ## 粒子壽命（秒）
-@export_range(0.2, 2.5, 0.01) var burst_lifetime: float = 0.5
+@export_range(0.2, 2.5, 0.01) var burst_lifetime: float = 0.4
 ## 爆發集中度（0=分散，1=同時）
-@export_range(0.0, 1.0, 0.05) var burst_explosiveness: float = 0.88
+@export_range(0.0, 1.0, 0.05) var burst_explosiveness: float = 0.8
 ## 粒子初速最小值（px/s）
-@export_range(5.0, 400.0, 5.0) var burst_vel_min: float = 50.0
+@export_range(5.0, 400.0, 5.0) var burst_vel_min: float = 20.0
 ## 粒子初速最大值（px/s）
-@export_range(5.0, 600.0, 5.0) var burst_vel_max: float = 120.0
+@export_range(5.0, 600.0, 5.0) var burst_vel_max: float = 60.0
 ## 重力（px/s²）
-@export_range(0.0, 600.0, 10.0) var burst_gravity: float = 400.0
+@export_range(-200.0, 600.0, 10.0) var burst_gravity: float = 80.0
 ## 最小方塊縮放（比 Trail 更大）
-@export_range(1.0, 6.0, 0.5) var burst_scale_min: float = 1.0
+@export_range(1.0, 10.0, 0.5) var burst_scale_min: float = 1.5
 ## 最大方塊縮放
-@export_range(2.0, 12.0, 0.5) var burst_scale_max: float = 4.0
+@export_range(2.0, 16.0, 0.5) var burst_scale_max: float = 3.5
 ## 散射角度（度）
-@export_range(0.0, 120.0, 1.0) var burst_spread: float = 60.0
+@export_range(0.0, 120.0, 1.0) var burst_spread: float = 70.0
 
 
 
@@ -71,23 +74,34 @@ func _ready() -> void:
 	# 提高 z_index 確保絕對不會被地圖或背景遮擋
 	z_index = 100
 	
-	# 建立隨壽命縮小的曲線
-	var curve := Curve.new()
-	curve.add_point(Vector2(0, 1))
-	curve.add_point(Vector2(1, 0))
-	_scale_curve_tex = CurveTexture.new()
-	_scale_curve_tex.curve = curve
+	# Trail 縮放曲線：由小變大
+	var trail_scale_curve := Curve.new()
+	trail_scale_curve.add_point(Vector2(0, 0.2))
+	trail_scale_curve.add_point(Vector2(1, 1.0))
+	_trail_scale_curve_tex = CurveTexture.new()
+	_trail_scale_curve_tex.curve = trail_scale_curve
+	
+	# Burst 縮放曲線：由大變小 (或稍微變小)
+	var burst_scale_curve := Curve.new()
+	burst_scale_curve.add_point(Vector2(0, 1.0))
+	burst_scale_curve.add_point(Vector2(1, 0.2))
+	_burst_scale_curve_tex = CurveTexture.new()
+	_burst_scale_curve_tex.curve = burst_scale_curve
 
-	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
-	img.fill(Color.WHITE)
-	var tex := ImageTexture.create_from_image(img)
+	# 漸層透明度曲線：慢慢變透明
+	var alpha_gradient := Gradient.new()
+	alpha_gradient.set_color(0, Color(1, 1, 1, 1))
+	alpha_gradient.set_color(1, Color(1, 1, 1, 0))
+	alpha_gradient.add_point(0.6, Color(1, 1, 1, 0.8)) # 60% 壽命時還有 80% 不透明
+	_alpha_ramp = GradientTexture1D.new()
+	_alpha_ramp.gradient = alpha_gradient
 
-	_setup_trail(tex)
-	_setup_burst(tex)
+	_setup_trail()
+	_setup_burst()
 
 # ── 初始化 TrailDust ─────────────────────────────────────────
-func _setup_trail(tex: Texture2D) -> void:
-	_trail.texture      = tex
+func _setup_trail() -> void:
+	_trail.texture      = null # 使用預設的 1x1 像素方塊
 	_trail.amount       = trail_amount
 	_trail.lifetime     = trail_lifetime
 	_trail.one_shot     = false
@@ -102,12 +116,13 @@ func _setup_trail(tex: Texture2D) -> void:
 	_trail_mat.gravity              = Vector3(0.0, trail_gravity, 0.0)
 	_trail_mat.scale_min            = trail_scale_min
 	_trail_mat.scale_max            = trail_scale_max
-	_trail_mat.scale_curve          = _scale_curve_tex
+	_trail_mat.scale_curve          = _trail_scale_curve_tex
+	_trail_mat.color_ramp           = _alpha_ramp
 	_trail.process_material         = _trail_mat
 
 # ── 初始化 BurstDust ─────────────────────────────────────────
-func _setup_burst(tex: Texture2D) -> void:
-	_burst.texture        = tex
+func _setup_burst() -> void:
+	_burst.texture        = null
 	_burst.amount         = burst_amount
 	_burst.lifetime       = burst_lifetime
 	_burst.explosiveness  = burst_explosiveness
@@ -123,7 +138,8 @@ func _setup_burst(tex: Texture2D) -> void:
 	_burst_mat.gravity              = Vector3(0.0, burst_gravity, 0.0)
 	_burst_mat.scale_min            = burst_scale_min
 	_burst_mat.scale_max            = burst_scale_max
-	_burst_mat.scale_curve          = _scale_curve_tex
+	_burst_mat.scale_curve          = _burst_scale_curve_tex
+	_burst_mat.color_ramp           = _alpha_ramp
 	_burst.process_material         = _burst_mat
 
 # ═══════════════════════════════════════════════════════════

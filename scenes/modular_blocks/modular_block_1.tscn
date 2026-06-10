@@ -6,7 +6,7 @@
 
 [node name="BaseLayer" type="TileMapLayer" parent="." unique_id=197678315]
 texture_filter = 1
-tile_map_data = PackedByteArray("AAD/////EgAKABUAAAD//wAAEgAMABUAAAAAAP//EgALABUAAAAAAAAAEgANABUAAAA=")
+tile_map_data = PackedByteArray("AAD/////EgAKABUAAAD//wAAEgAMABUAACAAAP//EgALABUAAAAAAAAAEgANABUAAAA=")
 tile_set = ExtResource("1_0gb1n")
 
 [node name="DecorLayer" type="TileMapLayer" parent="." unique_id=357626378]

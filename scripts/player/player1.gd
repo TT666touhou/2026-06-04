@@ -13,6 +13,8 @@ extends CharacterBody2D
 @export_group("Movement")
 ## 水平最大速度（px/s）
 @export var speed: float = 100.0
+## 地面啟動與轉向加速度（px/s²）
+@export var acceleration: float = 800.0
 ## 重力加速度（px/s²）
 @export var gravity: float = 980.0
 ## 地面制動加速度（px/s²）
@@ -70,12 +72,24 @@ extends CharacterBody2D
 ## 將玩家位置四捨五入到整數像素（修正 zoom 下的模糊問題）
 @export var snap_position_to_pixel: bool = true
 
+# ── 視覺傾斜 (Visual Sway) ────────────────────────────────────────────────
+@export_group("Visual Sway")
+## 彈簧系統：頻率（反應速度，越大越快）
+@export var sway_frequency: float = 4.0
+## 彈簧系統：阻尼（<1 會有回彈與 overshoot，越低越 Q 彈）
+@export var sway_damping: float = 0.35
+## 彈簧系統：初始反應力度
+@export var sway_response: float = 1.2
+## 最大傾斜角度（度）
+@export var sway_max_angle: float = 25.0
+
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
-@onready var _stamina_ui: Node2D     = $StaminaBar
-@onready var _dust_vfx:   Node2D     = $PlayerDust
+@onready var _stamina_ui: Node2D      = $StaminaBar
+@onready var _dust_vfx:   Node2D      = $PlayerDust
 @onready var _floor_cast: ShapeCast2D = $FloorCast
+@onready var _visual_pivot: Node2D    = $VisualPivot
 
 # ═══════════════════════════════════════════════════════════════
 # 內部狀態
@@ -107,6 +121,11 @@ var _stamina: float = 3.0
 
 # ── 翻滚朝向（供 roll 使用） ──────────────────────────────────────
 var _facing: float = 1.0   # 1=右, -1=左
+
+# ── 視覺傾斜 (Sway) 變數 ──────────────────────────────────────────
+var _sway_y: float = 0.0
+var _sway_yd: float = 0.0
+var _sway_xp: float = 0.0
 
 # ═══════════════════════════════════════════════════════════════
 # 地板顏色快取將（每 0.1s 更新一次，減少 ShapeCast 像素讀取频率）
@@ -144,11 +163,13 @@ func _physics_process(delta: float) -> void:
 		_handle_horizontal(delta)
 
 	# 6. 物理移動
-	var pre_move_vel_y := velocity.y
 	move_and_slide()
 
 	# 6.5. VFX 更新
-	_update_vfx(delta, pre_move_vel_y)
+	_update_vfx(delta)
+
+	# 6.6. 視覺傾斜 (Visual Sway)
+	_update_sway(delta)
 
 	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
@@ -270,11 +291,40 @@ func _handle_horizontal(delta: float) -> void:
 
 	if dir != 0.0:
 		_facing = sign(dir)
-		velocity.x = dir * speed
+		var accel := acceleration if is_on_floor() else acceleration * air_friction_factor
+		velocity.x = move_toward(velocity.x, dir * speed, accel * delta)
 	else:
 		# 制動：地面全力煞車，空中摩擦較少
 		var decel := friction if is_on_floor() else friction * air_friction_factor
 		velocity.x = move_toward(velocity.x, 0.0, decel * delta)
+
+# ═══════════════════════════════════════════════════════════════
+# 視覺傾斜 (Visual Sway)
+# ═══════════════════════════════════════════════════════════════
+func _update_sway(delta: float) -> void:
+	if not _visual_pivot:
+		return
+		
+	# 計算目標角度：向右移動 (vel.x > 0) -> 逆時針傾斜 (角度為負)
+	# 放大幅度，讓最大速度下的傾斜角度變成 8 度，使動態更明顯
+	var target_deg = -velocity.x * (8.0 / speed)
+	target_deg = clampf(target_deg, -sway_max_angle, sway_max_angle)
+	var target_rad = deg_to_rad(target_deg)
+	
+	# Second Order Dynamics 計算
+	var f = maxf(0.01, sway_frequency)
+	var z = maxf(0.01, sway_damping)
+	var r = sway_response
+	
+	var k1 = z / (PI * f)
+	var k2 = 1.0 / pow(2 * PI * f, 2)
+	var k3 = r * z / (2 * PI * f)
+	
+	_sway_yd += delta * (target_rad + k3 * (target_rad - _sway_xp) / delta - _sway_y - k1 * _sway_yd) / k2
+	_sway_y += delta * _sway_yd
+	_sway_xp = target_rad
+	
+	_visual_pivot.rotation = _sway_y
 
 # ═══════════════════════════════════════════════════════════════
 # 翻滾
@@ -331,7 +381,7 @@ func _update_stamina_ui() -> void:
 # ═══════════════════════════════════════════════════════════════
 # VFX 更新（對正 move_and_slide 後的狀態）
 # ═══════════════════════════════════════════════════════════════
-func _update_vfx(delta: float, pre_move_vel_y: float) -> void:
+func _update_vfx(delta: float) -> void:
 	var on_floor := is_on_floor()
 
 	# ── 地板顏色快取：地面且移動時每 0.1s 更新 ────────────────────
@@ -345,11 +395,10 @@ func _update_vfx(delta: float, pre_move_vel_y: float) -> void:
 	var moving_on_floor: bool = on_floor and abs(velocity.x) > trail_speed_threshold_ref()
 	_dust_vfx.set_trail_active(moving_on_floor, _cached_floor_ramp, sign(velocity.x))
 
-	# ── 落地偵測（上一幀在空中，本幀觸地）→ BurstDust ─────────────────
+	# ── 落地偵測：上一幀在空中，本幀觸地 → BurstDust ─────────────────
 	if not _was_on_floor and on_floor:
-		# 在空中有水平速度 OR 垂直速度達閾值 = 瞬間爆發（強制立即採樣目前地板顏色）
-		if abs(velocity.x) > 10.0 or pre_move_vel_y > 40.0:
-			_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
+		# move_and_slide 會把 y 速度歸零，所以這裡只要偵測到剛觸地就觸發
+		_dust_vfx.emit_burst(Vector2.UP, velocity, _update_floor_ramp_cache())
 
 ## 輔助：取得 TrailDust 速度閾値（轉發至 PlayerDust export 參數）
 func trail_speed_threshold_ref() -> float:

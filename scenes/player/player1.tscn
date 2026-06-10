@@ -19,9 +19,12 @@ gravity = 480.0
 friction = 960.0
 jump_velocity = -191.0
 
-[node name="Appearance" type="TileMapLayer" parent="." unique_id=659119027]
+[node name="VisualPivot" type="Node2D" parent="." unique_id=777777777]
+position = Vector2(0, 6)
+
+[node name="Appearance" type="TileMapLayer" parent="VisualPivot" unique_id=659119027]
 texture_filter = 1
-position = Vector2(-8, -8)
+position = Vector2(-8, -14)
 tile_map_data = PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0)
 tile_set = ExtResource("2_33ho1")
 
