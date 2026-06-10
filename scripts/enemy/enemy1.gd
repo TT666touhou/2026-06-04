@@ -7,6 +7,7 @@ enum State { PATROL, TELEGRAPH, CHARGE, COOLDOWN }
 @export var charge_speed: float = 100.0
 @export var telegraph_duration: float = 0.4
 @export var cooldown_duration: float = 1.0
+@export var max_charge_duration: float = 1.5
 
 @onready var appearance: TileMapLayer = %Appearance
 @onready var wall_detector: RayCast2D = $WallDetector
@@ -66,12 +67,27 @@ func _process_patrol(_delta: float) -> void:
 	var player = get_tree().current_scene.find_child("Player1", true, false)
 	if player:
 		var to_player = player.global_position - global_position
-		if to_player.length() < detection_range and abs(to_player.y) < 40.0:
-			var target_dir = sign(to_player.x)
-			if target_dir != 0.0 and target_dir != direction:
-				direction = target_dir
-				_update_detectors()
-			_change_state(State.TELEGRAPH)
+		
+		# 1. 玩家在偵測距離內，且垂直高度差在正常範圍內 (abs(to_player.y) < 24.0)
+		if to_player.length() < detection_range and abs(to_player.y) < 24.0:
+			# 2. 物理射線遮擋檢測 (Line of Sight)
+			var space_state := get_world_2d().direct_space_state
+			# 從敵人中心射向玩家中心，只偵測地形 Layer 1 (地形/牆壁)
+			var query := PhysicsRayQueryParameters2D.create(global_position, player.global_position)
+			query.collision_mask = 1
+			query.hit_from_inside = true
+			# 排除敵人自己與玩家自己，以便只檢測中間的牆壁阻擋
+			query.exclude = [get_rid(), player.get_rid()]
+			var result := space_state.intersect_ray(query)
+			
+			# 如果沒有被地形阻擋，則進入預警階段
+			if result.is_empty():
+				# 若玩家在移動的後方，則立刻回頭面向玩家
+				var target_dir = sign(to_player.x)
+				if target_dir != 0.0 and target_dir != direction:
+					direction = target_dir
+					_update_detectors()
+				_change_state(State.TELEGRAPH)
 
 func _process_telegraph(_delta: float) -> void:
 	velocity.x = 0.0
@@ -88,12 +104,14 @@ func _process_telegraph(_delta: float) -> void:
 func _process_charge(_delta: float) -> void:
 	velocity.x = direction * charge_speed
 	
-	# 衝撞時忽略懸崖以追擊玩家，但碰到牆壁依然要回頭並進入冷卻
-	if is_on_floor():
-		wall_detector.force_raycast_update()
-		if wall_detector.is_colliding() or is_on_wall():
-			_turn_around()
-			_change_state(State.COOLDOWN)
+	# 衝撞時忽略懸崖以追擊玩家，但碰到牆壁依然要回頭並進入冷卻 (不論是否在地面上)
+	wall_detector.force_raycast_update()
+	if wall_detector.is_colliding() or is_on_wall():
+		_turn_around()
+		_change_state(State.COOLDOWN)
+	elif state_timer <= 0.0:
+		# 衝刺超時也進入冷卻
+		_change_state(State.COOLDOWN)
 
 func _process_cooldown(_delta: float) -> void:
 	# 撞牆/衝撞結束後冷卻慢速巡邏
@@ -117,7 +135,7 @@ func _change_state(new_state: State) -> void:
 		State.TELEGRAPH:
 			state_timer = telegraph_duration
 		State.CHARGE:
-			state_timer = 0.0
+			state_timer = max_charge_duration
 		State.COOLDOWN:
 			state_timer = cooldown_duration
 			appearance.modulate = Color.WHITE
