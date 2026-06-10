@@ -100,4 +100,3 @@ func take_damage(damage: int) -> void:
 func die() -> void:
 	print("Enemy1 died!")
 	queue_free()
-

@@ -75,7 +75,7 @@ func _process_patrol(_delta: float) -> void:
 			
 			_change_state(State.TELEGRAPH)
 
-func _process_telegraph(delta: float) -> void:
+func _process_telegraph(_delta: float) -> void:
 	velocity = Vector2.ZERO
 	
 	# 紅光閃爍特效 (70ms 頻率)

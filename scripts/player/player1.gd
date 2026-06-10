@@ -614,17 +614,17 @@ func take_damage(amount: int) -> void:
 
 func die() -> void:
 	print("[Player] Died!")
-	# 重新載入場景
-	get_tree().reload_current_scene()
+	# 重新載入場景 (使用 call_deferred 避免在物理 callback 中直接銷毀物理節點)
+	get_tree().call_deferred("reload_current_scene")
 
 func _handle_invincibility(delta: float) -> void:
 	if _i_frame_timer > 0.0:
 		_i_frame_timer = maxf(0.0, _i_frame_timer - delta)
 		# 閃爍特效：以 70ms 為間隔切換半透明 (0.4) 與不透明 (1.0)
 		var blink_freq := 0.07
-		var is_visible := fmod(_i_frame_timer, blink_freq * 2.0) < blink_freq
+		var is_blink_visible := fmod(_i_frame_timer, blink_freq * 2.0) < blink_freq
 		if _visual_pivot:
-			_visual_pivot.modulate.a = 0.4 if is_visible else 1.0
+			_visual_pivot.modulate.a = 0.4 if is_blink_visible else 1.0
 	else:
 		if _visual_pivot and _visual_pivot.modulate.a != 1.0:
 			_visual_pivot.modulate.a = 1.0
