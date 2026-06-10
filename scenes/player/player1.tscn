@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://cgxc5o3rdglr5" path="res://scripts/player/player1.gd" id="2_script"]
 [ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
 [ext_resource type="PackedScene" uid="uid://c031iasmaeovd" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
+[ext_resource type="PackedScene" uid="uid://b6hudui726ex" path="res://scenes/ui/player_hud.tscn" id="5_hud"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 4.0
@@ -11,6 +12,8 @@ height = 14.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(19.2, 2.4)
+
+
 
 [node name="Player1" type="CharacterBody2D" unique_id=1669153746]
 script = ExtResource("2_script")
@@ -40,3 +43,8 @@ shape = SubResource("RectangleShape2D_floor")
 target_position = Vector2(0, 4)
 
 [node name="PlayerDust" parent="." unique_id=559034821 instance=ExtResource("4_dust")]
+
+[node name="HUDLayer" type="CanvasLayer" parent="." unique_id=314159265]
+
+[node name="PlayerHUD" parent="HUDLayer" unique_id=271828182 instance=ExtResource("5_hud")]
+

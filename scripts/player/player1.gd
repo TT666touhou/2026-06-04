@@ -122,6 +122,17 @@ var _stamina: float = 3.0
 # ── 翻滚朝向（供 roll 使用） ──────────────────────────────────────
 var _facing: float = 1.0   # 1=右, -1=左
 
+# ── 生命與無敵幀 ──────────────────────────────────────────────────
+signal health_changed(new_health: int)
+
+@export_group("Health")
+@export var max_health: int = 3
+@export var i_frame_duration: float = 1.5
+
+var current_health: int = 3
+var _i_frame_timer: float = 0.0
+
+
 # ── 視覺傾斜 (Sway) 變數 ──────────────────────────────────────────
 var _sway_y: float = 0.0
 var _sway_yd: float = 0.0
@@ -177,6 +188,9 @@ func _physics_process(delta: float) -> void:
 
 	# 8. UI
 	_update_stamina_ui()
+
+	# 8.5. 無敵幀與閃爍
+	_handle_invincibility(delta)
 
 	# 9. 地面狀態記錄（供下一幀使用）
 	_was_on_floor = is_on_floor()
@@ -581,3 +595,37 @@ func _get_floor_ramp() -> GradientTexture1D:
 	out_tex.width = 16
 	print("[VFX DUST] 全局十字探測成功！混合了 ", display_colors.size(), " 種顏色。")
 	return out_tex
+
+# ═══════════════════════════════════════════════════════════════
+# 戰鬥與受擊邏輯
+# ═══════════════════════════════════════════════════════════════
+func take_damage(amount: int) -> void:
+	if _i_frame_timer > 0.0 or _is_rolling or is_invincible:
+		return
+		
+	current_health = clampi(current_health - amount, 0, max_health)
+	health_changed.emit(current_health)
+	
+	if current_health <= 0:
+		die()
+	else:
+		_i_frame_timer = i_frame_duration
+		print("[Player] Took damage! HP remaining: ", current_health)
+
+func die() -> void:
+	print("[Player] Died!")
+	# 重新載入場景
+	get_tree().reload_current_scene()
+
+func _handle_invincibility(delta: float) -> void:
+	if _i_frame_timer > 0.0:
+		_i_frame_timer = maxf(0.0, _i_frame_timer - delta)
+		# 閃爍特效：以 70ms 為間隔切換半透明 (0.4) 與不透明 (1.0)
+		var blink_freq := 0.07
+		var is_visible := fmod(_i_frame_timer, blink_freq * 2.0) < blink_freq
+		if _visual_pivot:
+			_visual_pivot.modulate.a = 0.4 if is_visible else 1.0
+	else:
+		if _visual_pivot and _visual_pivot.modulate.a != 1.0:
+			_visual_pivot.modulate.a = 1.0
+
