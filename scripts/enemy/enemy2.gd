@@ -3,32 +3,24 @@ extends CharacterBody2D
 @export var stats: Resource
 
 @onready var appearance: Node2D = %Appearance if has_node("%Appearance") else self
-@onready var wall_detector: RayCast2D = $WallDetector if has_node("WallDetector") else RayCast2D.new()
-@onready var ledge_detector: RayCast2D = $LedgeDetector if has_node("LedgeDetector") else RayCast2D.new()
 @onready var player_detector: RayCast2D = RayCast2D.new()
 
 var StateMachineClass = preload("res://scripts/state_machine/state_machine.gd")
-var PatrolStateClass = preload("res://scripts/enemy/enemy1/enemy1_patrol_state.gd")
-var NoticeStateClass = preload("res://scripts/enemy/enemy1/enemy1_notice_state.gd")
-var ChargeStateClass = preload("res://scripts/enemy/enemy1/enemy1_charge_state.gd")
+var PatrolStateClass = preload("res://scripts/enemy/enemy2/enemy2_patrol_state.gd")
+var NoticeStateClass = preload("res://scripts/enemy/enemy2/enemy2_notice_state.gd")
+var ShootStateClass = preload("res://scripts/enemy/enemy2/enemy2_shoot_state.gd")
 
 var state_machine
+var direction: float = -1.0
+var current_health: int = 1
 
 var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 
-var current_health: int = 1
-var direction: float = -1.0
-
 func _ready() -> void:
-	if not has_node("WallDetector"):
-		add_child(wall_detector)
-	if not has_node("LedgeDetector"):
-		add_child(ledge_detector)
-		
 	if stats and "max_health" in stats:
 		current_health = stats.max_health
 		
-	player_detector.target_position = Vector2(-100, 0)
+	player_detector.target_position = Vector2(-200, 0)
 	player_detector.collision_mask = 2
 	add_child(player_detector)
 	
@@ -43,9 +35,9 @@ func _ready() -> void:
 	notice.name = "NoticeState"
 	state_machine.add_child(notice)
 	
-	var charge = ChargeStateClass.new()
-	charge.name = "ChargeState"
-	state_machine.add_child(charge)
+	var shoot = ShootStateClass.new()
+	shoot.name = "ShootState"
+	state_machine.add_child(shoot)
 	
 	state_machine.initial_state = patrol.get_path()
 	add_child(state_machine)
@@ -56,9 +48,7 @@ func _physics_process(_delta: float) -> void:
 
 func turn_around() -> void:
 	direction *= -1.0
-	wall_detector.target_position.x = 14.0 * direction
-	ledge_detector.position.x = 10.0 * direction
-	player_detector.target_position.x = 100.0 * direction
+	player_detector.target_position.x = 200.0 * direction
 	if appearance and "scale" in appearance:
 		appearance.scale.x = -direction
 

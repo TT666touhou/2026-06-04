@@ -154,7 +154,7 @@ func _init() -> void:
 		all_coords.append(src0.get_tile_id(ti))
 
 	var created := 0
-	var missing := 0
+	var _missing := 0
 
 	for i in range(png_files.size()):
 		var fname := png_files[i]

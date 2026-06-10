@@ -6,7 +6,6 @@ extends CharacterBody2D
 ##   roll                   → Shift（翻滾）
 
 signal health_changed(current_hp: int, max_hp: int)
-signal died()
 
 # ═══════════════════════════════════════════════════════════════
 # EXPORT 參數（全部可在 Inspector 即時調整）
@@ -150,7 +149,13 @@ var _atlas_cache: Dictionary = {}
 func _ready() -> void:
 	current_health = max_health
 	
-	if not Engine.is_editor_hint():_cached_floor_ramp = _fallback_ramp()
+	var PlayerHUDClass = preload("res://scripts/ui/player_hud.gd")
+	var hud = PlayerHUDClass.new()
+	add_child(hud)
+	health_changed.connect(hud.update_health)
+	
+	if not Engine.is_editor_hint():
+		_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
 
 # ═══════════════════════════════════════════════════════════════
