@@ -5,7 +5,6 @@
 [ext_resource type="PackedScene" uid="uid://viw24qaqo3es" path="res://scenes/modular_blocks/modular_block_1.tscn" id="3_j6w7d"]
 [ext_resource type="PackedScene" uid="uid://bfurijrxfce3v" path="res://scenes/modular_blocks/modular_block_3.tscn" id="4_x4b8f"]
 [ext_resource type="PackedScene" uid="uid://dpbw35kh7nlfa" path="res://scenes/modular_blocks/modular_block_4.tscn" id="5_tmr53"]
-[ext_resource type="PackedScene" uid="uid://b1t8am8hwvppf" path="res://scenes/modular_blocks/modular_block_5.tscn" id="6_qcd3b"]
 [ext_resource type="Script" uid="uid://clr7hk7crisws" path="res://scripts/camera/scene_camera.gd" id="7_cam"]
 [ext_resource type="PackedScene" uid="uid://qp735yrnv0g0" path="res://scenes/enemy/Enemy1.tscn" id="8_ahbqi"]
 [ext_resource type="PackedScene" uid="uid://ckwaiokq8idid" path="res://scenes/enemy/Enemy2.tscn" id="9_4asn1"]
@@ -34,9 +33,6 @@ position = Vector2(40, -56)
 
 [node name="ModularBlock3" parent="." unique_id=1458859782 instance=ExtResource("5_tmr53")]
 position = Vector2(-64, -56)
-
-[node name="ModularBlock4" parent="." unique_id=1207929061 instance=ExtResource("6_qcd3b")]
-position = Vector2(120, -120)
 
 [node name="CamLimitBottom" type="Marker2D" parent="." unique_id=29906935]
 position = Vector2(0, 32)

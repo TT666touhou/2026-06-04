@@ -1,13 +1,7 @@
 extends CharacterBody2D
 
-enum State { PATROL, TELEGRAPH, CHARGE, COOLDOWN }
-
 @export var stats: EnemyStats
 @export var detection_range: float = 120.0
-@export var charge_speed: float = 100.0
-@export var telegraph_duration: float = 0.4
-@export var cooldown_duration: float = 1.0
-@export var max_charge_duration: float = 1.5
 
 @onready var appearance: TileMapLayer = %Appearance
 @onready var wall_detector: RayCast2D = $WallDetector
@@ -16,10 +10,10 @@ enum State { PATROL, TELEGRAPH, CHARGE, COOLDOWN }
 # 取得重力
 var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 
-var current_state: State = State.PATROL
-var state_timer: float = 0.0
 var current_health: int = 1
 var direction: float = -1.0 # 初始往左走
+var is_alert: bool = false
+var flash_timer: float = 0.0
 
 func _ready() -> void:
 	if stats:
@@ -30,18 +24,48 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y += gravity * delta
 		
-	state_timer -= delta
-	
-	match current_state:
-		State.PATROL:
-			_process_patrol(delta)
-		State.TELEGRAPH:
-			_process_telegraph(delta)
-		State.CHARGE:
-			_process_charge(delta)
-		State.COOLDOWN:
-			_process_cooldown(delta)
+	# 正常巡邏邊緣與牆壁偵測
+	if is_on_floor():
+		wall_detector.force_raycast_update()
+		ledge_detector.force_raycast_update()
+		if wall_detector.is_colliding() or is_on_wall() or not ledge_detector.is_colliding():
+			_turn_around()
 			
+	# 搜尋玩家並判斷加速條件
+	var speed = stats.speed if stats else 50.0
+	is_alert = false
+	
+	var player = get_tree().current_scene.find_child("Player1", true, false)
+	if player:
+		var to_player = player.global_position - global_position
+		# 條件：同平面 (高度差小於 40)、距離夠近、且面向玩家的水平方向
+		var is_same_platform = abs(to_player.y) < 40.0
+		var in_range = to_player.length() < detection_range
+		var is_facing_player = sign(to_player.x) == direction
+		
+		if is_same_platform and in_range and is_facing_player:
+			# 射線阻擋檢測 (Mask 1 = 地形/牆壁)
+			var space_state = get_world_2d().direct_space_state
+			var query = PhysicsRayQueryParameters2D.create(global_position, player.global_position, 1)
+			var result = space_state.intersect_ray(query)
+			
+			if result.is_empty():
+				# 無阻擋，加速 1.5 倍 (提高 0.5 倍速)
+				is_alert = true
+				speed *= 1.5
+
+	# 閃爍特效更新
+	if is_alert:
+		flash_timer += delta
+		var flash_freq := 0.07
+		var is_red = fmod(flash_timer, flash_freq * 2.0) < flash_freq
+		appearance.modulate = Color(2.0, 0.3, 0.3, 1.0) if is_red else Color.WHITE
+	else:
+		flash_timer = 0.0
+		appearance.modulate = Color.WHITE
+
+	# 水平移動
+	velocity.x = direction * speed
 	move_and_slide()
 	
 	# 偵測碰觸玩家並造成傷害
@@ -51,95 +75,6 @@ func _physics_process(delta: float) -> void:
 		if collider and (collider.name == "Player1" or collider.has_method("take_damage")):
 			collider.take_damage(1)
 
-func _process_patrol(_delta: float) -> void:
-	# 正常巡邏移動
-	var speed = stats.speed if stats else 50.0
-	velocity.x = direction * speed
-	
-	# 巡邏邊緣與牆壁偵測
-	if is_on_floor():
-		wall_detector.force_raycast_update()
-		ledge_detector.force_raycast_update()
-		if wall_detector.is_colliding() or is_on_wall() or not ledge_detector.is_colliding():
-			_turn_around()
-			
-	# 搜尋玩家
-	var player = get_tree().current_scene.find_child("Player1", true, false)
-	if player:
-		var to_player = player.global_position - global_position
-		
-		# 1. 玩家在偵測距離內，且垂直高度差在正常範圍內 (abs(to_player.y) < 24.0)
-		if to_player.length() < detection_range and abs(to_player.y) < 24.0:
-			# 2. 物理射線遮擋檢測 (Line of Sight)
-			var space_state := get_world_2d().direct_space_state
-			# 從敵人中心射向玩家中心，只偵測地形 Layer 1 (地形/牆壁)
-			var query := PhysicsRayQueryParameters2D.create(global_position, player.global_position)
-			query.collision_mask = 1
-			query.hit_from_inside = true
-			# 排除敵人自己與玩家自己，以便只檢測中間的牆壁阻擋
-			query.exclude = [get_rid(), player.get_rid()]
-			var result := space_state.intersect_ray(query)
-			
-			# 如果沒有被地形阻擋，則進入預警階段
-			if result.is_empty():
-				# 若玩家在移動的後方，則立刻回頭面向玩家
-				var target_dir = sign(to_player.x)
-				if target_dir != 0.0 and target_dir != direction:
-					direction = target_dir
-					_update_detectors()
-				_change_state(State.TELEGRAPH)
-
-func _process_telegraph(_delta: float) -> void:
-	velocity.x = 0.0
-	
-	# 紅光閃爍特效 (70ms 頻率)
-	var flash_freq := 0.07
-	var is_red = fmod(state_timer, flash_freq * 2.0) < flash_freq
-	appearance.modulate = Color(2.0, 0.3, 0.3, 1.0) if is_red else Color.WHITE
-	
-	if state_timer <= 0.0:
-		appearance.modulate = Color.WHITE
-		_change_state(State.CHARGE)
-
-func _process_charge(_delta: float) -> void:
-	velocity.x = direction * charge_speed
-	
-	# 衝撞時忽略懸崖以追擊玩家，但碰到牆壁依然要回頭並進入冷卻 (不論是否在地面上)
-	wall_detector.force_raycast_update()
-	if wall_detector.is_colliding() or is_on_wall():
-		_turn_around()
-		_change_state(State.COOLDOWN)
-	elif state_timer <= 0.0:
-		# 衝刺超時也進入冷卻
-		_change_state(State.COOLDOWN)
-
-func _process_cooldown(_delta: float) -> void:
-	# 撞牆/衝撞結束後冷卻慢速巡邏
-	var speed = (stats.speed if stats else 50.0) * 0.6
-	velocity.x = direction * speed
-	
-	if is_on_floor():
-		wall_detector.force_raycast_update()
-		ledge_detector.force_raycast_update()
-		if wall_detector.is_colliding() or is_on_wall() or not ledge_detector.is_colliding():
-			_turn_around()
-			
-	if state_timer <= 0.0:
-		_change_state(State.PATROL)
-
-func _change_state(new_state: State) -> void:
-	current_state = new_state
-	match new_state:
-		State.PATROL:
-			state_timer = 0.0
-		State.TELEGRAPH:
-			state_timer = telegraph_duration
-		State.CHARGE:
-			state_timer = max_charge_duration
-		State.COOLDOWN:
-			state_timer = cooldown_duration
-			appearance.modulate = Color.WHITE
-
 func _turn_around() -> void:
 	direction *= -1.0
 	_update_detectors()
@@ -148,8 +83,6 @@ func _update_detectors() -> void:
 	wall_detector.target_position.x = 14.0 * direction
 	ledge_detector.position.x = 10.0 * direction
 	appearance.scale.x = -direction
-
-
 
 func take_damage(damage: int) -> void:
 	current_health -= damage
@@ -166,3 +99,4 @@ func take_damage(damage: int) -> void:
 func die() -> void:
 	print("Enemy1 died!")
 	queue_free()
+
