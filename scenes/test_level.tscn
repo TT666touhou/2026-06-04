@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" uid="uid://b1t8am8hwvppf" path="res://scenes/modular_blocks/modular_block_5.tscn" id="6_qcd3b"]
 [ext_resource type="Script" uid="uid://clr7hk7crisws" path="res://scripts/camera/scene_camera.gd" id="7_cam"]
 [ext_resource type="PackedScene" uid="uid://qp735yrnv0g0" path="res://scenes/enemy/Enemy1.tscn" id="8_ahbqi"]
+[ext_resource type="PackedScene" uid="uid://ckwaiokq8idid" path="res://scenes/enemy/Enemy2.tscn" id="9_4asn1"]
+[ext_resource type="PackedScene" uid="uid://dln827yoptipy" path="res://scenes/enemy/Enemy3.tscn" id="10_dw7u0"]
 
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
@@ -78,3 +80,9 @@ tile_set = ExtResource("1_world")
 
 [node name="Enemy1" parent="." unique_id=1977865432 instance=ExtResource("8_ahbqi")]
 position = Vector2(83, -24)
+
+[node name="Enemy2" parent="." unique_id=377089778 instance=ExtResource("9_4asn1")]
+position = Vector2(-4, -136)
+
+[node name="Enemy3" parent="." unique_id=1948010958 instance=ExtResource("10_dw7u0")]
+position = Vector2(55, -133)
