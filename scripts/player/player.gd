@@ -669,6 +669,10 @@ func take_damage(amount: int) -> void:
 		_i_frame_timer = i_frame_duration
 		print("[Player] Took damage! HP remaining: ", current_health)
 
+func apply_bounce_impulse(impulse: Vector2) -> void:
+	velocity = impulse
+	_wall_lock_timer = 0.5 # Optional: lock horizontal input momentarily so they don't immediately push back
+
 func die() -> void:
 	print("[Player] Died!")
 	# 通知 NetworkManager 處理死亡與全滅判定
