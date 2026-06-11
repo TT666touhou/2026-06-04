@@ -1,21 +1,44 @@
-[gd_scene format=3 uid="uid://dkc1di26k32fo"]
+[gd_scene load_steps=4 format=3 uid="uid://cboss1"]
 
-[ext_resource type="Script" path="res://scripts/enemy/boss.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://ds80ofl42y00m" path="res://assets/tilesets/mrmotext/MRMOTEXT_EX.png" id="1_tex"]
+[ext_resource type="Script" path="res://scripts/enemy/boss.gd" id="2_script"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_boss"]
-size = Vector2(64, 64)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(64, 96)
 
-[node name="Boss" type="CharacterBody2D" unique_id=901996348]
-collision_layer = 4
-collision_mask = 3
-script = ExtResource("1_script")
+[node name="Boss" type="CharacterBody2D" groups=["enemies"]]
+script = ExtResource("2_script")
 
-[node name="ColorRect" type="ColorRect" parent="." unique_id=477929646]
-offset_left = -32.0
-offset_top = -64.0
-offset_right = 32.0
-color = Color(0.545098, 0, 0, 1)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=197388558]
+[node name="Head" type="Sprite2D" parent="."]
+texture_filter = 1
 position = Vector2(0, -32)
-shape = SubResource("RectangleShape2D_boss")
+scale = Vector2(4, 4)
+texture = ExtResource("1_tex")
+region_enabled = true
+region_rect = Rect2(48, 80, 16, 16)
+
+[node name="Body" type="Sprite2D" parent="."]
+texture_filter = 1
+scale = Vector2(4, 4)
+texture = ExtResource("1_tex")
+region_enabled = true
+region_rect = Rect2(48, 96, 16, 16)
+
+[node name="LegLeft" type="Sprite2D" parent="."]
+texture_filter = 1
+position = Vector2(-16, 32)
+scale = Vector2(4, 4)
+texture = ExtResource("1_tex")
+region_enabled = true
+region_rect = Rect2(48, 112, 8, 8)
+
+[node name="LegRight" type="Sprite2D" parent="."]
+texture_filter = 1
+position = Vector2(16, 32)
+scale = Vector2(4, 4)
+texture = ExtResource("1_tex")
+region_enabled = true
+region_rect = Rect2(56, 112, 8, 8)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_1")

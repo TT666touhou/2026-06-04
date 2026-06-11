@@ -8,6 +8,7 @@ extends Node2D
 # # = Solid Ground (mrmotext)
 # . = Empty
 # S = Player Spawn
+# E = Enemy/Boss Spawn
 const ASCII_MAP = [
 	"########################################",
 	"########################################",
@@ -17,7 +18,7 @@ const ASCII_MAP = [
 	"##....................................##",
 	"##....S...................####........##",
 	"##..######............................##",
-	"##...................######...........##",
+	"##...................######......E....##",
 	"##.......#######......................##",
 	"##...........................###......##",
 	"##....................................##",
@@ -44,20 +45,24 @@ func _ready():
 
 func _generate_map_and_bounds():
 	var spawn_points = []
+	var boss_scene = preload("res://scenes/enemy/boss.tscn")
+	
 	for y in range(ASCII_MAP.size()):
 		var row = ASCII_MAP[y]
 		for x in range(row.length()):
 			var c = row[x]
 			if c == '#':
-				# Using mrmotext block (e.g. Vector2i(21, 1) or similar)
-				# Let's use (14, 0) which is a solid block in MRMOTEXT
 				world_layer.set_cell(Vector2i(x, y), 0, Vector2i(14, 0))
 			elif c == 'S':
-				# Add spawn point marker
 				var p = Marker2D.new()
 				p.position = Vector2(x * TILE_SIZE + TILE_SIZE/2.0, y * TILE_SIZE)
 				spawns_node.add_child(p)
 				spawn_points.append(p)
+			elif c == 'E':
+				if boss_scene:
+					var b = boss_scene.instantiate()
+					b.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
+					add_child(b)
 				
 	# Calculate dynamic camera bounds based on map size
 	var used_rect = world_layer.get_used_rect()
