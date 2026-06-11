@@ -80,7 +80,8 @@ func _process_patrol(_delta: float) -> void:
 	move_and_slide()
 	
 	# 搜尋玩家以觸發攻擊
-	var player = get_tree().current_scene.find_child("Player1", true, false)
+	var players = get_tree().get_nodes_in_group("Players")
+	var player = players[0] if players.size() > 0 else null
 	if player:
 		var to_player = player.global_position - global_position
 		# 雷射射程判定 (相同高度區間)
@@ -110,7 +111,8 @@ func _process_telegraph(_delta: float) -> void:
 	appearance.modulate = Color(2.0, 0.3, 0.3, 1.0) if is_red else Color.WHITE
 	
 	# 更新紅色瞄準警告線
-	var player = get_tree().current_scene.find_child("Player1", true, false)
+	var players = get_tree().get_nodes_in_group("Players")
+	var player = players[0] if players.size() > 0 else null
 	if player:
 		# 發射前 1.5 秒就該停止追蹤。因此當 state_timer > 1.5 時，瞄準線跟隨玩家
 		if state_timer > 1.5:
@@ -150,7 +152,7 @@ func _process_shoot(_delta: float) -> void:
 		var result = space_state.intersect_ray(query)
 		if not result.is_empty():
 			var collider = result.collider
-			if collider and (collider.name == "Player1" or collider.has_method("take_damage")):
+			if collider and (collider.is_in_group("Players") or collider.has_method("take_damage")):
 				collider.take_damage(1)
 				damage_dealt_this_shot = true
 				
@@ -179,7 +181,8 @@ func _change_state(new_state: State) -> void:
 			state_timer = telegraph_duration
 			warning_line.visible = true
 			# 當進入預警狀態時，先立刻將 target_laser_point 設為當前玩家的位置
-			var player = get_tree().current_scene.find_child("Player1", true, false)
+			var players = get_tree().get_nodes_in_group("Players")
+			var player = players[0] if players.size() > 0 else null
 			if player:
 				target_laser_point = player.global_position
 			else:

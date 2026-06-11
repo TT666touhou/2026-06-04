@@ -47,7 +47,8 @@ func _physics_process(delta: float) -> void:
 	var speed = stats.speed if stats else 50.0
 	is_alert = false
 	
-	var player = get_tree().current_scene.find_child("Player1", true, false)
+	var players = get_tree().get_nodes_in_group("Players")
+	var player = players[0] if players.size() > 0 else null
 	if player:
 		var to_player = player.global_position - global_position
 		# 條件：同平面 (高度差小於 40)、距離夠近、且面向玩家的水平方向

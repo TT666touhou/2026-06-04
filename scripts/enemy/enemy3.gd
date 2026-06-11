@@ -62,7 +62,8 @@ func _process_patrol(_delta: float) -> void:
 	move_and_slide()
 	
 	# 搜尋玩家以觸發攻擊
-	var player = get_tree().current_scene.find_child("Player1", true, false)
+	var players = get_tree().get_nodes_in_group("Players")
+	var player = players[0] if players.size() > 0 else null
 	if player:
 		var to_player = player.global_position - global_position
 		# 射程與高度判定
@@ -91,7 +92,8 @@ func _process_shoot() -> void:
 	appearance.modulate = Color.WHITE
 	
 	# 射出子彈
-	var player = get_tree().current_scene.find_child("Player1", true, false)
+	var players = get_tree().get_nodes_in_group("Players")
+	var player = players[0] if players.size() > 0 else null
 	if player and bullet_scene:
 		var bullet = bullet_scene.instantiate() as EnemyBullet
 		bullet.global_position = global_position
