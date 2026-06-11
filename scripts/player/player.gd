@@ -133,6 +133,14 @@ var current_health: int = 3
 var _i_frame_timer: float = 0.0
 
 
+# ── 攻擊 ──────────────────────────────────────────
+var _attack_timer: float = 0.0
+var _attack_cooldown: float = 0.0
+
+@onready var _attack_area: Area2D = $VisualPivot/AttackArea
+@onready var _attack_visual: ColorRect = $VisualPivot/AttackVisual
+@onready var _attack_col: CollisionShape2D = $VisualPivot/AttackArea/CollisionShape2D
+
 # ── 視覺傾斜 (Sway) 變數 ──────────────────────────────────────────
 var _sway_y: float = 0.0
 var _sway_yd: float = 0.0
@@ -250,6 +258,9 @@ func _physics_process(delta: float) -> void:
 	# 5. 水平移動（翻滾中跳過）
 	if not _is_rolling:
 		_handle_horizontal(delta)
+
+	# 5.5. 攻擊
+	_handle_attack(delta)
 
 	# 6. 物理移動
 	move_and_slide()
@@ -386,12 +397,57 @@ func _handle_horizontal(delta: float) -> void:
 
 	if dir != 0.0:
 		_facing = sign(dir)
+		_visual_pivot.scale.x = _facing
 		var accel := acceleration if is_on_floor() else acceleration * air_friction_factor
 		velocity.x = move_toward(velocity.x, dir * speed, accel * delta)
 	else:
 		# 制動：地面全力煞車，空中摩擦較少
 		var decel := friction if is_on_floor() else friction * air_friction_factor
 		velocity.x = move_toward(velocity.x, 0.0, decel * delta)
+
+# ═══════════════════════════════════════════════════════════════
+# 攻擊
+# ═══════════════════════════════════════════════════════════════
+func _handle_attack(delta: float) -> void:
+	_attack_cooldown = max(0.0, _attack_cooldown - delta)
+	_attack_timer = max(0.0, _attack_timer - delta)
+
+	if _attack_timer <= 0.0 and _attack_col and _attack_col.disabled == false:
+		_attack_col.disabled = true
+		if _attack_visual: _attack_visual.visible = false
+
+	var attack_pressed = false
+	if bot_enabled:
+		attack_pressed = false # Add bot attack later if needed
+	else:
+		if InputMap.has_action("attack"):
+			attack_pressed = Input.is_action_just_pressed("attack")
+		if not attack_pressed:
+			attack_pressed = Input.is_key_pressed(KEY_X)
+
+	if attack_pressed and _attack_cooldown <= 0.0 and not _is_rolling:
+		_perform_attack.rpc()
+
+@rpc("call_local", "reliable")
+func _perform_attack() -> void:
+	if not _attack_area or not _attack_col: return
+	_attack_timer = 0.1
+	_attack_cooldown = 0.4
+	_attack_col.disabled = false
+	if _attack_visual: _attack_visual.visible = true
+
+	# Check hits immediately on the authority
+	if _is_authority():
+		for body in _attack_area.get_overlapping_bodies():
+			if body != self and body.is_in_group("enemies") and body.has_method("take_damage"):
+				# Deal 10 damage to enemies
+				if body.has_method("take_damage") and body.get_node_or_null("MultiplayerSynchronizer"):
+					body.take_damage.rpc(10, sign(_facing))
+				
+				# Pogo / Knockback
+				var bounce_dir = Vector2(-sign(_facing), -1).normalized()
+				apply_bounce_impulse(bounce_dir * 300.0)
+
 
 # ═══════════════════════════════════════════════════════════════
 # 視覺傾斜 (Visual Sway)

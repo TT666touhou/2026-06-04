@@ -25,10 +25,13 @@ def main():
     
     print("Simulating gameplay...")
     pyautogui.keyDown('right')
-    time.sleep(1)
-    pyautogui.press('space')
-    time.sleep(1)
+    time.sleep(0.5)
     pyautogui.keyUp('right')
+    time.sleep(0.1)
+    
+    # Attack the boss
+    pyautogui.press('x')
+    time.sleep(0.1)
     
     img3 = ImageGrab.grab()
     img3.save(r"d:\2026-06-04\vlm_frame_play.png")

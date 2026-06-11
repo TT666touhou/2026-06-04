@@ -42,3 +42,12 @@ region_rect = Rect2(168, 8, 8, 8)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_1")
+
+[node name="Hitbox" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]

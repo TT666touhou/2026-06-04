@@ -13,6 +13,9 @@ height = 14.0
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(19.2, 2.4)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(16, 16)
+
 
 
 [node name="Player" type="CharacterBody2D" groups=["Players"] unique_id=1669153746]
@@ -27,13 +30,29 @@ jump_velocity = -191.0
 [node name="VisualPivot" type="Node2D" parent="." unique_id=777777777]
 position = Vector2(0, 6)
 
-[node name="Appearance" type="Sprite2D" parent="VisualPivot" unique_id=659119027]
+[node name="Appearance" type="Sprite2D" parent="VisualPivot"]
 texture_filter = 1
 position = Vector2(0, -4)
 texture = ExtResource("2_33ho1")
 region_enabled = true
-region_rect = Rect2(168, 8, 8, 8)
+region_rect = Rect2(0, 0, 8, 8)
 
+[node name="AttackArea" type="Area2D" parent="VisualPivot"]
+position = Vector2(12, -4)
+collision_layer = 0
+collision_mask = 3
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualPivot/AttackArea"]
+shape = SubResource("RectangleShape2D_1")
+disabled = true
+
+[node name="AttackVisual" type="ColorRect" parent="VisualPivot"]
+visible = false
+offset_left = 4.0
+offset_top = -8.0
+offset_right = 20.0
+offset_bottom = 0.0
+color = Color(1, 1, 1, 0.8)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=989281702]
 shape = SubResource("CapsuleShape2D_1")
