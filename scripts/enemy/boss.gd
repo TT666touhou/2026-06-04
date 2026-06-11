@@ -120,10 +120,27 @@ func take_damage(amount: int, hit_direction: int = 0):
 @rpc("call_local", "reliable")
 func _flash_red():
 	modulate = Color.RED
+	if has_node("HitParticles"):
+		$HitParticles.restart()
 	await get_tree().create_timer(0.1).timeout
 	modulate = Color.WHITE
 
 @rpc("call_local", "reliable")
 func die():
 	print("[Boss] Defeated!")
+	set_physics_process(false)
+	hitbox.set_deferred("monitoring", false)
+	hitbox.set_deferred("monitorable", false)
+	for c in get_children():
+		if c is Sprite2D:
+			c.hide()
+			
+	if has_node("HitParticles"):
+		var p = $HitParticles
+		p.amount = 50
+		p.color = Color.RED
+		p.scale_amount_max = 6.0
+		p.restart()
+		await get_tree().create_timer(1.0).timeout
+		
 	queue_free()

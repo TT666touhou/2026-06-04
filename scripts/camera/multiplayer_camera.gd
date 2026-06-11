@@ -6,7 +6,27 @@ extends Camera2D
 
 var furthest_x: float = 0.0
 
+var _shake_intensity: float = 0.0
+var _shake_duration: float = 0.0
+var _shake_timer: float = 0.0
+var _base_pos: Vector2 = Vector2.ZERO
+
+func _ready():
+	add_to_group("camera")
+
+func apply_shake(intensity: float, duration: float):
+	_shake_intensity = intensity
+	_shake_duration = duration
+	_shake_timer = duration
+
 func _process(delta: float) -> void:
+	if _shake_timer > 0:
+		_shake_timer -= delta
+		var strength = _shake_intensity * (_shake_timer / _shake_duration)
+		offset = Vector2(randf_range(-strength, strength), randf_range(-strength, strength))
+	else:
+		offset = Vector2.ZERO
+
 	# Only the authority (server/host) should process the camera damage logic to avoid duplicated damage,
 	# but since Camera2D movement is local to each client, we'll let each client move their own camera.
 	# To ensure consistency, we only process damage if we are the authority.

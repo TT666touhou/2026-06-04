@@ -438,8 +438,10 @@ func _perform_attack() -> void:
 
 	# Check hits immediately on the authority
 	if _is_authority():
+		var hit_something = false
 		for body in _attack_area.get_overlapping_bodies():
 			if body != self and body.is_in_group("enemies") and body.has_method("take_damage"):
+				hit_something = true
 				# Deal 10 damage to enemies
 				if body.has_method("take_damage") and body.get_node_or_null("MultiplayerSynchronizer"):
 					body.take_damage.rpc(10, sign(_facing))
@@ -447,6 +449,21 @@ func _perform_attack() -> void:
 				# Pogo / Knockback
 				var bounce_dir = Vector2(-sign(_facing), -1).normalized()
 				apply_bounce_impulse(bounce_dir * 300.0)
+				
+		if hit_something:
+			_trigger_hit_effects.rpc()
+
+@rpc("call_local", "reliable")
+func _trigger_hit_effects() -> void:
+	# Camera shake
+	var cameras = get_tree().get_nodes_in_group("camera")
+	for cam in cameras:
+		if cam.has_method("apply_shake"):
+			cam.apply_shake(10.0, 0.2)
+	
+	# Small hitstop (only local, to avoid desyncing physics simulation across network)
+	# For now, just flash the screen or something, or rely on shake.
+
 
 
 # ═══════════════════════════════════════════════════════════════

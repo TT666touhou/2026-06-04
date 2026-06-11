@@ -29,8 +29,12 @@ def main():
     pyautogui.keyUp('right')
     time.sleep(0.1)
     
-    # Attack the boss
-    pyautogui.press('x')
+    # Attack the boss to see death animation
+    for _ in range(20):
+        pyautogui.press('x')
+        time.sleep(0.3)
+        
+    time.sleep(1.0)
     time.sleep(0.1)
     
     img3 = ImageGrab.grab()
