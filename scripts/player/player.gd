@@ -138,6 +138,12 @@ var _sway_y: float = 0.0
 var _sway_yd: float = 0.0
 var _sway_xp: float = 0.0
 
+# ── BOT 控制 ──────────────────────────────────────────
+var bot_enabled: bool = false
+var bot_input_jump: bool = false
+var bot_input_roll: bool = false
+var bot_input_move_dir: float = 0.0
+
 # ═══════════════════════════════════════════════════════════════
 # 地板顏色快取將（每 0.1s 更新一次，減少 ShapeCast 像素讀取频率）
 # ═══════════════════════════════════════════════════════════════
@@ -204,6 +210,11 @@ func _ready() -> void:
 		var cam = Camera2D.new()
 		cam.position_smoothing_enabled = true
 		add_child(cam)
+		
+	var bot = Node.new()
+	bot.name = "BotController"
+	bot.set_script(load("res://scripts/player/bot_controller.gd"))
+	add_child(bot)
 
 func set_skin(index: int):
 	_skin_index = index
@@ -266,7 +277,12 @@ func _apply_gravity(delta: float) -> void:
 # 跳躍系統（包含 Coyote、Jump Buffer、Apex 二段跳、蹬牆跳）
 # ═══════════════════════════════════════════════════════════════
 func _handle_jump(delta: float) -> void:
-	var jump_pressed := Input.is_action_just_pressed("jump")
+	var jump_pressed := false
+	if bot_enabled:
+		jump_pressed = bot_input_jump
+	else:
+		jump_pressed = Input.is_action_just_pressed("jump")
+		
 	var on_floor     := is_on_floor()
 	var ascending    := velocity.y < 0.0   # 上升中（Y 負 = 向上）
 	var descending   := velocity.y > 0.0   # 下降中（Y 正 = 向下）
@@ -361,7 +377,11 @@ func _handle_horizontal(delta: float) -> void:
 		_wall_lock_timer = max(0.0, _wall_lock_timer - delta)
 		return
 
-	var dir := Input.get_axis("move_left", "move_right")
+	var dir := 0.0
+	if bot_enabled:
+		dir = bot_input_move_dir
+	else:
+		dir = Input.get_axis("move_left", "move_right")
 
 	if dir != 0.0:
 		_facing = sign(dir)
@@ -418,8 +438,14 @@ func _handle_roll(delta: float) -> void:
 			_is_rolling  = false
 			is_invincible = false
 	else:
+		var roll_pressed = false
+		if bot_enabled:
+			roll_pressed = bot_input_roll
+		else:
+			roll_pressed = Input.is_action_just_pressed("roll")
+			
 		# 觸發翻滾：地面 + 有冷卻時間 + 有耐力
-		if Input.is_action_just_pressed("roll") and is_on_floor() \
+		if roll_pressed and is_on_floor() \
 		   and _roll_cooldown <= 0.0 and _has_stamina():
 			_is_rolling    = true
 			_roll_timer    = roll_duration

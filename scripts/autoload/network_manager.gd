@@ -93,8 +93,11 @@ func register_player_from_server(id: int, player_info: Dictionary):
 	player_connected.emit(id, player_info)
 	players_changed.emit()
 
+var current_level_seed: int = 0
+
 @rpc("authority", "call_local", "reliable")
 func start_game(level_seed: int = 0):
+	current_level_seed = level_seed
 	seed(level_seed)
 	get_tree().change_scene_to_file("res://scenes/test_level.tscn")
 

@@ -11,13 +11,21 @@ config_version=5
 [application]
 
 config/name="2026 06 04"
-run/main_scene="uid://dydcj4xup0auq"
+run/main_scene="res://scenes/ui/title_screen.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+NetworkManager="*res://scripts/autoload/network_manager.gd"
 
 [display]
 
 window/stretch/mode="viewport"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [input]
 
@@ -54,11 +62,3 @@ roll={
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
-
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/gut/plugin.cfg")
-
-[autoload]
-
-NetworkManager="*res://scripts/autoload/network_manager.gd"

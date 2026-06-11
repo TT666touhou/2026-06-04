@@ -14,6 +14,9 @@ func _ready():
 		_spawn_players()
 
 func _generate_level():
+	var rng = RandomNumberGenerator.new()
+	rng.seed = NetworkManager.current_level_seed
+
 	# Simple linear modular map generator
 	var blocks = [
 		preload("res://scenes/modular_blocks/modular_block_1.tscn"),
@@ -33,7 +36,7 @@ func _generate_level():
 	
 	# Generate linear path
 	for i in range(map_length):
-		var b_scene = blocks[randi() % blocks.size()]
+		var b_scene = blocks[rng.randi() % blocks.size()]
 		if i == map_length - 1:
 			b_scene = end_block
 			
@@ -42,8 +45,10 @@ func _generate_level():
 		add_child(b)
 		
 		# Spawn some enemies on the blocks (skip first block for safety)
-		if i > 0 and multiplayer.is_server():
-			var e_scene = [enemy1, enemy2, enemy3][randi() % 3]
+		# Spawning locally on all peers ensures they appear since there's no MultiplayerSpawner for them right now.
+		# They might desync in behavior, but they'll be physically present for testing.
+		if i > 0:
+			var e_scene = [enemy1, enemy2, enemy3][rng.randi() % 3]
 			var e = e_scene.instantiate()
 			# Put enemy slightly above the block
 			e.position = Vector2(current_x + block_width / 2, -100)
@@ -83,6 +88,10 @@ func _spawn_player(peer_id: int, p_num: int, pos: Vector2):
 	p.name = str(peer_id)
 	p.position = pos
 	p.set_multiplayer_authority(peer_id)
+	
+	if "--bot" in OS.get_cmdline_args() or OS.has_environment("BOT_MODE"):
+		p.bot_enabled = true
+		
 	$Players.add_child(p, true)
 
 func _physics_process(delta):
