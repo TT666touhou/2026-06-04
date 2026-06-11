@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="2026 06 04"
-run/main_scene="uid://dydcj4xup0auq"
+config/name="The Wardens"
+run/main_scene="uid://title_screen_scene"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
 

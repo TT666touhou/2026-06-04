@@ -1,0 +1,82 @@
+[gd_scene format=4 uid="uid://room04ambush"]
+
+[ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="1_world"]
+[ext_resource type="Script" path="res://scripts/level/base_level.gd" id="2_base"]
+[ext_resource type="PackedScene" uid="uid://qp735yrnv0g0" path="res://scenes/enemy/Enemy1.tscn" id="3_e1"]
+[ext_resource type="PackedScene" uid="uid://dln827yoptipy" path="res://scenes/enemy/Enemy3.tscn" id="4_e3"]
+[ext_resource type="Script" path="res://scripts/level/room_transition.gd" id="5_rt"]
+
+[node name="Room04Ambush" type="Node2D"]
+script = ExtResource("2_base")
+room_name = "ROOM 4: AMBUSH"
+is_boss_room = false
+next_room_path = "res://scenes/levels/room_05_boss.tscn"
+
+[node name="PlayerSpawns" type="Node2D" parent="."]
+
+[node name="Spawn1" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(-80, -24)
+
+[node name="Spawn2" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(-64, -24)
+
+[node name="Spawn3" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(-48, -24)
+
+[node name="Spawn4" type="Marker2D" parent="PlayerSpawns"]
+position = Vector2(-32, -24)
+
+[node name="CamLimitLeft" type="Marker2D" parent="."]
+position = Vector2(-128, 0)
+
+[node name="CamLimitRight" type="Marker2D" parent="."]
+position = Vector2(320, 0)
+
+[node name="CamLimitTop" type="Marker2D" parent="."]
+position = Vector2(0, -192)
+
+[node name="CamLimitBottom" type="Marker2D" parent="."]
+position = Vector2(0, 48)
+
+[node name="WorldLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("1_world")
+tile_map_data = PackedByteArray("AADn/wAAAgAKABUACADo/wAAAgAKABUABQDp/wAAAgAKABUAAgDq/wAAAgAKABYAADDr/wAAAgANABUACADs/wAAAgAMABUABADt/wAAAgANABUABQDu/wAAAgAMABUABwDv/wAAAgANABUABgDw/wAAAgALABUABwDx/wAAAgANABUABADy/wAAAgANABUABgDz/wAAAgAKABUABQD0/wAAAgAKABUABAD1/wAAAgAKABUABQD2/wAAAgALAAAAACD3/wAAAgANABUABgD4/wAAAgALABUABwD5/wAAAgALABUAAwD6/wAAAgAJAAIAAAD7/wAAAgAKABUAAQD8/wAAAgANAAsAACD9/wAAAgALABUACAD+/wAAAgANAAsAAAD//wAAAgALAAsAAAAAAAAAAgAMAAsAAAABAAAAAgAJAAAAACACAAAAAgALAAsAAAADAAAAAgANABUABwAEAAAAAgAKABUABgAFAAAAAgAIAAcAAAAGAAAAAgAJAAAAACAHAAAAAgAJAAIAAAAIAAAAAgALAAsAAAAJAAAAAgAMAAsAAAAKAAAAAgAKAAsAAHALAAAAAgAGABYAACAMAAAAAgAHABYAACANAAAAAgAKABUAAwAOAAAAAgAMABUABQAPAAAAAgAKABUABQAQAAAAAgANABUABQARAAAAAgALABUAAgASAAAAAgAMABUAAgATAAAAAgALABUAAwAUAAAAAgANAAsAAAAVAAAAAgAJABYAACAWAAAAAgAKABYAACAXAAAAAgALABYAACAYAAAAAgAJAAIAAAAZAAAAAgAMAAsAAAA=")
+
+[node name="Enemies" type="Node2D" parent="."]
+
+[node name="Enemy3_A" parent="Enemies" instance=ExtResource("4_e3")]
+position = Vector2(96, -24)
+
+[node name="Enemy3_B" parent="Enemies" instance=ExtResource("4_e3")]
+position = Vector2(200, -24)
+
+[node name="Enemy1_A" parent="Enemies" instance=ExtResource("3_e1")]
+position = Vector2(148, -24)
+
+[node name="Pits" type="Node2D" parent="."]
+
+[node name="Pit1" type="Area2D" parent="Pits"]
+position = Vector2(80, 32)
+collision_layer = 0
+collision_mask = 2
+
+[node name="PitShape" type="CollisionShape2D" parent="Pits/Pit1"]
+shape = RectangleShape2D.new()
+
+[node name="Pit2" type="Area2D" parent="Pits"]
+position = Vector2(200, 32)
+collision_layer = 0
+collision_mask = 2
+
+[node name="PitShape2" type="CollisionShape2D" parent="Pits/Pit2"]
+shape = RectangleShape2D.new()
+
+[node name="RoomExit" type="Area2D" parent="."]
+script = ExtResource("5_rt")
+target_room_path = "res://scenes/levels/room_05_boss.tscn"
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RoomExit"]
+position = Vector2(296, -12)
+shape = RectangleShape2D.new()

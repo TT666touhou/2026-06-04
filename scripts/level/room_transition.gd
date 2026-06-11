@@ -28,15 +28,14 @@ func _check_transition() -> void:
 	# 單機模式下直接處理，連線模式下由 Server 處理
 	if multiplayer.has_multiplayer_peer() and not multiplayer.is_server():
 		return
-		
-	var network_manager = get_node_or_null("/root/NetworkManager")
-	var connected_players = 1
-	if network_manager != null and network_manager.connected_players.size() > 0:
-		connected_players = network_manager.connected_players.size()
-		
-	# 所有註冊玩家都必須在區域內
-	if _players_in_zone.size() >= connected_players:
+	
+	# 以場景中存活的玩家總數作為判斷基準
+	var alive_players := get_tree().get_nodes_in_group("Players")
+	
+	# 必須至少有一個玩家在區域內才觸發（且所有存活玩家都到了）
+	if _players_in_zone.size() >= alive_players.size() and not alive_players.is_empty():
 		_trigger_transition()
+
 
 func _trigger_transition() -> void:
 	if target_room_path.is_empty():

@@ -124,13 +124,17 @@ var _facing: float = 1.0   # 1=右, -1=左
 
 # ── 生命與無敵幀 ──────────────────────────────────────────────────
 signal health_changed(new_health: int)
+signal player_died(player_node: Node)
 
 @export_group("Health")
 @export var max_health: int = 3
 @export var i_frame_duration: float = 1.5
+## 此玩家的 ID（對應 NetworkManager.connected_players 的 key）
+@export var player_id: int = 1
 
 var current_health: int = 3
 var _i_frame_timer: float = 0.0
+var is_dead: bool = false
 
 
 # ── 視覺傾斜 (Sway) 變數 ──────────────────────────────────────────
@@ -653,9 +657,32 @@ func take_damage(amount: int) -> void:
 		print("[Player] Took damage! HP remaining: ", current_health)
 
 func die() -> void:
-	print("[Player] Died!")
-	# 重新載入場景 (使用 call_deferred 避免在物理 callback 中直接銷毀物理節點)
-	get_tree().call_deferred("reload_current_scene")
+	if is_dead:
+		return
+	is_dead = true
+	print("[Player %d] Died!" % player_id)
+	
+	# 停止移動
+	velocity = Vector2.ZERO
+	
+	# 死亡動畫：快速閃爍後淡出
+	var tween := create_tween()
+	for _i in range(6):
+		tween.tween_property(_visual_pivot, "modulate:a", 0.1, 0.07)
+		tween.tween_property(_visual_pivot, "modulate:a", 1.0, 0.07)
+	tween.tween_property(_visual_pivot, "modulate:a", 0.0, 0.3)
+	tween.tween_callback(_on_death_animation_done)
+
+func _on_death_animation_done() -> void:
+	process_mode = Node.PROCESS_MODE_DISABLED
+	hide()
+	remove_from_group("Players")
+	# 通知遊戲管理器
+	player_died.emit(self)
+	# 通知 NetworkManager（如果在連線模式）
+	var nm := get_node_or_null("/root/NetworkManager")
+	if nm and nm.has_method("notify_player_died"):
+		nm.notify_player_died(player_id)
 
 func _handle_invincibility(delta: float) -> void:
 	if _i_frame_timer > 0.0:

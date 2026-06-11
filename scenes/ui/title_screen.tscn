@@ -1,47 +1,90 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=4 uid="uid://title_screen_scene"]
 
-[ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_tsgd"]
+[ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_ts"]
 
 [node name="TitleScreen" type="Control"]
-layout_mode = 3
-anchors_preset = 15
+script = ExtResource("1_ts")
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_tsgd")
 
 [node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.211765, 0.196078, 0.196078, 1)
+color = Color(0.04, 0.04, 0.06, 1.0)
 
-[node name="HostButton" type="Button" parent="."]
-layout_mode = 0
-offset_left = 476.0
-offset_top = 220.0
-offset_right = 676.0
-offset_bottom = 280.0
-theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
-text = "HOST GAME"
+[node name="ScanlineOverlay" type="ColorRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.04)
 
-[node name="JoinButton" type="Button" parent="."]
-layout_mode = 0
-offset_left = 476.0
-offset_top = 360.0
-offset_right = 676.0
-offset_bottom = 420.0
-theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
-text = "JOIN GAME"
+[node name="TitleLabel" type="Label" parent="."]
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 0.12
+anchor_bottom = 0.32
+text = "◈ THE WARDENS ◈"
+horizontal_alignment = 1
+vertical_alignment = 1
+add_theme_font_size_override("font_size", 28)
+add_theme_color_override("font_color", Color(0.95, 0.95, 0.95, 1.0))
 
-[node name="IPInput" type="LineEdit" parent="."]
-layout_mode = 0
-offset_left = 476.0
-offset_top = 310.0
-offset_right = 676.0
-offset_bottom = 341.0
+[node name="SubtitleLabel" type="Label" parent="."]
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 0.3
+anchor_bottom = 0.4
+text = "4-PLAYER CO-OP ADVENTURE"
+horizontal_alignment = 1
+vertical_alignment = 1
+add_theme_font_size_override("font_size", 10)
+add_theme_color_override("font_color", Color(0.5, 0.8, 1.0, 1.0))
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+anchor_left = 0.25
+anchor_right = 0.75
+anchor_top = 0.42
+anchor_bottom = 0.88
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
+add_theme_constant_override("separation", 10)
+
+[node name="HostButton" type="Button" parent="CenterContainer/VBox"]
+text = "[ HOST GAME ]"
+custom_minimum_size = Vector2(220, 36)
+add_theme_font_size_override("font_size", 13)
+add_theme_color_override("font_color", Color(0.4, 0.9, 0.5))
+
+[node name="JoinButton" type="Button" parent="CenterContainer/VBox"]
+text = "[ JOIN GAME ]"
+custom_minimum_size = Vector2(220, 36)
+add_theme_font_size_override("font_size", 13)
+add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
+
+[node name="IPRow" type="HBoxContainer" parent="CenterContainer/VBox"]
+visible = false
+add_theme_constant_override("separation", 6)
+
+[node name="IPLabel" type="Label" parent="CenterContainer/VBox/IPRow"]
+text = "IP:"
+add_theme_font_size_override("font_size", 11)
+
+[node name="IPInput" type="LineEdit" parent="CenterContainer/VBox/IPRow"]
 placeholder_text = "127.0.0.1"
+size_flags_horizontal = 3
+add_theme_font_size_override("font_size", 11)
+
+[node name="QuitButton" type="Button" parent="CenterContainer/VBox"]
+text = "[ QUIT ]"
+custom_minimum_size = Vector2(220, 36)
+add_theme_font_size_override("font_size", 13)
+add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+
+[node name="VersionLabel" type="Label" parent="."]
+anchor_left = 0.0
+anchor_right = 1.0
+anchor_top = 0.95
+anchor_bottom = 1.0
+text = "v0.1.0 — THE WARDENS"
+horizontal_alignment = 1
+add_theme_font_size_override("font_size", 8)
+add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
