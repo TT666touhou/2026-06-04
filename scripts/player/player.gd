@@ -169,6 +169,9 @@ func _is_authority() -> bool:
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
+func _enter_tree():
+	set_multiplayer_authority(name.to_int())
+
 func _ready() -> void:
 	add_to_group("Players")
 	if is_multiplayer_authority():

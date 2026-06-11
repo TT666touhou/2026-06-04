@@ -62,11 +62,8 @@ func _generate_level():
 
 		current_x += block_width
 
-	if multiplayer.is_server():
-		_spawn_players()
-
 func _spawn_players():
-	var spawn_pos = Vector2(0, -64)
+	var spawn_pos = Vector2(48, -64)
 	var players = NetworkManager.connected_players
 	var i = 0
 	

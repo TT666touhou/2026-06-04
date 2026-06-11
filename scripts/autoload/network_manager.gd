@@ -94,7 +94,8 @@ func register_player_from_server(id: int, player_info: Dictionary):
 	players_changed.emit()
 
 @rpc("authority", "call_local", "reliable")
-func start_game():
+func start_game(level_seed: int = 0):
+	seed(level_seed)
 	get_tree().change_scene_to_file("res://scenes/test_level.tscn")
 
 # ── 遊戲狀態追蹤 ──────────────────────────────────────────────────

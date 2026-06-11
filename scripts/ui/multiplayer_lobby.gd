@@ -60,7 +60,9 @@ func _update_slots():
 
 func _on_start_pressed():
 	if multiplayer.is_server():
-		NetworkManager.start_game.rpc()
+		# Go to test level with a synced random seed
+		var rng_seed = randi()
+		NetworkManager.rpc("start_game", rng_seed)
 
 func _on_back_pressed():
 	NetworkManager.disconnect_game()
