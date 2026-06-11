@@ -1,90 +1,75 @@
-[gd_scene format=4 uid="uid://title_screen_scene"]
+[gd_scene load_steps=2 format=3 uid="uid://dydcj4xup0auq"]
 
-[ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_ts"]
+[ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_tsgd"]
 
 [node name="TitleScreen" type="Control"]
-script = ExtResource("1_ts")
+layout_mode = 3
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tsgd")
 
 [node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.04, 0.04, 0.06, 1.0)
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0, 0.0, 0.0, 1)
 
-[node name="ScanlineOverlay" type="ColorRect" parent="."]
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color(0, 0, 0, 0.04)
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -100.0
+offset_right = 150.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 20
 
-[node name="TitleLabel" type="Label" parent="."]
-anchor_left = 0.0
-anchor_right = 1.0
-anchor_top = 0.12
-anchor_bottom = 0.32
-text = "◈ THE WARDENS ◈"
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
+theme_override_font_sizes/font_size = 48
+text = "GOTHIC SURVIVOR"
 horizontal_alignment = 1
-vertical_alignment = 1
-add_theme_font_size_override("font_size", 28)
-add_theme_color_override("font_color", Color(0.95, 0.95, 0.95, 1.0))
 
-[node name="SubtitleLabel" type="Label" parent="."]
-anchor_left = 0.0
-anchor_right = 1.0
-anchor_top = 0.3
-anchor_bottom = 0.4
-text = "4-PLAYER CO-OP ADVENTURE"
-horizontal_alignment = 1
-vertical_alignment = 1
-add_theme_font_size_override("font_size", 10)
-add_theme_color_override("font_color", Color(0.5, 0.8, 1.0, 1.0))
+[node name="LocalButton" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+text = "PLAY LOCAL"
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
-anchor_left = 0.25
-anchor_right = 0.75
-anchor_top = 0.42
-anchor_bottom = 0.88
+[node name="HostButton" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+text = "HOST ONLINE"
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer"]
-add_theme_constant_override("separation", 10)
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
 
-[node name="HostButton" type="Button" parent="CenterContainer/VBox"]
-text = "[ HOST GAME ]"
-custom_minimum_size = Vector2(220, 36)
-add_theme_font_size_override("font_size", 13)
-add_theme_color_override("font_color", Color(0.4, 0.9, 0.5))
-
-[node name="JoinButton" type="Button" parent="CenterContainer/VBox"]
-text = "[ JOIN GAME ]"
-custom_minimum_size = Vector2(220, 36)
-add_theme_font_size_override("font_size", 13)
-add_theme_color_override("font_color", Color(0.4, 0.8, 1.0))
-
-[node name="IPRow" type="HBoxContainer" parent="CenterContainer/VBox"]
-visible = false
-add_theme_constant_override("separation", 6)
-
-[node name="IPLabel" type="Label" parent="CenterContainer/VBox/IPRow"]
-text = "IP:"
-add_theme_font_size_override("font_size", 11)
-
-[node name="IPInput" type="LineEdit" parent="CenterContainer/VBox/IPRow"]
-placeholder_text = "127.0.0.1"
+[node name="JoinButton" type="Button" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(120, 50)
+layout_mode = 2
 size_flags_horizontal = 3
-add_theme_font_size_override("font_size", 11)
+theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+text = "JOIN"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/VBox"]
-text = "[ QUIT ]"
-custom_minimum_size = Vector2(220, 36)
-add_theme_font_size_override("font_size", 13)
-add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
-
-[node name="VersionLabel" type="Label" parent="."]
-anchor_left = 0.0
-anchor_right = 1.0
-anchor_top = 0.95
-anchor_bottom = 1.0
-text = "v0.1.0 — THE WARDENS"
-horizontal_alignment = 1
-add_theme_font_size_override("font_size", 8)
-add_theme_color_override("font_color", Color(0.3, 0.3, 0.3))
+[node name="IPInput" type="LineEdit" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+placeholder_text = "127.0.0.1"
+alignment = 1

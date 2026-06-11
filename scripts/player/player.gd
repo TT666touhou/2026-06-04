@@ -124,17 +124,13 @@ var _facing: float = 1.0   # 1=右, -1=左
 
 # ── 生命與無敵幀 ──────────────────────────────────────────────────
 signal health_changed(new_health: int)
-signal player_died(player_node: Node)
 
 @export_group("Health")
 @export var max_health: int = 3
 @export var i_frame_duration: float = 1.5
-## 此玩家的 ID（對應 NetworkManager.connected_players 的 key）
-@export var player_id: int = 1
 
 var current_health: int = 3
 var _i_frame_timer: float = 0.0
-var is_dead: bool = false
 
 
 # ── 視覺傾斜 (Sway) 變數 ──────────────────────────────────────────
@@ -154,6 +150,17 @@ var _skin_index: int = 0
 
 @onready var appearance: TileMapLayer = $VisualPivot/Appearance
 
+@rpc("any_peer", "call_local", "reliable")
+func _set_sprite_color(id: int):
+	var appearance = $VisualPivot/Appearance
+	if not appearance:
+		return
+	
+	# Kenney 1-bit pack has characters around (28,0), (29,0), (30,0), (31,0)
+	# We assign a different tile based on player ID (1 to 4)
+	var tile_x = 28 + (id % 4)
+	appearance.set_cell(Vector2i.ZERO, 0, Vector2i(tile_x, 0))
+
 func _is_authority() -> bool:
 	if not multiplayer.has_multiplayer_peer():
 		return true # Default to local control if offline/testing
@@ -163,6 +170,12 @@ func _is_authority() -> bool:
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
+	add_to_group("Players")
+	if is_multiplayer_authority():
+		_set_sprite_color.rpc(multiplayer.get_unique_id())
+	else:
+		_set_sprite_color(name.to_int())
+
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
 	
@@ -657,32 +670,18 @@ func take_damage(amount: int) -> void:
 		print("[Player] Took damage! HP remaining: ", current_health)
 
 func die() -> void:
-	if is_dead:
-		return
-	is_dead = true
-	print("[Player %d] Died!" % player_id)
+	print("[Player] Died!")
+	# 通知 NetworkManager 處理死亡與全滅判定
+	if get_node("/root/NetworkManager").has_method("notify_player_died"):
+		# 獲取 player 的 id (name 就是 peer_id 的字串)
+		get_node("/root/NetworkManager").rpc("notify_player_died", name.to_int())
 	
-	# 停止移動
-	velocity = Vector2.ZERO
-	
-	# 死亡動畫：快速閃爍後淡出
-	var tween := create_tween()
-	for _i in range(6):
-		tween.tween_property(_visual_pivot, "modulate:a", 0.1, 0.07)
-		tween.tween_property(_visual_pivot, "modulate:a", 1.0, 0.07)
-	tween.tween_property(_visual_pivot, "modulate:a", 0.0, 0.3)
-	tween.tween_callback(_on_death_animation_done)
-
-func _on_death_animation_done() -> void:
-	process_mode = Node.PROCESS_MODE_DISABLED
+	# 隱藏玩家、關閉物理碰撞與腳本處理，保持在場景中但不運作
 	hide()
-	remove_from_group("Players")
-	# 通知遊戲管理器
-	player_died.emit(self)
-	# 通知 NetworkManager（如果在連線模式）
-	var nm := get_node_or_null("/root/NetworkManager")
-	if nm and nm.has_method("notify_player_died"):
-		nm.notify_player_died(player_id)
+	set_physics_process(false)
+	set_process(false)
+	collision_layer = 0
+	collision_mask = 0
 
 func _handle_invincibility(delta: float) -> void:
 	if _i_frame_timer > 0.0:
