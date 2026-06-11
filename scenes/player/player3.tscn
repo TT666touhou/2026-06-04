@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://b0yuquq5kh52u"]
+[gd_scene format=3 uid="uid://dqjvn6pc0a2vn"]
 
 [ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
 [ext_resource type="Script" uid="uid://cgxc5o3rdglr5" path="res://scripts/player/player.gd" id="2_script"]
@@ -30,7 +30,7 @@ position = Vector2(0, 6)
 [node name="Appearance" type="TileMapLayer" parent="VisualPivot" unique_id=659119027]
 texture_filter = 1
 position = Vector2(-8, -14)
-tile_map_data = PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0)
+tile_map_data = PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0)
 tile_set = ExtResource("2_33ho1")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=989281702]
