@@ -14,11 +14,9 @@ func _ready():
 	_setup_button_tween(host_btn)
 	_setup_button_tween(join_btn)
 	
-	# Apply Retro style to buttons via code for simplicity
+	# Apply flat modern minimalist style to buttons
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color("#436794") # VfxMix Dark Blue
-	style.border_width_bottom = 4
-	style.border_color = Color("#2a425f")
 	
 	var hover_style = style.duplicate()
 	hover_style.bg_color = Color("#6f81b3")

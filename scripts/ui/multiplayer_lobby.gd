@@ -18,7 +18,29 @@ func _ready():
 	
 	# Listen to network manager
 	NetworkManager.players_changed.connect(_update_slots)
+	# Apply flat modern minimalist style to buttons
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color("#436794") # VfxMix Dark Blue
+	
+	var hover_style = style.duplicate()
+	hover_style.bg_color = Color("#6f81b3")
+	
+	for btn in [start_btn, back_btn]:
+		btn.add_theme_stylebox_override("normal", style)
+		btn.add_theme_stylebox_override("hover", hover_style)
+		btn.add_theme_stylebox_override("pressed", style)
+		_setup_button_tween(btn)
+		
 	_update_slots()
+
+func _setup_button_tween(btn: Button):
+	btn.mouse_entered.connect(func(): _animate_button(btn, Vector2(1.05, 1.05)))
+	btn.mouse_exited.connect(func(): _animate_button(btn, Vector2(1.0, 1.0)))
+
+func _animate_button(btn: Button, target_scale: Vector2):
+	btn.pivot_offset = btn.size / 2.0
+	var tween = create_tween().set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
+	tween.tween_property(btn, "scale", target_scale, 0.2)
 
 func _update_slots():
 	var active_ids = NetworkManager.get_player_ids()
