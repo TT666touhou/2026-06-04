@@ -159,7 +159,7 @@ func _calc_target_zoom(bbox: Rect2) -> float:
 	return clampf(required_zoom, float(min_zoom), float(max_zoom))
 
 func _apply_offscreen_damage(players: Array[Node]) -> void:
-	var vp_rect := get_viewport_rect()
+	var _vp_rect := get_viewport_rect()  ## 預留，目前以手動計算取代
 	# 轉換為世界座標的可見區域
 	var cam_pos := global_position
 	var vp_size := get_viewport().get_visible_rect().size

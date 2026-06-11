@@ -185,7 +185,7 @@ func trigger_victory() -> void:
 	await get_tree().create_timer(2.0).timeout
 	var v_path := "res://scenes/ui/victory.tscn"
 	if ResourceLoader.exists(v_path):
-		var victory_scene := load(v_path).instantiate()
+		var victory_scene: Node = load(v_path).instantiate()
 		if victory_scene.has_method("set_clear_time"):
 			victory_scene.set_clear_time(elapsed)
 		get_tree().root.add_child(victory_scene)

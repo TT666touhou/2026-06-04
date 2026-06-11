@@ -31,7 +31,7 @@ func _populate_player_stats() -> void:
 	
 	var idx := 0
 	for peer_id in NetworkManager.connected_players:
-		var info := NetworkManager.connected_players[peer_id]
+		var info: Dictionary = NetworkManager.connected_players[peer_id]
 		var is_dead: bool = info.get("is_dead", true)
 		
 		var lbl := Label.new()

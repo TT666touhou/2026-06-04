@@ -130,10 +130,12 @@ func _on_player_hp_changed(slot_idx: int, new_hp: int, max_hp: int) -> void:
 	_hp_labels[slot_idx].text = str(new_hp)
 	
 	# 血量低時顏色變紅
-	var color := PLAYER_COLORS[slot_idx]
+	var color: Color = PLAYER_COLORS[slot_idx]
 	if new_hp == 1:
 		color = Color(1.0, 0.3, 0.3)
-	_hp_bars[slot_idx].get_theme_stylebox("fill").bg_color = color
+	var fill_sb := _hp_bars[slot_idx].get_theme_stylebox("fill") as StyleBoxFlat
+	if fill_sb:
+		fill_sb.bg_color = color
 
 func _on_player_slot_died(slot_idx: int) -> void:
 	if slot_idx >= _player_slots.size(): return
@@ -141,6 +143,6 @@ func _on_player_slot_died(slot_idx: int) -> void:
 	_hp_labels[slot_idx].text = "X"
 	_player_slots[slot_idx].modulate = Color(0.5, 0.2, 0.2, 0.8)
 
-func update_boss_health(current: int, maximum: int) -> void:
+func update_boss_health(_current: int, _maximum: int) -> void:
 	## 供 Boss 場景呼叫：更新 Boss 血量顯示
 	pass  # Boss HP Bar 在場景中獨立顯示

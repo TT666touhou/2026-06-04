@@ -137,7 +137,7 @@ func _update_timers(delta: float) -> void:
 # ═══════════════════════════════════════════════════════════════
 # 巡邏狀態
 # ═══════════════════════════════════════════════════════════════
-func _process_patrol(delta: float) -> void:
+func _process_patrol(_delta: float) -> void:
 	var speed := _get_patrol_speed()
 	velocity.x = _direction * speed
 	
@@ -155,7 +155,6 @@ func _process_patrol(delta: float) -> void:
 		_update_detector()
 		
 		# 距離夠近就衝刺
-		var dash_cd := _get_dash_cooldown()
 		if _dash_cooldown_timer <= 0.0 and to_player.length() < 200.0:
 			_start_dash(player)
 		
@@ -194,7 +193,7 @@ func _start_dash(player: Node2D) -> void:
 		tween.tween_property(appearance, "modulate", Color(3.0, 3.0, 3.0, 1.0), 0.1)
 		tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
 
-func _process_dash(delta: float) -> void:
+func _process_dash(_delta: float) -> void:
 	var spd := p2_dash_speed if current_phase != Phase.ONE else dash_speed
 	velocity.x = _dash_direction * spd
 	

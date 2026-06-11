@@ -122,7 +122,7 @@ func _refresh_player_list() -> void:
 	var idx := 0
 	for peer_id in NetworkManager.connected_players:
 		if idx >= 4: break
-		var info := NetworkManager.connected_players[peer_id]
+		var info: Dictionary = NetworkManager.connected_players[peer_id]
 		var skin_idx: int = info.get("skin_index", 0)
 		
 		_slot_nodes[idx].modulate.a = 1.0

@@ -19,7 +19,7 @@ func _connect_boss_signal() -> void:
 		# 連接 Boss HP 到血量條
 		var hp_bar := get_node_or_null("../BossHealthBar")
 		if hp_bar and boss.has_signal("boss_health_changed"):
-			boss.boss_health_changed.connect(func(cur, mx): hp_bar.value = cur)
+			boss.boss_health_changed.connect(func(cur, _mx): hp_bar.value = cur)
 	else:
 		push_warning("[BossRoomManager] Boss node not found!")
 

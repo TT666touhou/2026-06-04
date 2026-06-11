@@ -49,7 +49,7 @@ func _process(_delta: float) -> void:
 			_indicators[i].visible = false
 			continue
 		
-		var screen_pos := _camera.unproject_position(p.global_position)
+		var screen_pos: Vector2 = _camera.unproject_position(p.global_position)
 		var in_screen := Rect2(margin, margin + 28, vp_size.x - margin * 2, vp_size.y - margin * 2 - 28).has_point(screen_pos)
 		
 		if in_screen:
@@ -60,8 +60,8 @@ func _process(_delta: float) -> void:
 			var clamped := _clamp_to_border(screen_pos, vp_size, margin)
 			_indicators[i].global_position = clamped
 			# 旋轉箭頭指向玩家方向
-			var dir := (screen_pos - clamped).normalized()
-			var angle := dir.angle()
+			var dir: Vector2 = (screen_pos - clamped).normalized()
+			var angle: float = dir.angle()
 			_indicators[i].rotation = angle
 
 func _update_camera() -> void:
