@@ -1,0 +1,32 @@
+[gd_scene load_steps=4 format=3 uid="uid://c_level1"]
+
+[ext_resource type="Script" path="res://scripts/level/level_1.gd" id="1_script"]
+[ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="2_tileset"]
+[ext_resource type="Script" path="res://scripts/camera/multiplayer_camera.gd" id="3_cam"]
+
+[node name="Level1" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+z_index = -10
+offset_left = -2000.0
+offset_top = -2000.0
+offset_right = 5000.0
+offset_bottom = 3000.0
+color = Color(0.165, 0.259, 0.373, 1)
+
+[node name="WorldLayer" type="TileMapLayer" parent="."]
+texture_filter = 1
+tile_set = ExtResource("2_tileset")
+
+[node name="Players" type="Node" parent="."]
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("res://scenes/player/player1.tscn", "res://scenes/player/player2.tscn", "res://scenes/player/player3.tscn", "res://scenes/player/player4.tscn")
+spawn_path = NodePath("../Players")
+
+[node name="MultiplayerCamera" type="Camera2D" parent="."]
+script = ExtResource("3_cam")
+zoom = Vector2(3, 3)
+
+[node name="PlayerSpawns" type="Node2D" parent="."]

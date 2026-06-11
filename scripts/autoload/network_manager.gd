@@ -99,7 +99,7 @@ var current_level_seed: int = 0
 func start_game(level_seed: int = 0):
 	current_level_seed = level_seed
 	seed(level_seed)
-	get_tree().change_scene_to_file("res://scenes/test_level.tscn")
+	get_tree().change_scene_to_file("res://scenes/level/level_1.tscn")
 
 # ── 遊戲狀態追蹤 ──────────────────────────────────────────────────
 var alive_players: Dictionary = {}
