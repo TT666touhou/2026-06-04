@@ -24,7 +24,15 @@ func _process(_delta: float) -> void:
 		_try_connect_player()
 
 func _try_connect_player() -> void:
-	var player = get_tree().current_scene.find_child("Player1", true, false)
+	# Search up the tree to find the player node
+	var current_node = self
+	var player = null
+	while current_node != null:
+		if current_node.has_method("take_damage"): # A good indicator of player/character
+			player = current_node
+			break
+		current_node = current_node.get_parent()
+		
 	if player:
 		_player = player
 		if not player.health_changed.is_connected(update_hearts):
@@ -34,11 +42,13 @@ func _try_connect_player() -> void:
 func update_hearts(current_hp: int) -> void:
 	# 獲取 Camera2D zoom 來動態計算顯示尺寸，確保與 Player 大小一致
 	var cam_zoom: float = 3.0
-	var camera = get_tree().current_scene.find_child("SceneCamera", true, false)
-	if camera and "cam_zoom" in camera:
-		cam_zoom = float(camera.cam_zoom)
-	elif camera and camera is Camera2D:
-		cam_zoom = camera.zoom.x
+	var scene = get_tree().current_scene
+	if scene != null:
+		var camera = scene.find_child("SceneCamera", true, false)
+		if camera and "cam_zoom" in camera:
+			cam_zoom = float(camera.cam_zoom)
+		elif camera and camera is Camera2D:
+			cam_zoom = camera.zoom.x
 		
 	# 計算尺寸：Player 是 16x16 像素，縮小/放大後在螢幕上的高度是 16 * cam_zoom
 	# 愛心原始是 8x8，因此在 UI 空間中我們將大小設為 16 * cam_zoom 即可跟 player 尺寸一樣大！

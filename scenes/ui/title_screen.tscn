@@ -1,0 +1,47 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_tsgd"]
+
+[node name="TitleScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tsgd")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.211765, 0.196078, 0.196078, 1)
+
+[node name="HostButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 220.0
+offset_right = 676.0
+offset_bottom = 280.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "HOST GAME"
+
+[node name="JoinButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 360.0
+offset_right = 676.0
+offset_bottom = 420.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "JOIN GAME"
+
+[node name="IPInput" type="LineEdit" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 310.0
+offset_right = 676.0
+offset_bottom = 341.0
+placeholder_text = "127.0.0.1"

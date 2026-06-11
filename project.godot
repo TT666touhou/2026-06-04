@@ -54,3 +54,11 @@ roll={
 
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[autoload]
+
+NetworkManager="*res://scripts/autoload/network_manager.gd"

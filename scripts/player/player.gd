@@ -146,17 +146,63 @@ var _cached_floor_ramp: GradientTexture1D
 var _floor_color_timer: float = 0.0
 var _atlas_cache: Dictionary = {}
 
+var _skin_index: int = 0
+
+@onready var appearance: TileMapLayer = $VisualPivot/Appearance
+
+func _is_authority() -> bool:
+	if not multiplayer.has_multiplayer_peer():
+		return true # Default to local control if offline/testing
+	return is_multiplayer_authority()
+
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
 func _ready() -> void:
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
+	
+	# Multiplayer setup
+	var sync = MultiplayerSynchronizer.new()
+	var rep = SceneReplicationConfig.new()
+	rep.add_property(NodePath(".:position"))
+	rep.property_set_spawn(NodePath(".:position"), true)
+	rep.property_set_replication_mode(NodePath(".:position"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	
+	rep.add_property(NodePath(".:velocity"))
+	rep.property_set_spawn(NodePath(".:velocity"), true)
+	rep.property_set_replication_mode(NodePath(".:velocity"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	
+	rep.add_property(NodePath(".:_facing"))
+	rep.property_set_spawn(NodePath(".:_facing"), true)
+	rep.property_set_replication_mode(NodePath(".:_facing"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
+	
+	sync.replication_config = rep
+	add_child(sync)
+	
+	if _is_authority():
+		var cam = Camera2D.new()
+		cam.position_smoothing_enabled = true
+		add_child(cam)
+
+func set_skin(index: int):
+	_skin_index = index
+	appearance.set_cell(Vector2i(0, 0), 0, Vector2i(28 + index, 0))
+
 
 # ═══════════════════════════════════════════════════════════════
 # 物理更新主迴圈（標準順序）
 # ═══════════════════════════════════════════════════════════════
 func _physics_process(delta: float) -> void:
+	# 6.5. VFX 更新 (Visual effects should run on all clients)
+	_update_vfx(delta)
+
+	# 6.6. 視覺傾斜 (Visual Sway should run on all clients)
+	_update_sway(delta)
+	
+	if not _is_authority():
+		return
+		
 	# 1. 重力
 	_apply_gravity(delta)
 
@@ -175,12 +221,6 @@ func _physics_process(delta: float) -> void:
 
 	# 6. 物理移動
 	move_and_slide()
-
-	# 6.5. VFX 更新
-	_update_vfx(delta)
-
-	# 6.6. 視覺傾斜 (Visual Sway)
-	_update_sway(delta)
 
 	# 7. 像素對齊（消除 float 座標在 zoom 下的模糊）
 	if snap_position_to_pixel:
