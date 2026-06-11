@@ -26,6 +26,21 @@ func _ready():
 		btn.add_theme_stylebox_override("hover", hover_style)
 		btn.add_theme_stylebox_override("pressed", style)
 
+	if OS.is_debug_build():
+		_auto_connect_for_debug()
+
+func _auto_connect_for_debug():
+	# Random delay to avoid 4 instances binding at the exact same millisecond
+	await get_tree().create_timer(randf_range(0.1, 0.8)).timeout
+	var err = NetworkManager.host_game()
+	if err == OK:
+		get_tree().change_scene_to_file("res://scenes/ui/multiplayer_lobby.tscn")
+	else:
+		# If port is taken, assume another instance is hosting. Wait and join.
+		await get_tree().create_timer(0.5).timeout
+		NetworkManager.join_game("127.0.0.1")
+		get_tree().change_scene_to_file("res://scenes/ui/multiplayer_lobby.tscn")
+
 func _setup_button_tween(btn: Button):
 	btn.mouse_entered.connect(func(): _animate_button(btn, Vector2(1.05, 1.05)))
 	btn.mouse_exited.connect(func(): _animate_button(btn, Vector2(1.0, 1.0)))
