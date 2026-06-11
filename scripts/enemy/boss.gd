@@ -5,16 +5,19 @@ const DASH_SPEED = 300.0
 const JUMP_VELOCITY = -400.0
 var gravity = ProjectSettings.get_setting("physics/2d/default_gravity")
 
-enum State { IDLE, WALK, JUMP, DASH }
+enum State { IDLE, WALK, JUMP, DASH, ATTACK }
 var current_state = State.IDLE
 var state_timer = 0.0
 var direction = 1
 var max_health = 100
 var current_health = 100
+var attack_target: Node2D = null
+var base_color = Color("#222034")
 
 @onready var hitbox: Area2D = $Hitbox
 
 func _ready():
+	modulate = base_color
 	if multiplayer.has_multiplayer_peer() and is_multiplayer_authority():
 		var sync = $MultiplayerSynchronizer
 		var rep = SceneReplicationConfig.new()
@@ -66,6 +69,14 @@ func _physics_process(delta):
 			current_state = State.WALK
 	elif current_state == State.JUMP:
 		velocity.x = direction * SPEED
+	elif current_state == State.ATTACK:
+		if attack_target != null and is_instance_valid(attack_target):
+			var dir_to_target = sign(attack_target.global_position.x - global_position.x)
+			if dir_to_target != 0:
+				direction = dir_to_target
+			velocity.x = direction * (SPEED * 1.5)
+		else:
+			current_state = State.IDLE
 	else:
 		velocity.x = move_toward(velocity.x, 0, SPEED)
 
@@ -76,6 +87,26 @@ func _physics_process(delta):
 
 func _on_state_timer():
 	if not is_on_floor(): return
+	
+	# Find closest player
+	var players = get_tree().get_nodes_in_group("Players")
+	var closest_player = null
+	var min_dist = 10000.0
+	for p in players:
+		if p.current_health > 0:
+			var dist = global_position.distance_to(p.global_position)
+			if dist < min_dist:
+				min_dist = dist
+				closest_player = p
+				
+	attack_target = closest_player
+	
+	if attack_target != null and min_dist < 150.0:
+		# 50% chance to attack if close
+		if randf() < 0.5:
+			current_state = State.ATTACK
+			return
+			
 	var rand = randi() % 4
 	if rand == 0:
 		current_state = State.IDLE
@@ -119,11 +150,11 @@ func take_damage(amount: int, hit_direction: int = 0):
 
 @rpc("call_local", "reliable")
 func _flash_red():
-	modulate = Color.RED
+	modulate = Color("#e55c5c")
 	if has_node("HitParticles"):
 		$HitParticles.restart()
 	await get_tree().create_timer(0.1).timeout
-	modulate = Color.WHITE
+	modulate = base_color
 
 @rpc("call_local", "reliable")
 func die():

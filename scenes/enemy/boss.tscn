@@ -1,44 +1,45 @@
 [gd_scene load_steps=4 format=3 uid="uid://cboss1"]
 
-[ext_resource type="Texture2D" path="res://assets/tilesets/mrmotext/MRMOTEXT_EX.png" id="1_tex"]
+[ext_resource type="Texture2D" uid="uid://ddl1dvehy2c54" path="res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png" id="1_tex"]
 [ext_resource type="Script" path="res://scripts/enemy/boss.gd" id="2_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
-size = Vector2(64, 96)
+size = Vector2(48, 64)
 
 [node name="Boss" type="CharacterBody2D" groups=["enemies"]]
 script = ExtResource("2_script")
 
 [node name="Head" type="Sprite2D" parent="."]
 texture_filter = 1
-position = Vector2(0, -32)
+position = Vector2(0, -24)
 scale = Vector2(4, 4)
 texture = ExtResource("1_tex")
 region_enabled = true
-region_rect = Rect2(168, 8, 8, 8)
+region_rect = Rect2(8, 24, 8, 8)
 
 [node name="Body" type="Sprite2D" parent="."]
 texture_filter = 1
+position = Vector2(0, 0)
 scale = Vector2(4, 4)
 texture = ExtResource("1_tex")
 region_enabled = true
-region_rect = Rect2(168, 8, 8, 8)
+region_rect = Rect2(48, 24, 8, 8)
 
 [node name="LegLeft" type="Sprite2D" parent="."]
 texture_filter = 1
-position = Vector2(-16, 32)
+position = Vector2(-12, 24)
 scale = Vector2(4, 4)
 texture = ExtResource("1_tex")
 region_enabled = true
-region_rect = Rect2(168, 8, 8, 8)
+region_rect = Rect2(48, 24, 8, 8)
 
 [node name="LegRight" type="Sprite2D" parent="."]
 texture_filter = 1
-position = Vector2(16, 32)
+position = Vector2(12, 24)
 scale = Vector2(4, 4)
 texture = ExtResource("1_tex")
 region_enabled = true
-region_rect = Rect2(168, 8, 8, 8)
+region_rect = Rect2(48, 24, 8, 8)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_1")

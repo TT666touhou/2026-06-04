@@ -27,7 +27,7 @@ def main():
     pyautogui.keyDown('right')
     time.sleep(0.5)
     pyautogui.keyUp('right')
-    time.sleep(0.1)
+    time.sleep(3.0)
     
     # Attack the boss to see death animation
     for _ in range(20):
