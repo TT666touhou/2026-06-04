@@ -2,6 +2,7 @@ extends CharacterBody2D
 
 @export var stats: EnemyStats
 @export var detection_range: float = 120.0
+@export var spawn_disabled: bool = false
 
 @onready var appearance: TileMapLayer = %Appearance
 @onready var wall_detector: RayCast2D = $WallDetector
@@ -18,6 +19,17 @@ var flash_timer: float = 0.0
 func _ready() -> void:
 	if stats:
 		current_health = stats.max_health
+		
+	if spawn_disabled:
+		disable_enemy()
+
+func disable_enemy() -> void:
+	process_mode = Node.PROCESS_MODE_DISABLED
+	hide()
+
+func enable_enemy() -> void:
+	process_mode = Node.PROCESS_MODE_INHERIT
+	show()
 
 func _physics_process(delta: float) -> void:
 	# 處理重力
@@ -69,12 +81,12 @@ func _physics_process(delta: float) -> void:
 	velocity.x = direction * speed
 	move_and_slide()
 	
-	# 偵測碰觸玩家並造成傷害
-	for i in get_slide_collision_count():
-		var col = get_slide_collision(i)
-		var collider = col.get_collider()
-		if collider and (collider.name == "Player1" or collider.has_method("take_damage")):
-			collider.take_damage(1)
+	# 偵測碰觸玩家並造成傷害 (因為不物理碰撞，故使用距離判定)
+	if player:
+		var diff = player.global_position - global_position
+		# 距離判定：水平小於 12 像素，且垂直高度差小於 14 像素
+		if abs(diff.x) < 12.0 and abs(diff.y) < 14.0:
+			player.take_damage(1)
 
 func _turn_around() -> void:
 	direction *= -1.0

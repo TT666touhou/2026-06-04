@@ -7,6 +7,7 @@ enum State { PATROL, TELEGRAPH, SHOOT, COOLDOWN }
 @export var telegraph_duration: float = 2.5
 @export var shoot_duration: float = 0.3
 @export var cooldown_duration: float = 1.2
+@export var spawn_disabled: bool = false
 
 @onready var appearance: TileMapLayer = $Appearance
 @onready var wall_detector: RayCast2D = $WallDetector
@@ -41,6 +42,17 @@ func _ready() -> void:
 	warning_line.default_color = Color(0.898, 0.361, 0.361, 0.6) # 半透明紅
 	laser_outer.default_color = Color(0.898, 0.361, 0.361, 1.0) # 番茄紅
 	laser_inner.default_color = Color(0.949, 0.976, 0.973, 1.0) # 近白
+	
+	if spawn_disabled:
+		disable_enemy()
+
+func disable_enemy() -> void:
+	process_mode = Node.PROCESS_MODE_DISABLED
+	hide()
+
+func enable_enemy() -> void:
+	process_mode = Node.PROCESS_MODE_INHERIT
+	show()
 
 func _physics_process(delta: float) -> void:
 	state_timer -= delta

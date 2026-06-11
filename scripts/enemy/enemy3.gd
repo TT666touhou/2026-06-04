@@ -6,6 +6,7 @@ enum State { PATROL, TELEGRAPH, SHOOT, COOLDOWN }
 @export var attack_range: float = 160.0
 @export var telegraph_duration: float = 0.4
 @export var cooldown_duration: float = 1.6
+@export var spawn_disabled: bool = false
 
 @onready var appearance: TileMapLayer = $Appearance
 @onready var wall_detector: RayCast2D = $WallDetector
@@ -14,14 +15,26 @@ var current_state: State = State.PATROL
 var state_timer: float = 0.0
 var direction: float = -1.0
 var current_health: int = 10
-var bullet_scene: PackedScene
+@export var bullet_scene: PackedScene
 
 func _ready() -> void:
 	if stats:
 		current_health = stats.max_health
 	
-	# 載入子彈場景
-	bullet_scene = load("res://scenes/enemy/bullet.tscn")
+	# 如果沒有在屬性面板中指定，載入預設的子彈場景
+	if not bullet_scene:
+		bullet_scene = load("res://scenes/enemy/bullet.tscn")
+		
+	if spawn_disabled:
+		disable_enemy()
+
+func disable_enemy() -> void:
+	process_mode = Node.PROCESS_MODE_DISABLED
+	hide()
+
+func enable_enemy() -> void:
+	process_mode = Node.PROCESS_MODE_INHERIT
+	show()
 
 func _physics_process(delta: float) -> void:
 	state_timer -= delta
