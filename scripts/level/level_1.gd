@@ -47,12 +47,21 @@ func _generate_map_and_bounds():
 	var spawn_points = []
 	var boss_scene = preload("res://scenes/enemy/boss.tscn")
 	
+	var static_body = StaticBody2D.new()
+	add_child(static_body)
+	
 	for y in range(ASCII_MAP.size()):
 		var row = ASCII_MAP[y]
 		for x in range(row.length()):
 			var c = row[x]
 			if c == '#':
-				world_layer.set_cell(Vector2i(x, y), 0, Vector2i(14, 0))
+				world_layer.set_cell(Vector2i(x, y), 0, Vector2i(21, 1))
+				var col = CollisionShape2D.new()
+				var shape = RectangleShape2D.new()
+				shape.size = Vector2(TILE_SIZE, TILE_SIZE)
+				col.shape = shape
+				col.position = Vector2(x * TILE_SIZE + TILE_SIZE/2.0, y * TILE_SIZE + TILE_SIZE/2.0)
+				static_body.add_child(col)
 			elif c == 'S':
 				var p = Marker2D.new()
 				p.position = Vector2(x * TILE_SIZE + TILE_SIZE/2.0, y * TILE_SIZE)
@@ -61,7 +70,7 @@ func _generate_map_and_bounds():
 			elif c == 'E':
 				if boss_scene:
 					var b = boss_scene.instantiate()
-					b.position = Vector2(x * TILE_SIZE, y * TILE_SIZE)
+					b.position = Vector2(x * TILE_SIZE + TILE_SIZE/2.0, y * TILE_SIZE + TILE_SIZE/2.0)
 					add_child(b)
 				
 	# Calculate dynamic camera bounds based on map size

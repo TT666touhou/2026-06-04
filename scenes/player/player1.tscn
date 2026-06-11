@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://b0yuquq5kh52u"]
 
-[ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
-[ext_resource type="Script" uid="uid://cgxc5o3rdglr5" path="res://scripts/player/player.gd" id="2_script"]
+[ext_resource type="Texture2D" path="res://assets/tilesets/mrmotext/MRMOTEXT_EX.png" id="2_33ho1"]
+[ext_resource type="Script" path="res://scripts/player/player.gd" id="2_script"]
 [ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
 [ext_resource type="PackedScene" uid="uid://c031iasmaeovd" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_hud.tscn" id="5_hud"]
@@ -27,11 +27,13 @@ jump_velocity = -191.0
 [node name="VisualPivot" type="Node2D" parent="." unique_id=777777777]
 position = Vector2(0, 6)
 
-[node name="Appearance" type="TileMapLayer" parent="VisualPivot" unique_id=659119027]
+[node name="Appearance" type="Sprite2D" parent="VisualPivot" unique_id=659119027]
 texture_filter = 1
-position = Vector2(-8, -14)
-tile_map_data = PackedByteArray(0, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0)
-tile_set = ExtResource("2_33ho1")
+position = Vector2(0, -4)
+texture = ExtResource("2_33ho1")
+region_enabled = true
+region_rect = Rect2(168, 8, 8, 8)
+
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=989281702]
 shape = SubResource("CapsuleShape2D_1")

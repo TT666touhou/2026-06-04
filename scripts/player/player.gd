@@ -154,7 +154,7 @@ var _atlas_cache: Dictionary = {}
 
 var _skin_index: int = 0
 
-@onready var appearance: TileMapLayer = $VisualPivot/Appearance
+@onready var appearance: Sprite2D = $VisualPivot/Appearance
 
 @rpc("any_peer", "call_local", "reliable")
 func _set_sprite_color(id: int):
@@ -162,10 +162,9 @@ func _set_sprite_color(id: int):
 	if not appearance:
 		return
 	
-	# Kenney 1-bit pack has characters around (28,0), (29,0), (30,0), (31,0)
-	# We assign a different tile based on player ID (1 to 4)
-	var tile_x = 28 + (id % 4)
-	appearance.set_cell(Vector2i.ZERO, 0, Vector2i(tile_x, 0))
+	# Use vfxmix colors for different players
+	var colors = [Color("#ffffff"), Color("#e55c5c"), Color("#5da16e"), Color("#6f81b3")]
+	appearance.modulate = colors[id % 4]
 
 func _is_authority() -> bool:
 	if not multiplayer.has_multiplayer_peer():
@@ -209,8 +208,9 @@ func _ready() -> void:
 	if _is_authority():
 		var cam = Camera2D.new()
 		cam.position_smoothing_enabled = true
+		cam.zoom = Vector2(4, 4)
 		add_child(cam)
-		
+		cam.make_current()
 	var bot = Node.new()
 	bot.name = "BotController"
 	bot.set_script(load("res://scripts/player/bot_controller.gd"))
@@ -218,7 +218,8 @@ func _ready() -> void:
 
 func set_skin(index: int):
 	_skin_index = index
-	appearance.set_cell(Vector2i(0, 0), 0, Vector2i(28 + index, 0))
+	var colors = [Color("#ffffff"), Color("#e55c5c"), Color("#5da16e"), Color("#6f81b3")]
+	appearance.modulate = colors[index % 4]
 
 
 # ═══════════════════════════════════════════════════════════════
