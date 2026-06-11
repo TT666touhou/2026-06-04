@@ -8,16 +8,59 @@ const PLAYER_SCENES = [
 ]
 
 func _ready():
-	var players_node = Node2D.new()
-	players_node.name = "Players"
-	add_child(players_node)
+	# Players and Spawner are already in the scene, so we don't recreate them.
+	_generate_level()
+	if multiplayer.is_server():
+		_spawn_players()
 
-	var spawner = MultiplayerSpawner.new()
-	spawner.name = "PlayerSpawner"
-	spawner.spawn_path = NodePath("../Players")
-	for s in PLAYER_SCENES:
-		spawner.add_spawnable_scene(s.resource_path)
-	add_child(spawner)
+func _generate_level():
+	# Simple linear modular map generator
+	var blocks = [
+		preload("res://scenes/modular_blocks/modular_block_1.tscn"),
+		preload("res://scenes/modular_blocks/modular_block_3.tscn"),
+		preload("res://scenes/modular_blocks/modular_block_4.tscn")
+	]
+	
+	# Boss zone or End zone (we'll just use block_1 with a special flag or big enemy for now)
+	var end_block = preload("res://scenes/modular_blocks/modular_block_1.tscn")
+	var enemy1 = preload("res://scenes/enemy/Enemy1.tscn")
+	var enemy2 = preload("res://scenes/enemy/Enemy2.tscn")
+	var enemy3 = preload("res://scenes/enemy/Enemy3.tscn")
+	
+	var current_x = 0.0
+	var map_length = 8
+	var block_width = 160.0 # Approximate width of a modular block
+	
+	# Generate linear path
+	for i in range(map_length):
+		var b_scene = blocks[randi() % blocks.size()]
+		if i == map_length - 1:
+			b_scene = end_block
+			
+		var b = b_scene.instantiate()
+		b.position = Vector2(current_x, -56)
+		add_child(b)
+		
+		# Spawn some enemies on the blocks (skip first block for safety)
+		if i > 0 and multiplayer.is_server():
+			var e_scene = [enemy1, enemy2, enemy3][randi() % 3]
+			var e = e_scene.instantiate()
+			# Put enemy slightly above the block
+			e.position = Vector2(current_x + block_width / 2, -100)
+			# Needs a spawner for enemies if we want them synced, 
+			# but for now we just add them to the scene.
+			add_child(e, true)
+			
+			if i == map_length - 1:
+				# Boss!
+				var boss = enemy3.instantiate()
+				boss.position = Vector2(current_x + block_width, -150)
+				boss.scale = Vector2(3, 3) # Big boss
+				if boss.has_method("set_max_health"):
+					boss.set_max_health(50)
+				add_child(boss, true)
+
+		current_x += block_width
 
 	if multiplayer.is_server():
 		_spawn_players()
