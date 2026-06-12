@@ -115,6 +115,16 @@ extends CharacterBody2D
 ## 遠程發射火花特效（右鍵攻擊觸發）
 @export var muzzle_flash_scene: PackedScene
 
+# ── 近戰 VFX 位置微調（Inspector 可視化調整）─────────────────────
+@export_group("Melee VFX Offsets")
+## 第1擊 VFX 偏移（x=正值=朝右，負值=朝左；會自動根據面向鏡像）
+## 在 Godot Inspector 中直接拖動數字即可調整位置
+@export var melee_vfx1_offset: Vector2 = Vector2(22.0, -6.0)
+## 第2擊 VFX 偏移（反手斬，可設不同 y 值製造不對稱感）
+@export var melee_vfx2_offset: Vector2 = Vector2(22.0, -8.0)
+## 第3擊 VFX 偏移（衝擊爆炸，通常比前兩擊略遠）
+@export var melee_vfx3_offset: Vector2 = Vector2(24.0, -6.0)
+
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
@@ -883,22 +893,22 @@ func _do_melee_hit() -> void:
 		tw.tween_property(_visual_pivot, "scale", Vector2(1.0, 1.0), 0.09)
 
 	## 每擊對應不同 VFX 場景
-	## VFX 偏移：放在攻擊中點前端（melee_range * 0.8），垂直居中在角色腰部
-	var vfx_x_offset := _facing * melee_range * 0.8
+	## VFX 偏移：使用 Inspector 可調整的 @export 變數（melee_vfx1/2/3_offset）
+	## x 正值=朝右方，會自動根據 _facing 鏡像；y 負值=往上
 	var face_left := _facing < 0.0
 	match _combo_step:
 		1:
-			## 第1擊：橫斬（slash_01）— 直接按朝向翻轉
-			_spawn_melee_vfx(_get_melee_slash_scene(),
-				global_position + Vector2(vfx_x_offset, -6.0), face_left)
+			## 第1擊：橫斬（slash_01）— 偏移由 melee_vfx1_offset 控制
+			var p1 := global_position + Vector2(melee_vfx1_offset.x * _facing, melee_vfx1_offset.y)
+			_spawn_melee_vfx(_get_melee_slash_scene(), p1, face_left)
 		2:
-			## 第2擊：反手斬（slash_02）— 朝向翻轉（場景不再有預設 flip_h）
-			_spawn_melee_vfx(_get_melee_slash2_scene(),
-				global_position + Vector2(vfx_x_offset, -6.0), face_left)
+			## 第2擊：反手斬（slash_02）— 偏移由 melee_vfx2_offset 控制
+			var p2 := global_position + Vector2(melee_vfx2_offset.x * _facing, melee_vfx2_offset.y)
+			_spawn_melee_vfx(_get_melee_slash2_scene(), p2, face_left)
 		3:
-			## 第3擊：衝擊爆炸（impact_01）— 略向前，不翻轉（爆炸無方向性）
-			_spawn_melee_vfx(_get_melee_impact3_scene(),
-				global_position + Vector2(vfx_x_offset, -6.0), face_left)
+			## 第3擊：衝擊爆炸（impact_01）— 偏移由 melee_vfx3_offset 控制
+			var p3 := global_position + Vector2(melee_vfx3_offset.x * _facing, melee_vfx3_offset.y)
+			_spawn_melee_vfx(_get_melee_impact3_scene(), p3, face_left)
 
 ## Fallback loader：優先用 @export，否則動態載入
 func _get_melee_slash_scene() -> PackedScene:
