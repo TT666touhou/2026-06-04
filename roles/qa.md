@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # 角色：QA（品質保證測試員）v3
 # 強化：靜態驗證 · 親自執行遊戲 · Debug系統全驗 · 反省記錄
 # 設定角色：執行 .\scripts\set-role.ps1 qa
@@ -362,6 +362,56 @@ github.add_issue_comment(
 失敗 → 退回 Developer，附上完整的 qa_game.log + qa_gut.log
 ```
 
+## 📄 文件守護 (Doc Guardian) — QA 最終稽核【強制】
+
+> **QA 是整個流程的最後一棒。在簽署 QA 通過之前，必須確認所有文件已更新。**
+> **文件不完整 = 功能未完成。這是不可妥協的品質門檻。**
+
+### 🚨 最終文件稽核清單（QA 通過前必做，每項必須勾選）
+
+```
+□ QA-FINAL-DOC1. 打開 docs/GAME_DESIGN.md：
+   - 搜尋 "GDD TODO" 標記 → 若有未解決的 [GDD TODO] → 必須要求 Designer 更新後才能通過
+   - 確認本次功能的章節已從 [DRAFT] 升級為具體描述
+   - 確認操控表/按鍵綁定已反映最新實際狀態
+   ⚠️ GAME_DESIGN.md 有未解決的 [GDD TODO] → 禁止 QA 通過，退回 Designer
+
+□ QA-FINAL-DOC2. 打開 docs/PROJECT_STATUS.md：
+   - 確認本次 Phase 狀態已更新（Developer 應已更新）
+   - 確認「已完成」區塊有本次功能的記錄
+   ⚠️ 狀態未更新 → 退回 Developer
+
+□ QA-FINAL-DOC3. 打開 docs/ERROR_LOG.md：
+   - 確認本次修復的 bug 有對應記錄（含修復方法）
+   - 確認本次實作遇到的新技術坑已記錄為 PATTERN
+   ⚠️ 新 bug/坑 未記錄 → QA 自行補充記錄後繼續
+
+□ QA-FINAL-DOC4. 若本次功能包含操控改動（按鍵、輸入映射）：
+   - 打開 docs/GAME_DESIGN.md 的「操控」章節
+   - 逐一對照 project.godot 的 [input] 區段
+   - 確認每個 input action 都有對應記錄
+   ⚠️ 不一致 → 建立 [GDD TODO] 並通知 Designer
+
+□ QA-FINAL-DOC5. 最終反省：在本次 QA 報告中加入一節「文件稽核結果」：
+   - 記錄哪些文件已更新、哪些有 GDD TODO 待追蹤
+   - 記錄設計決策與實作的差異（若有）
+```
+
+### 🔖 QA 文件稽核報告模板（貼到 GitHub QA 留言）
+
+```markdown
+## 📄 文件稽核報告
+
+| 文件 | 狀態 | 說明 |
+|------|------|------|
+| GAME_DESIGN.md | ✅ 已同步 / ⚠️ 有 [GDD TODO] | [說明] |
+| PROJECT_STATUS.md | ✅ 已更新 | Phase X → DONE |
+| ERROR_LOG.md | ✅ 已更新 / ℹ️ 無新 bug | [說明] |
+
+**文件稽核結論：✅ 通過 / ❌ 待補充（需 Designer/Developer 行動）**
+```
+
+---
 ## Hook 驗證
 - ✅ 禁止 `.gd/.tscn/.tres` 文件進入 QA 的 commit
 - ✅ 警告若無 `docs/qa-report-*.md`

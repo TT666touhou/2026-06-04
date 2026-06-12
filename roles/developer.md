@@ -414,13 +414,61 @@ git push origin feature/[任務名稱]
 
 ---
 
+## 📄 文件守護 (Doc Guardian) — 強制 Routine【開發者專屬】
+
+> **每次有遊戲改動（輸入、機制、UI、行為變化），Developer 必須執行此 Routine。**
+> 不更新文件的功能不算真正完成。
+
+### DEV 文件同步清單（每次 commit 收工前必做）
+
+```
+□ DEV-DOC1. 打開 docs/GAME_DESIGN.md，確認本次實作的功能有對應章節
+              - 若章節仍標記 [DRAFT] 但功能已實作 → 在 commit message 加 [GDD TODO: 章節名稱]
+              - 若功能完全不在 GDD → 立即通知 Designer 角色更新
+
+□ DEV-DOC2. 任何輸入映射（Input Map）的改動 → 在 GAME_DESIGN.md 的操控章節加 [GDD TODO]
+              - 範例：本次移除 W 從 jump，改為 Space 唯一 → 通知 Designer 更新操控表
+
+□ DEV-DOC3. 更新 docs/PROJECT_STATUS.md 的「快速總覽」Phase 狀態（PARTIAL → DONE 等）
+
+□ DEV-DOC4. 若發現新 Bug 或設計衝突 → 立即在 docs/ERROR_LOG.md 新增 Warning 記錄
+
+□ DEV-DOC5. 以下改動屬於「設計決策」，必須標記 [GDD TODO] 並通知 Designer：
+              - 攻擊機制改動（方向、傷害、冷卻）
+              - 移動機制改動（速度、按鍵綁定、物理）
+              - UI 改動（佈局、大小、顏色）
+              - 任何影響遊戲體驗的行為改動
+```
+
+### DEV 已記錄技術規則（不得違反）
+
+> 以下規則由過去的錯誤總結，每次開發前必須確認：
+
+```
+a-r. [已存在規則]
+
+s. 【Sprite Flip 規則】TileMapLayer 無 flip_h 屬性，須用 VisualPivot.scale.x = _facing
+   翻轉時 Sway 旋轉需乘以 _facing：_visual_pivot.rotation = _sway_y * _facing
+
+t. 【8方向射擊】射擊時用 _get_aim_direction() 讀取 WASD，返回 normalized Vector2
+   WASD 垂直需在 input map 定義 p{N}_move_up/p{N}_move_down
+   VFX 方向用 _spawn_vfx_aimed()，旋轉 vfx.rotation = aim_dir.angle()
+
+u. 【跳躍鍵】p1_jump 只綁定 Space（physical_keycode=32）。
+   W 鍵（87）只負責 aim 方向，不觸發跳躍。
+   更改時必須同步通知 Designer 更新 GAME_DESIGN.md 操控表。
+
+v. 【TextureRect 心心 UI】心心 TextureRect 設定：
+   - expand_mode = EXPAND_IGNORE_SIZE
+   - stretch_mode = STRETCH_KEEP_ASPECT_CENTERED
+   - size_flags_horizontal = SIZE_SHRINK_CENTER
+   - size_flags_vertical = SIZE_SHRINK_CENTER
+   禁止使用 STRETCH_SCALE（導致變形）
+```
+
+---
 ## Hook 驗證
 - ✅ GDScript 語法正確（--check-only）
 - ✅ 大型檔案走 LFS
 - ✅ 無硬編碼機密
 - ✅ Commit 訊息格式：`[DEV] feat/fix: 描述`
-         s. 【Sprite Flip 規則】TileMapLayer 無 flip_h 屬性，須用 VisualPivot.scale.x = _facing
-            翻轉時 Sway 旋轉需乘以 _facing：_visual_pivot.rotation = _sway_y * _facing
-         t. 【8方向射擊】射擊時用 _get_aim_direction() 讀取 WASD，返回 normalized Vector2
-            WASD 垂直需在 input map 定義 p{N}_move_up/p{N}_move_down；W=jump 不衝突（只在按下 ranged 時採樣）
-            VFX 方向用 _spawn_vfx_aimed()，旋轉 vfx.rotation = aim_dir.angle()

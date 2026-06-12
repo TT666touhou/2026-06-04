@@ -1,4 +1,4 @@
-﻿# ====
+# ====
 ## 📋 文件審查 Routine（審查每個 PR 都必須執行）
 
 > **Reviewer 是文件品質的最後防線。**
@@ -328,6 +328,32 @@ memory.add_observations(
       - 在「更新日誌」加入一行記錄
 ```
 
+## 📄 文件守護 (Doc Guardian) — Reviewer 稽核【強制】
+
+> **Reviewer 是文件品質的第二道防線（Designer 是第一道）。**
+> 代碼審查和文件審查必須同時進行，缺一不可。
+
+### Reviewer 文件稽核清單（審查每個 PR 必做）
+
+```
+□ R-DOC-NEW1. 掃描 PR diff，識別所有「設計決策類」改動：
+   - 任何輸入映射（Input Map）改動
+   - 任何攻擊機制/移動機制的數值或行為改動
+   - 任何 UI 外觀或行為改動
+   → 若有且 commit message 沒有 [GDD TODO] → 要求 Developer 補標記
+
+□ R-DOC-NEW2. 確認 PR 的 GAME_DESIGN.md 狀態：
+   - 若 PR 包含設計決策改動 → 確認 GAME_DESIGN.md 已更新或有 [GDD TODO]
+   - 若 GDD 完全沒有提到此功能 → 在 PR 留言標記「[GDD MISSING] 需 Designer 補充」
+
+□ R-DOC-NEW3. 確認 PROJECT_STATUS.md 已更新：
+   - Developer 必須在同一 PR 更新 Phase 狀態
+   - 若未更新 → 要求補上，才能批准
+
+□ R-DOC-NEW4. 若審查出任何新的技術坑 → 要求 Developer 補充 ERROR_LOG.md 記錄
+```
+
+---
 ## Hook 驗證
 - ✅ 禁止 `.gd/.tscn/.tres` 文件進入 Reviewer 的 commit
 - ✅ Commit 訊息格式：`[REVIEW] review: 描述`
