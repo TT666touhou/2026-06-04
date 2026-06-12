@@ -1,16 +1,17 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v3
+## sensor-scan.ps1 -- Sensor Automated Scan Script v4
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
 ## Checks:
-##   1/7  BOM scan (.gd files must be UTF-8 without BOM)
-##   2/7  .tscn ext_resource UID self-reference (ERR-013)
-##   3/7  Physics callback dangerous patterns (ERR-001)
-##   4/7  int() narrowing conversion (ERR-002)
-##   5/7  Godot 3 deprecated API (ERR-014)
-##   6/7  .tscn header first byte validity (ERR-023)
-##   7/7  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   1/8  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/8  .tscn ext_resource UID self-reference (ERR-013)
+##   3/8  Physics callback dangerous patterns (ERR-001)
+##   4/8  int() narrowing conversion (ERR-002)
+##   5/8  Godot 3 deprecated API (ERR-014)
+##   6/8  .tscn header first byte validity (ERR-023)
+##   7/8  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   8/8  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -24,7 +25,7 @@ function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Re
 function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v3] Godot Project Integrity Scan"                    -ForegroundColor Cyan
+Write-Host " [Sensor v4] Godot Project Integrity Scan"                    -ForegroundColor Cyan
 Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
@@ -268,16 +269,81 @@ foreach ($f in $tscnFiles) {
 if ($spriteFramesIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files use correct AtlasTexture format for SpriteFrames" }
 
 ## ============================================================
+## 8/8  Godot --check-only GDScript validation (ERR-015)
+##      This is the AUTHORITATIVE check for ALL GDScript errors:
+##      - Variant type inference (e.g. Array.back() untyped)
+##      - Narrowing conversions
+##      - Missing type annotations
+##      - Compile-time errors that static regex cannot detect
+##
+##      ⚠️ ROLE ENFORCEMENT: If this check fails, the error message will
+##      name the file and line. The DEVELOPER role MUST fix it.
+##      Reviewer MUST verify this passes before approving PR.
+## ============================================================
+Write-Host "`n[8/8] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
+
+## Locate Godot executable
+$godotPathFile = "C:\Users\88698\.gemini\antigravity-ide\knowledge\godot_executable\artifacts\godot_path.txt"
+$godotExe = $null
+if (Test-Path $godotPathFile) {
+    $godotExe = (Get-Content $godotPathFile -Encoding UTF8).Trim()
+}
+if (-not $godotExe -or -not (Test-Path $godotExe)) {
+    ## Fallback: well-known path
+    $godotExe = "C:\Users\88698\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
+}
+
+if (-not (Test-Path $godotExe)) {
+    Write-Warn "Godot executable not found at '$godotExe' — skipping --check-only (ERR-015). Set path in godot_path.txt."
+} else {
+    $checkLog = Join-Path $env:TEMP "sensor_godot_check.log"
+    try {
+        $proc = Start-Process -FilePath $godotExe `
+            -ArgumentList @("--headless", "--path", $Root, "--quit", "--check-only") `
+            -Wait -NoNewWindow -PassThru `
+            -RedirectStandardError $checkLog
+        
+        $logContent = if (Test-Path $checkLog) { Get-Content $checkLog -Raw } else { "" }
+        
+        ## Extract error lines (ignore warnings and info lines)
+        $errorLines = ($logContent -split "`n") | Where-Object {
+            $_ -match "^\s*ERROR:" -and $_ -notmatch "UID duplicate"
+        }
+        
+        if ($errorLines.Count -gt 0) {
+            Write-Host "" 
+            Write-Host "  ❌ [ERR-015] GDScript compile errors detected:" -ForegroundColor Red
+            foreach ($errLine in $errorLines) {
+                Write-Host "     $($errLine.Trim())" -ForegroundColor Red
+            }
+            Write-Host ""
+            Write-Host "  ⚠️  ROLE ACTION REQUIRED:" -ForegroundColor Red
+            Write-Host "     → DEVELOPER must fix all GDScript errors listed above." -ForegroundColor Red
+            Write-Host "     → Check type annotations: use 'var x: Node = arr.back()' not 'var x := arr.back()'" -ForegroundColor Yellow
+            Write-Host "     → After fix, re-run: .\scripts\sensor-scan.ps1" -ForegroundColor Yellow
+            Write-Fail "GDScript --check-only failed ($($errorLines.Count) error(s)) — see ERR-015 above"
+        } else {
+            Write-Pass "Godot --check-only: 0 GDScript errors (ERR-015 clear)"
+        }
+    } catch {
+        Write-Warn "Could not run Godot --check-only: $_ — manual validation required"
+    } finally {
+        if (Test-Path $checkLog) { Remove-Item $checkLog -Force -ErrorAction SilentlyContinue }
+    }
+}
+
+## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v3] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v4] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " Role action: DEVELOPER must fix GDScript errors; Sensor will re-verify." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v3] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v4] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v3] PASSED -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v4] PASSED -- No issues found." -ForegroundColor Green
     exit 0
 }

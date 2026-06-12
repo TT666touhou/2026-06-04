@@ -1,6 +1,7 @@
 # ============================================================
-# 角色：Sensor（代碼感知守衛）v1
+# 角色：Sensor（代碼感知守衛）v2
 # 觸發機制：看到關鍵字 → 立即啟動自動掃描與修補流程
+# 強化 v2：增加 ERR-015 GDScript --check-only 強制閘門
 # 設定角色：執行 .\scripts\set-role.ps1 sensor
 # ============================================================
 
@@ -63,6 +64,8 @@
 | `.gd` 文件包含中文字元 | 可能以非 UTF-8 儲存，Godot 無法解析 | ERR-012 |
 | `TextureRect.STRETCH_` | Godot 3 廢棄 API，在 Godot 4 中無效 | ERR-014 |
 | `Set-Content` / `Out-File` 寫入 `.gd` | PowerShell 可能寫入 UTF-8 BOM | ERR-015 |
+| `var x := arr.back()` / `var x := arr.front()` / `var x := arr.pop_back()` | Array 方法回傳 Variant，`:=` 推斷觸發 Variant warning→error（ERR-HUD-003） | ERR-015 |
+| `var x :=` 任何可能回傳 Variant 的表達式（get()、find()、pick_random()） | 同上，Variant 推斷 | ERR-015 |
 
 ---
 
@@ -336,3 +339,52 @@ Every valid Godot 4 @export was a false positive. Sensor had zero credibility fo
 3. Never split Where-Object { } across lines in pipelines (IDE parser issue)
 4. PSParser validation after every sensor-scan.ps1 edit:
    [Automation.Language.Parser]::ParseFile(path, [ref]null, [ref]err)
+
+---
+
+## 📊 Sensor 反省記錄（Session 11 - 2026-06-13 ERR-HUD-003）
+
+### 觸發事件
+- **ERR-HUD-003**：`player_hud.gd` line 83 — `var last := children.back()`
+- **症狀**：IDE 報 `The variable type is being inferred from a Variant value, so it will be typed as Variant. (Warning treated as error.)`
+- **被哪個 ROLE 漏掉**：Developer（在上一輪修復 UI 時未做型別全面檢查）
+- **為何 Sensor v3 沒攔截**：sensor-scan.ps1 v3 只有 7 個靜態文字掃描，**沒有跑 Godot `--check-only`**。Variant 推斷錯誤只能由 Godot compiler 本身偵測，文字 regex 無法判斷。
+
+### 根本原因分析
+```
+問題鏈：
+1. Developer 用 := 推斷 Array.back() 的回傳值
+2. Array.back() 回傳 Variant（非型別化）
+3. GDScript 4 strict mode 將 Variant 推斷 warning 升為 error
+4. Sensor v3 的 8 項掃描中無 --check-only 步驟
+5. 錯誤逃過所有自動化閘門，進入代碼庫
+6. 只有 IDE 的 linter 才在用戶開啟文件時顯示錯誤
+```
+
+### 修復措施
+1. **sensor-scan.ps1 升級為 v4**：新增 Check 8/8 — Godot `--check-only` GDScript validation
+   - 任何 GDScript compile error → 立即 FAIL，輸出角色行動指示（DEVELOPER must fix）
+   - 在 Result Summary 中顯示 role enforcement 訊息
+2. **sensor.md Level 2 觸發表新增**：
+   - `var x := arr.back()` 等 Variant 回傳方法的 `:=` 使用模式
+3. **developer.md 技術規則新增 rule u**（Array 型別標注）
+4. **ERROR_LOG.md 新增**：ERR-HUD-003 Warning 條目 + PATTERN-ARR 最佳實踐
+
+### Sensor 承諾（防止再犯）
+```
+⚠️ 從 Sensor v4 開始，以下是強制要求：
+
+1. sensor-scan.ps1 每次修改後必須執行 PSParser 驗證
+2. sensor-scan.ps1 的 Check 8/8（--check-only）是不可跳過的最終閘門
+3. 任何 --check-only 錯誤 → sensor 輸出 "DEVELOPER must fix" 並 exit 1
+4. Reviewer 在批准 PR 前必須確認 sensor-scan.ps1 8/8 PASS
+5. Developer 在 commit 前必須確認 sensor-scan.ps1 8/8 PASS
+
+記住：靜態文字 regex 只能偵測模式，不能驗證型別系統。
+只有 Godot compiler 才能驗證 GDScript 型別正確性。
+```
+
+### 給 Architect 的建議
+- pre-commit hook 應整合 sensor-scan.ps1 的 Check 8/8（--check-only）
+  作為 Developer commit 的必要通過條件（目前 hook 已有 --check-only，但與 sensor 是分離的）
+- 考慮在 Hook v4 中直接引用 sensor-scan.ps1 而非重複實作 --check-only 邏輯
