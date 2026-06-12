@@ -68,7 +68,8 @@ func _collect_state() -> Dictionary:
 		if has_node("/root/NetworkManager"):
 			var nm := get_node("/root/NetworkManager")
 			if nm.get("connected_players") != null:
-				net["connected_count"] = nm.connected_players.size()
+				var cp = nm.get("connected_players")
+				net["connected_count"] = (cp as Dictionary).size()
 				net["connected_ids"] = nm.connected_players.keys()
 	state["network"] = net
 	
@@ -133,7 +134,7 @@ func _collect_state() -> Dictionary:
 	
 	# ── 場景資訊 ─────────────────────────────────────────────────
 	var scene: Node = get_tree().current_scene
-	var scene_name: String = scene.name if scene != null else "null"
+	var scene_name: String = String(scene.name) if scene != null else "null"
 	state["current_scene"] = scene_name
 
 	# ── Rogue-lite 地牡/房間層狀 ──────────────────────────────────

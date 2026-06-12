@@ -26,10 +26,17 @@ var target_laser_point: Vector2 = Vector2.ZERO
 var damage_dealt_this_shot: bool = false
 var _is_dying: bool = false
 
-@export var hit_vfx_scene: PackedScene
-@export var death_vfx_scene: PackedScene
+## VFX scenes auto-loaded (no Inspector setup required)
+const HIT_VFX_PATH: String = "res://scenes/VFX/EnemyHit.tscn"
+const DEATH_VFX_PATH: String = "res://scenes/VFX/EnemyDeath.tscn"
+var hit_vfx_scene: PackedScene
+var death_vfx_scene: PackedScene
 
 func _ready() -> void:
+	## Auto-load VFX scenes
+	hit_vfx_scene = load(HIT_VFX_PATH) as PackedScene
+	death_vfx_scene = load(DEATH_VFX_PATH) as PackedScene
+
 	if stats:
 		current_health = stats.max_health
 	

@@ -103,7 +103,7 @@ func _refresh_display() -> void:
 	var lines: PackedStringArray = PackedStringArray()
 
 	# ── 效能 ──────────────────────────────────────────────────────
-	var fps: int = Engine.get_frames_per_second()
+	var fps: int = roundi(Engine.get_frames_per_second())
 	var fps_col: String
 	if fps >= 55:
 		fps_col = "#00ff88"
