@@ -148,12 +148,8 @@ var is_invincible:  bool  = false  # 供外部（攻擊判定）讀取
 # ── 耐力 ────────────────────────────────────────────────────────
 var _stamina: float = 3.0
 
-# ── 翻滾朝向（供 roll 使用） ────────────────────────────────────
+# ── 翻滚朝向（供 roll 使用） ──────────────────────────────────────
 var _facing: float = 1.0   # 1=右, -1=左
-
-# ── 八方向瞬準方向（正規化向量）────────────────────────────
-## 当前射擊方向：由水平移動 + aim_up/aim_down 輸入合成的八方向向量
-var _aim_dir: Vector2 = Vector2.RIGHT
 
 # ── 生命與無敵幀 ──────────────────────────────────────────────────
 signal health_changed(new_health: int)
@@ -427,9 +423,6 @@ func _handle_horizontal(delta: float) -> void:
 
 	if dir != 0.0:
 		_facing = sign(dir)
-		## 左右翻轉視覺：_visual_pivot 整體水平翼轉，讓角色朝面向移動方向
-		if _visual_pivot:
-			_visual_pivot.scale.x = _facing
 		var accel := acceleration if is_on_floor() else acceleration * air_friction_factor
 		velocity.x = move_toward(velocity.x, dir * speed, accel * delta)
 	else:
@@ -437,39 +430,19 @@ func _handle_horizontal(delta: float) -> void:
 		var decel := friction if is_on_floor() else friction * air_friction_factor
 		velocity.x = move_toward(velocity.x, 0.0, decel * delta)
 
-## 計算八方向瞬準向量（供 _fire_bullet / _perform_melee 使用）
-## 規則：實時讀取輸入計算并更新 _aim_dir
-func _get_aim_dir() -> Vector2:
-	var ax := Input.get_axis(player_prefix + "move_left", player_prefix + "move_right")
-	## 上下瞬準：若 action 存在就讀取，否則 0
-	var ay := 0.0
-	var aim_up_action   := player_prefix + "aim_up"
-	var aim_down_action := player_prefix + "aim_down"
-	if InputMap.has_action(aim_up_action):
-		ay -= Input.get_action_strength(aim_up_action)
-	if InputMap.has_action(aim_down_action):
-		ay += Input.get_action_strength(aim_down_action)
-
-	var raw := Vector2(ax, ay)
-	if raw.length_squared() < 0.01:
-		## 沒有方向輸入：水平射擊（朝 _facing 方向）
-		_aim_dir = Vector2(_facing, 0.0)
-	else:
-		## 將向量鳸化到最近4個對角線方向（八方向微調看起來自然）
-		_aim_dir = raw.normalized()
-		## 確保射擊時更新 _facing（水平分量不為零時）
-		if ax != 0.0:
-			_facing = sign(ax)
-			if _visual_pivot:
-				_visual_pivot.scale.x = _facing
-	return _aim_dir
-
 # ═══════════════════════════════════════════════════════════════
 # 視覺傾斜 (Visual Sway)
 # ═══════════════════════════════════════════════════════════════
 func _update_sway(delta: float) -> void:
 	if not _visual_pivot:
 		return
+	
+	# ── 左右翻轉（依據 _facing 翻轉 scale.x）────────────────────────
+	# TileMapLayer 不支援 flip_h，改用 scale.x 翻轉整個 VisualPivot
+	# scale.x = 1 → 右（預設），scale.x = -1 → 左
+	var target_scale_x := _facing  # 1.0 或 -1.0
+	if _visual_pivot.scale.x != target_scale_x:
+		_visual_pivot.scale.x = target_scale_x
 		
 	# 計算目標角度：向右移動 (vel.x > 0) -> 逆時針傾斜 (角度為負)
 	# 放大幅度，讓最大速度下的傾斜角度變成 8 度，使動態更明顯
@@ -490,8 +463,7 @@ func _update_sway(delta: float) -> void:
 	_sway_y += delta * _sway_yd
 	_sway_xp = target_rad
 	
-	## 套用傾斜：乘以 _facing 補償 scale.x = -1 時的視覺方向翻轉
-	## 讓傾斜永遠朝「前進方向」（面朝左移動時也向左傾斜，而非向右傾斜）
+	# 傾斜方向需要跟著 scale.x 翻轉（否則左向時傾斜反向）
 	_visual_pivot.rotation = _sway_y * _facing
 
 # ═══════════════════════════════════════════════════════════════
@@ -834,14 +806,10 @@ func _perform_melee_attack() -> void:
 	var shape  := RectangleShape2D.new()
 	shape.size = Vector2(melee_range, 24.0)
 
-	## 攻擊方向跟隨 _aim_dir
-	var aim_dir := _get_aim_dir()
-	var offset := aim_dir * (melee_range * 0.5 + 4.0)
+	## 攻擊方向跟隨 _facing（-1 = 左，1 = 右）
+	var offset := Vector2(_facing * (melee_range * 0.5 + 4.0), 0.0)
 	var hit_transform := global_transform
 	hit_transform.origin += offset
-	## 若 aim_dir 為垂直，調整 Shape 旋轉
-	if abs(aim_dir.y) > 0.5:
-		hit_transform = hit_transform.rotated(PI/2.0)
 
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = shape
@@ -856,20 +824,40 @@ func _perform_melee_attack() -> void:
 			body.take_damage(melee_damage)
 			print("[Player] 近戰命中：", body.name, " 傷害：", melee_damage)
 
-	## 視覺回馑：短暫縮放 VisualPivot 模擬攻擊動態
+	## 視覺回餌：短暫縮放 VisualPivot 模擬攻擊動態
 	if _visual_pivot:
 		var tw := create_tween()
-		## 瞬準方向的水平分量不為零時才縮放（防止縝向射擊時縮放方向錯誤）
-		## 縮放方向水平分量用實際真实的 _facing（視覺傌稱軸對齊）
 		var scale_dir := Vector2(1.3 * _facing, 0.85)
 		tw.tween_property(_visual_pivot, "scale", scale_dir, 0.08)
-		## 回到正常大小時保持 scale.x = _facing（保持翻轉狀態）
-		var normal_scale := Vector2(_facing, 1.0)
-		tw.tween_property(_visual_pivot, "scale", normal_scale, 0.12)
+		tw.tween_property(_visual_pivot, "scale", Vector2.ONE, 0.12)
 
 	## 近戰片斬 VFX
-	var vfx_pos := global_position + aim_dir * 12.0
+	var vfx_pos := global_position + Vector2(_facing * 12.0, -4.0)
 	_spawn_vfx(melee_slash_scene, vfx_pos, _facing < 0.0)
+
+## ── 8方向射擊方向計算 ────────────────────────────────────────────
+## 依據目前按下的 WASD 鍵決定射擊方向（8個方向）
+## 水平：move_left / move_right
+## 垂直：move_up (W) / move_down (S)
+## 無輸入時：沿 _facing 水平射擊
+func _get_aim_direction() -> Vector2:
+	var h := Input.get_axis(player_prefix + "move_left", player_prefix + "move_right")
+	var v_up   := Input.is_action_pressed(player_prefix + "move_up")   if InputMap.has_action(player_prefix + "move_up")   else false
+	var v_down := Input.is_action_pressed(player_prefix + "move_down") if InputMap.has_action(player_prefix + "move_down") else false
+	var v := 0.0
+	if v_up:   v = -1.0
+	if v_down: v =  1.0
+	
+	# 更新朝向（水平輸入時才更新，確保近戰方向與移動方向一致）
+	if h != 0.0:
+		_facing = sign(h)
+	
+	# 構建方向向量並標準化（對角線自動變為 0.707）
+	var dir := Vector2(h, v)
+	if dir.length_squared() < 0.01:
+		# 無方向輸入 → 沿朝向水平射擊
+		return Vector2(_facing, 0.0)
+	return dir.normalized()
 
 func _fire_bullet() -> void:
 	## 從 GameWorld 的 Players 父節點取得子彈場景引用
@@ -888,22 +876,22 @@ func _fire_bullet() -> void:
 			push_warning("[Player] 找不到 player_bullet.tscn，無法發射")
 			return
 
+	## ── 8方向彈道：根據 WASD 輸入決定方向 ──────────────────────────
+	var aim_dir := _get_aim_direction()
+
 	var bullet: Node2D = b_scene.instantiate()
 	## 繼承玩家顏色（tint）
 	if _visual_pivot:
 		bullet.modulate = _visual_pivot.modulate
 
-	## 計算八方向瞬準向量
-	var shot_dir := _get_aim_dir()
-
-	## 設定子彈初始位置：從玩家中心向射擊方向偏移 10px
-	var spawn_pos := global_position + shot_dir * 10.0 + Vector2(0.0, -4.0)
+	## 設定子彈初始位置（從玩家中心偏移 8px 向發射方向）
+	var spawn_pos := global_position + aim_dir * 8.0 + Vector2(0.0, -4.0)
 	bullet.global_position = spawn_pos
 
 	if bullet.has_method("setup"):
-		bullet.setup(shot_dir, bullet_speed, bullet_damage, "Players")
+		bullet.setup(aim_dir, bullet_speed, bullet_damage, "Players")
 	elif bullet.get("direction") != null:
-		bullet.set("direction", shot_dir)
+		bullet.set("direction", aim_dir)
 		if bullet.get("speed") != null:
 			bullet.set("speed", bullet_speed)
 
@@ -911,11 +899,10 @@ func _fire_bullet() -> void:
 	var parent := get_parent()
 	if parent:
 		parent.add_child(bullet)
-	print("[Player] 發射子彈 方向：", shot_dir)
+	print("[Player] 發射子彈 8方向：", aim_dir)
 
-	## 遠程發射 VFX（複用已宣告的 spawn_pos，不重複宣告）
-	var flip := shot_dir.x < 0.0
-	_spawn_vfx(muzzle_flash_scene, spawn_pos, flip)
+	## 遠程發射 VFX（位置跟 spawn_pos 相同；flip_h 依水平朝向，旋轉依射擊角度）
+	_spawn_vfx_aimed(muzzle_flash_scene, spawn_pos, aim_dir)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -932,6 +919,20 @@ func _spawn_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool = false) -> v
 		var spr := vfx.get_node_or_null("AnimatedSprite2D")
 		if spr:
 			spr.flip_h = true
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", vfx)
+
+## 8方向 VFX：根據射擊方向旋轉特效，並依水平分量決定 flip_h
+func _spawn_vfx_aimed(vfx_scene: PackedScene, pos: Vector2, aim_dir: Vector2) -> void:
+	if vfx_scene == null:
+		return
+	var vfx := vfx_scene.instantiate() as Node2D
+	if vfx == null:
+		return
+	vfx.global_position = pos
+	## 旋轉整個 VFX 節點以對齊射擊方向（0 = 右，PI = 左，等）
+	vfx.rotation = aim_dir.angle()
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", vfx)
