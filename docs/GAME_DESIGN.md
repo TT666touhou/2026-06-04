@@ -248,19 +248,37 @@
 - 謇譛・VFX 郢ｼ謇ｿ邇ｩ螳ｶ鬘剰牡・・odulate from VisualPivot・・- VisualPivot 邵ｮ謾ｾ蝗樣･具ｼ嘖cale竊・1.25ﾃ庸acing, 0.85) 0.06s・悟屓蠖・0.09s
 - 鄙ｻ貊ｾ荳ｭ Combo 閾ｪ蜍暮㍾鄂ｮ
 
-### 8.3.1 近戰 VFX 技術架構 [CONFIRMED] [UPDATED 2026-06-13]
+### 8.3.1 近戰 VFX 技術架構 [CONFIRMED] [UPDATED 2026-06-13 v2]
 
-**架構決策：嵌入式 VFX 節點（非 runtime 動態生成）**
+**架構決策：Marker2D 定位 + Runtime 動態生成 VFX**
 
-- 近戰 VFX 直接配置在 player1-4.tscn 中作為子節點（MeleeVFX1/2/3）
-- 使用 EmbeddedMeleeVFX 腳本（embedded_melee_vfx.gd）
-  - 初始 isible=false
-  - ctivate(facing: float) 被呼叫時顯示並播放
-  - 動畫結束後自動 hide()（非 queue_free）
-- **視覺化調整方式**：在 Godot Scene Editor 中開啟 player1-4.tscn，選擇 MeleeVFX1/2/3 節點直接拖動到正確位置
-- **朝向規則**：Editor 中設正 x（朝右基準），runtime 自動根據 _facing 鏡像到朝左
-- **顏色繼承**：pply_player_color() 同時更新 VFX 節點的 modulate，P1=橙、P2=藍、P3=綠、P4=紫
-- **遠程 VFX 不受影響**：RangedMuzzle, EnemyHit, EnemyDeath 仍使用 one_shot_vfx.gd + 動態生成
+**場景結構：**
+```
+Player (CharacterBody2D)
+└── MeleeVFXPivots (Node2D)
+    ├── Hit1Pivot (Marker2D) ← 第1擊位置（以右為正）
+    ├── Hit2Pivot (Marker2D) ← 第2擊位置
+    └── Hit3Pivot (Marker2D) ← 第3擊位置
+```
+
+**位置調整方式（給設計師）：**
+1. 在 Godot Scene Editor 開啟 player1.tscn（或2/3/4）
+2. 展開 MeleeVFXPivots → 選擇 Hit1Pivot / Hit2Pivot / Hit3Pivot
+3. 直接在 Inspector 修改 Position，**以右方向為正 X**
+4. 4個玩家場景分別調整（可以有不同的初始位置）
+
+**鏡像規則（Runtime 自動）：**
+- 面右（_facing=1）：使用 marker.position.x（正值）
+- 面左（_facing=-1）：x 取負，自動鏡像
+- `vfx.position = global_position + Vector2(_facing * marker.position.x, marker.position.y)`
+
+**技術接口：**
+- `_spawn_melee_vfx_at_marker(vfx_scene, marker)` — 新系統
+- `_get_marker(path)` — 安全取得 Marker2D，缺失時 push_warning
+- 舊 `_spawn_melee_vfx(scene, pos, flip_h)` 保留供遠程砲擊 VFX
+
+**顏色繼承**：VFX instantiate 後繼承 VisualPivot.modulate（P1=橙, P2=藍, P3=綠, P4=紫）
+
 ### 8.4 驕遞・VFX [CONFIRMED]
 - 逋ｼ蟆・ｭ仙ｽ育椪髢難ｼ悟惠蟄仙ｽ亥・逕滄ｻ樒函謌・`RangedMuzzle.tscn`・・park_01.png 6蟷蜍慕吻・・- 蟄仙ｽ育ｹｼ謇ｿ邇ｩ螳ｶ鬘剰牡・・odulate 譟楢牡・・
 ---

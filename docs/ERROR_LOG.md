@@ -35,7 +35,10 @@
 
 | 日期 | 場景 | 正確做法 |
 |------|------|---------|
-| 2026-06-13 | [PATTERN-ARR] Array.back() 型別標注 | ar last: Node = children.back() — 明確標注型別，不用 := | Array.back()/.front()/.pop_back() 等方法回傳 Variant，嚴格模式下 := 會觸發 Variant 推斷 warning→error。永遠使用 ar x: ActualType = arr.back() |
+| 2026-06-13 | [PATTERN-ARR] Array.back() 型別標注 |  ar last: Node = children.back() — 明確標注型別，不用 := | Array.back()/.front()/.pop_back() 等方法回傳 Variant，嚴格模式下 := 會觸發 Variant 推斷 warning→error。永遠使用  ar x: ActualType = arr.back() |
+| 2026-06-13 | [PATTERN-VFX-FLIP] OneShotVFX 翻轉 | `spr.flip_h = (_facing < 0)` 直接賦值；**scene 內 flip_h 統一保持 false**。❌ 勿用 `not spr.flip_h`（toggle）——若場景有預設 flip_h 會雙重翻轉 |
+| 2026-06-13 | [PATTERN-VFX-ADJUST] VFX 位置手動調整 | 方法A：開啟 tscn → 選 MeleeVFXPivots/HitNPivot Marker2D → Inspector 改 Position。以右為正 X，面左自動鏡像。方法B（舊）：改 player.gd 中的 hardcode 偏移值（已廢棄，不推薦） |
+| 2026-06-13 | [PATTERN-VFX-MARKER] Marker2D VFX 定位系統 | **近戰 VFX 位置統一用 Marker2D 定義**（非 hardcode）。結構：Player/MeleeVFXPivots/Hit1Pivot（Marker2D）。以右為正 X，`_facing * marker.position.x` 自動鏡像。`_spawn_melee_vfx_at_marker(scene, marker)` 為標準接口。場景中可視化調整無需改代碼 |
 | 2026-06-12 | 寫入 Godot 文件（.gd/.tscn/.tres）| 使用 `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` 確保無 BOM |
 | 2026-06-12 | 手動建立 `.tscn` | `[gd_scene format=4]`（不加 uid）+ `[ext_resource]` 只引用已存在的 UID；SubResource 定義必須在引用之前 |
 | 2026-06-12 | 主場景設定 | `project.godot` 中用路徑 `res://scenes/level/game_world.tscn` 而非 UID，Godot 啟動後自動更新為 UID |
