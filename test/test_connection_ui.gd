@@ -1,4 +1,4 @@
-extends GutTest
+extends "res://addons/gut/test.gd"
 
 var title_scene = preload("res://scenes/ui/title_screen.tscn")
 var title_inst = null

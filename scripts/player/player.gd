@@ -9,6 +9,11 @@ extends CharacterBody2D
 # EXPORT 參數（全部可在 Inspector 即時調整）
 # ═══════════════════════════════════════════════════════════════
 
+# ── 多玩家輸入前綴 ──────────────────────────────────────────────
+@export_group("Multiplayer")
+## 輸入動作前綴："" = 使用預設(單機), "p1_" / "p2_" / "p3_" / "p4_" = 多玩家
+@export var player_prefix: String = ""
+
 # ── 移動 ────────────────────────────────────────────────────────
 @export_group("Movement")
 ## 水平最大速度（px/s）
@@ -150,9 +155,18 @@ var _skin_index: int = 0
 
 @onready var appearance: TileMapLayer = $VisualPivot/Appearance
 
+# ═══════════════════════════════════════════════════════════════
+# Multiplayer Authority
+# ═══════════════════════════════════════════════════════════════
+func _enter_tree() -> void:
+	# 設定 multiplayer authority：節點名稱必須是 peer_id 字串
+	# 例如：節點名稱 "1" → 由 peer 1 控制
+	if multiplayer.has_multiplayer_peer() and name.is_valid_int():
+		set_multiplayer_authority(name.to_int())
+
 func _is_authority() -> bool:
 	if not multiplayer.has_multiplayer_peer():
-		return true # Default to local control if offline/testing
+		return true # 離線/測試時預設本機控制
 	return is_multiplayer_authority()
 
 # ═══════════════════════════════════════════════════════════════
@@ -162,9 +176,10 @@ func _ready() -> void:
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
 	
-	# Multiplayer setup
-	var sync = MultiplayerSynchronizer.new()
-	var rep = SceneReplicationConfig.new()
+	# Multiplayer Synchronizer 設定（在 _enter_tree 之後執行，authority 已設定）
+	var sync := MultiplayerSynchronizer.new()
+	var rep := SceneReplicationConfig.new()
+	
 	rep.add_property(NodePath(".:position"))
 	rep.property_set_spawn(NodePath(".:position"), true)
 	rep.property_set_replication_mode(NodePath(".:position"), SceneReplicationConfig.REPLICATION_MODE_ALWAYS)
@@ -179,15 +194,26 @@ func _ready() -> void:
 	
 	sync.replication_config = rep
 	add_child(sync)
-	
-	if _is_authority():
-		var cam = Camera2D.new()
-		cam.position_smoothing_enabled = true
-		add_child(cam)
+	# 注意：Camera 由 MultiplayerCamera 場景節點統一管理，不在 player 內建立
 
-func set_skin(index: int):
+## 設定玩家皮膚 tile（基礎外觀切換）
+func set_skin(index: int) -> void:
 	_skin_index = index
-	appearance.set_cell(Vector2i(0, 0), 0, Vector2i(28 + index, 0))
+	if appearance:
+		appearance.set_cell(Vector2i(0, 0), 0, Vector2i(28 + index, 0))
+
+## 設定玩家顏色（依 VfxMix 34色調色盤區分玩家）
+## skin_index: 0=暖橙, 1=冷藍, 2=綠, 3=紫
+func apply_player_color(skin_index: int) -> void:
+	const PLAYER_COLORS: Array[Color] = [
+		Color("#FF8C42"),  # P1 暖橙
+		Color("#4CC9F0"),  # P2 冷藍
+		Color("#5DA16E"),  # P3 綠
+		Color("#9D5789"),  # P4 紫
+	]
+	var col := PLAYER_COLORS[skin_index % PLAYER_COLORS.size()]
+	if _visual_pivot:
+		_visual_pivot.modulate = col
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -246,7 +272,7 @@ func _apply_gravity(delta: float) -> void:
 # 跳躍系統（包含 Coyote、Jump Buffer、Apex 二段跳、蹬牆跳）
 # ═══════════════════════════════════════════════════════════════
 func _handle_jump(delta: float) -> void:
-	var jump_pressed := Input.is_action_just_pressed("jump")
+	var jump_pressed := Input.is_action_just_pressed(player_prefix + "jump")
 	var on_floor     := is_on_floor()
 	var ascending    := velocity.y < 0.0   # 上升中（Y 負 = 向上）
 	var descending   := velocity.y > 0.0   # 下降中（Y 正 = 向下）
@@ -271,6 +297,11 @@ func _handle_jump(delta: float) -> void:
 	# ── 蹬牆跳（最高優先，高於普通跳和二段跳）─────────────────
 	if jump_pressed and is_on_wall_only() and _has_stamina():
 		_do_wall_jump()
+		return
+	
+	# Jump buffer 觸發（落地後）
+	if on_floor and _jump_buffer_timer > 0.0:
+		_do_normal_jump()
 		return
 
 	# ── 普通跳（地面 + Coyote）─────────────────────────────────
@@ -341,7 +372,7 @@ func _handle_horizontal(delta: float) -> void:
 		_wall_lock_timer = max(0.0, _wall_lock_timer - delta)
 		return
 
-	var dir := Input.get_axis("move_left", "move_right")
+	var dir := Input.get_axis(player_prefix + "move_left", player_prefix + "move_right")
 
 	if dir != 0.0:
 		_facing = sign(dir)
@@ -399,7 +430,7 @@ func _handle_roll(delta: float) -> void:
 			is_invincible = false
 	else:
 		# 觸發翻滾：地面 + 有冷卻時間 + 有耐力
-		if Input.is_action_just_pressed("roll") and is_on_floor() \
+		if Input.is_action_just_pressed(player_prefix + "roll") and is_on_floor() \
 		   and _roll_cooldown <= 0.0 and _has_stamina():
 			_is_rolling    = true
 			_roll_timer    = roll_duration

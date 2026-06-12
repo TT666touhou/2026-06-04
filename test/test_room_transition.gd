@@ -1,4 +1,4 @@
-extends GutTest
+extends "res://addons/gut/test.gd"
 
 var transition_scene = preload("res://scenes/level/room_transition.tscn")
 var player_scene = preload("res://scenes/player/player.tscn")

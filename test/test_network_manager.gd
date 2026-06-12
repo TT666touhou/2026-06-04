@@ -1,4 +1,4 @@
-extends GutTest
+extends "res://addons/gut/test.gd"
 
 func test_host_creation():
 	var err = NetworkManager.host_game()
