@@ -89,7 +89,7 @@ animations = [{
 ],
 "loop": false,
 "name": &"default",
-"speed": 24
+"speed": 60
 }]
 
 [node name="MeleeSlash2" type="Node2D"]
@@ -98,7 +98,6 @@ z_index = 10
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.35, 0.35)
-flip_h = true
 sprite_frames = SubResource("SpriteFrames_1")
 autoplay = ""
 centered = true

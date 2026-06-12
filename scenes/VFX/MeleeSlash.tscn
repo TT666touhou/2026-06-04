@@ -89,7 +89,7 @@ animations = [{
 ],
 "loop": false,
 "name": &"default",
-"speed": 24
+"speed": 60
 }]
 
 [node name="MeleeSlash" type="Node2D"]

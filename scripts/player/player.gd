@@ -875,27 +875,30 @@ func _do_melee_hit() -> void:
 			print("[Player] Combo擊", _combo_step, " 命中：", body.name)
 
 	## 視覺回饋：VisualPivot 縮放（模擬出拳動感）
+	## 注意：scale.x 保持正值，翻轉由 VisualPivot 的 x-flip 控制
 	if _visual_pivot:
 		var tw := create_tween()
-		var scale_dir := Vector2(1.25 * _facing, 0.85)
-		tw.tween_property(_visual_pivot, "scale", scale_dir, 0.06)
-		tw.tween_property(_visual_pivot, "scale", Vector2(_facing, 1.0), 0.09)
+		## 向攻擊方向拉伸（x 保持正值，避免 scale 負值干擾子節點）
+		tw.tween_property(_visual_pivot, "scale", Vector2(1.2, 0.82), 0.06)
+		tw.tween_property(_visual_pivot, "scale", Vector2(1.0, 1.0), 0.09)
 
 	## 每擊對應不同 VFX 場景
-	var vfx_offset: Vector2
+	## VFX 偏移：放在攻擊中點前端（melee_range * 0.8），垂直居中在角色腰部
+	var vfx_x_offset := _facing * melee_range * 0.8
+	var face_left := _facing < 0.0
 	match _combo_step:
 		1:
-			## 第1擊：橫斬（slash_01）
-			vfx_offset = Vector2(_facing * 14.0, -4.0)
-			_spawn_melee_vfx(_get_melee_slash_scene(), global_position + vfx_offset, _facing < 0.0)
+			## 第1擊：橫斬（slash_01）— 直接按朝向翻轉
+			_spawn_melee_vfx(_get_melee_slash_scene(),
+				global_position + Vector2(vfx_x_offset, -6.0), face_left)
 		2:
-			## 第2擊：反向斬（slash_02，flip_h=true 已在場景中設定）
-			vfx_offset = Vector2(_facing * 14.0, -4.0)
-			_spawn_melee_vfx(_get_melee_slash2_scene(), global_position + vfx_offset, _facing < 0.0)
+			## 第2擊：反手斬（slash_02）— 朝向翻轉（場景不再有預設 flip_h）
+			_spawn_melee_vfx(_get_melee_slash2_scene(),
+				global_position + Vector2(vfx_x_offset, -6.0), face_left)
 		3:
-			## 第3擊：衝擊爆炸（impact_01，scale=0.40 已在場景中設定）
-			vfx_offset = Vector2(_facing * 10.0, -4.0)
-			_spawn_melee_vfx(_get_melee_impact3_scene(), global_position + vfx_offset, false)
+			## 第3擊：衝擊爆炸（impact_01）— 略向前，不翻轉（爆炸無方向性）
+			_spawn_melee_vfx(_get_melee_impact3_scene(),
+				global_position + Vector2(vfx_x_offset, -6.0), face_left)
 
 ## Fallback loader：優先用 @export，否則動態載入
 func _get_melee_slash_scene() -> PackedScene:
@@ -1013,11 +1016,10 @@ func _spawn_melee_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool) -> voi
 	## 繼承玩家顏色（P1=橙, P2=藍, P3=綠, P4=紫）
 	if _visual_pivot:
 		vfx.modulate = _visual_pivot.modulate
-	## flip_h 處理（供 slash_01 朝左時翻轉；slash_02 的固定 flip_h 已在場景設定）
-	if flip_h:
-		var spr := vfx.get_node_or_null("AnimatedSprite2D")
-		if spr:
-			spr.flip_h = not spr.flip_h  # 切換（保留場景的預設 flip_h）
+	## flip_h：直接賦值（不用 toggle）；場景內 flip_h 統一為 false
+	var spr := vfx.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	if spr:
+		spr.flip_h = flip_h
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", vfx)
