@@ -260,3 +260,28 @@
 | 2026-06-12 | 複製 .tscn 後 ext_resource UID 驗證 | 複製場景後立即執行 UID 自引用檢查腳本，確認每個 ext_resource 的 UID 來自被引用資源的 .uid 文件，而非場景自身的 UID |
 | 2026-06-12 | Godot 3 → Godot 4 API 遷移 | `TextureRect.STRETCH_*` → 使用 `TextureRect.StretchMode` 枚舉；任何涉及 Godot 3 常數的腳本在 Godot 4 中必須使用 Godot 4 對應的 API |
 | 2026-06-12 | 工具腳本的 UTF-8 BOM 預防 | 在 pre-commit hook 或 CI 中加入掃描：`$b=[IO.File]::ReadAllBytes($path); if ($b[0] -eq 0xEF -and $b[1] -eq 0xBB) { "UTF-8 BOM 錯誤" }` |
+
+---
+
+## 🔴 [ERR-016] — player_prefix 空字串造成攻擊完全靜默失敗
+
+- **日期**：2026-06-12
+- **報告 ROLE**：QA → Developer 修復
+- **錯誤分類**：Logic Bug（攻擊功能整體無效）
+- **錯誤訊息**：無任何錯誤訊息——攻擊功能靜默失敗（silent failure）
+- **根本原因**：test_room_a.tscn 和 test_room_b.tscn 的 Player 節點沒有設定 `player_prefix = "p1_"`（預設為空字串 `""`），導致 `_handle_attack()` 嘗試查詢 `"melee"` / `"ranged"` action（缺少前綴），InputMap 找不到該 action，直接 `return` 無任何反應
+- **修復**：
+  1. test_room_a/b.tscn Player 節點加入 `player_prefix = "p1_"`
+  2. player.gd 新增 `InputMap.has_action()` 防禦性檢查 + warning（已有）
+  3. 攻擊邏輯從舊版短按/長按重構為 LMB/RMB 即時觸發
+- **教訓**：任何測試場景在建立 Player 節點後，**必須立即在 Inspector 設定 player_prefix**，否則所有輸入功能全面失效但無提示
+
+---
+
+## 🟢 新增 PATTERN（2026-06-12 第五批）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-12 | test 場景建立 Player 節點 | 立即設定 `player_prefix = "p1_"` + `bullet_scene`，否則攻擊/輸入靜默失敗 |
+| 2026-06-12 | 攻擊輸入設計 | 優先使用即時觸發（`just_pressed`）而非需要精確計時的短按/長按，減少邊界條件 BUG |
+| 2026-06-12 | VFX 場景設計 | 使用 one_shot_vfx.gd + `animation_finished.connect(queue_free)` 模式，保持輕量 |
