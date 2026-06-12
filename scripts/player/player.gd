@@ -106,11 +106,10 @@ extends CharacterBody2D
 @export_range(0.1, 2.0, 0.05) var ranged_cooldown: float = 0.6
 ## 遠程子彈場景（由 GameWorld 動態注入）
 @export var bullet_scene: PackedScene
-## VFX scenes auto-loaded (no Inspector setup required)
-const MELEE_SLASH_VFX_PATH: String = "res://scenes/VFX/MeleeSlash.tscn"
-const MUZZLE_FLASH_VFX_PATH: String = "res://scenes/VFX/RangedMuzzle.tscn"
-var melee_slash_scene: PackedScene
-var muzzle_flash_scene: PackedScene
+## 近戰片斬特效（左鍵攻擊觸發）
+@export var melee_slash_scene: PackedScene
+## 遠程發射火花特效（右鍵攻擊觸發）
+@export var muzzle_flash_scene: PackedScene
 
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
@@ -208,16 +207,11 @@ func _is_authority() -> bool:
 func _ready() -> void:
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
-
-	## Auto-load VFX scenes (no Inspector setup required)
-	melee_slash_scene = load(MELEE_SLASH_VFX_PATH) as PackedScene
-	muzzle_flash_scene = load(MUZZLE_FLASH_VFX_PATH) as PackedScene
-
+	
 	## Debug 整合：加入 Players group，讓 DebugBridge 自動追蹤
 	add_to_group("Players")
 	print("[Player] 初始化完成 — name:", name, " prefix:'", player_prefix, "'")
-
-
+	
 	# Multiplayer Synchronizer 設定（在 _enter_tree 之後執行，authority 已設定）
 	var sync := MultiplayerSynchronizer.new()
 	var rep := SceneReplicationConfig.new()
@@ -872,9 +866,8 @@ func _fire_bullet() -> void:
 		parent.add_child(bullet)
 	print("[Player] 發射子彈 方向：", _facing)
 
-	## 遠程發射 VFX（複用同一個 spawn_pos 位置）
+	## 遠程發射 VFX（複用已宣告的 spawn_pos，不重複宣告）
 	_spawn_vfx(muzzle_flash_scene, spawn_pos, _facing < 0.0)
-
 
 
 # ═══════════════════════════════════════════════════════════════

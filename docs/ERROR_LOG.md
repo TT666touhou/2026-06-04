@@ -361,3 +361,51 @@
 | 2026-06-12 | VFX 自動載入 | 移除 @export PackedScene VFX vars, 改用 const path + _ready() load() (零 Inspector 配置原則) |
 | 2026-06-12 | StringName 型別安全 | 三元運算符兩側型別必須一致; StringName 賦值給 String 用 String(strname) 顯式轉型 |
 | 2026-06-12 | Engine API 返回值 | get_frames_per_second() 返回 float; 賦值給 int 用 roundi()（非強制轉型） |
+
+
+---
+
+## ERR-021 VFX AnimatedSprite2D Scale Too Large (2026-06-12 Session 7)
+
+- **Severity**: High (VFX covers entire screen)
+- **Error Type**: VFX Scale Configuration Error
+- **Symptom**: Sprite frames were correct (91x96, 131x127, 137x98, 132x126) but AnimatedSprite2D had no scale set, rendering at native pixel size far larger than player (~22px). EnemyDeath had scale=2.0 making it 264x252px.
+- **Real PNG dimensions (Python measurement)**:
+  - slash_01 (1456x96): 16 frames, each 91x96
+  - spark_01 (2096x127): 16 frames, each 131x127
+  - impact_01 (2192x98): 16 frames, each 137x98
+  - death_01 (3168x126): 24 frames, each 132x126
+- **Fix**:
+  - MeleeSlash: scale = Vector2(0.35, 0.35) -> ~32x34px (~2 character widths)
+  - RangedMuzzle: scale = Vector2(0.15, 0.15) -> ~20x19px (~1 character width)
+  - EnemyHit: scale = Vector2(0.20, 0.20) -> ~27x20px (~1.7 character widths)
+  - EnemyDeath: scale = Vector2(0.30, 0.30) -> ~40x38px (~2.5 character widths)
+- **Lesson**: Always set scale on VFX AnimatedSprite2D. Base proportions on player height (~22px).
+
+---
+
+## ERR-022 @export VFX Vars Not Wired in .tscn Files (2026-06-12 Session 7)
+
+- **Severity**: High (all VFX silently fail)
+- **Error Type**: Export Property Misconfiguration
+- **Symptom**: melee_slash_scene / muzzle_flash_scene / hit_vfx_scene / death_vfx_scene all null, no VFX on attack
+- **Cause**: @export PackedScene vars declared in script but never assigned in player1-4.tscn / Enemy1-3.tscn
+- **Fix Process**:
+  1. Read target VFX scene UID from line 1 of .tscn
+  2. Add [ext_resource type="PackedScene" uid="..." path="..." id="N_tag"]
+  3. Add property_name = ExtResource("N_tag") to root node section
+  4. Update load_steps=X (ext_resources + sub_resources + 1)
+  5. Write with [System.IO.File]::WriteAllText() UTF-8 no-BOM (NOT Set-Content!)
+  6. Validate with Godot headless --quit, check for no Parse Error
+- **Lesson**: After creating scripts with @export VFX vars, MUST update all referencing .tscn files
+
+---
+
+## New Pattern (Session 7)
+
+| Date | Context | Best Practice |
+|------|---------|--------------|
+| 2026-06-12 | VFX scale | AnimatedSprite2D must have scale; base on char height ~22px: melee=0.35 ranged=0.15 hit=0.20 death=0.30 |
+| 2026-06-12 | After .tscn write | Check bytes[0..2] != EF BB BF; then run Godot headless --quit to confirm no Parse Error |
+| 2026-06-12 | PNG size measurement | Use Python struct.unpack('>II', bytes[16:24]) from PNG header; PowerShell byte offset error-prone |
+| 2026-06-12 | load_steps formula | ext_resource count + sub_resource count + 1 |

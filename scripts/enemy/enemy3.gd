@@ -17,24 +17,17 @@ var direction: float = -1.0
 var current_health: int = 10
 var _is_dying: bool = false
 @export var bullet_scene: PackedScene
-## VFX scenes auto-loaded (no Inspector setup required)
-const HIT_VFX_PATH: String = "res://scenes/VFX/EnemyHit.tscn"
-const DEATH_VFX_PATH: String = "res://scenes/VFX/EnemyDeath.tscn"
-var hit_vfx_scene: PackedScene
-var death_vfx_scene: PackedScene
+@export var hit_vfx_scene: PackedScene
+@export var death_vfx_scene: PackedScene
 
 func _ready() -> void:
 	if stats:
 		current_health = stats.max_health
-
-	## Auto-load VFX scenes
-	hit_vfx_scene = load(HIT_VFX_PATH) as PackedScene
-	death_vfx_scene = load(DEATH_VFX_PATH) as PackedScene
-
-	## Fallback for bullet scene if not assigned in Inspector
+	
+	# 如果沒有在屬性面板中指定，載入預設的子彈場景
 	if not bullet_scene:
 		bullet_scene = load("res://scenes/enemy/bullet.tscn")
-
+		
 	if spawn_disabled:
 		disable_enemy()
 

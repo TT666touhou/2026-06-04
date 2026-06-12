@@ -1,16 +1,86 @@
-[gd_scene load_steps=2 format=4 uid="uid://5x4vgucfunzsm"]
+[gd_scene load_steps=4 format=4 uid="uid://ranged_muzzle_vfx"]
 
 [ext_resource type="Script" path="res://scripts/vfx/one_shot_vfx.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/vfxmix/fx/spark_01.png" id="2_tex"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_1"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(0, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(131, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(262, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(393, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(524, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(655, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(786, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(917, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1048, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1179, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1310, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1441, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1572, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1703, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1834, 0, 131, 127)
+},{
+"duration": 1.0,
+"texture": ExtResource("2_tex"),
+"region": Rect2(1965, 0, 131, 127)
+}],
+"loop": false,
+"name": &"default",
+"speed": 24.0
+}]
 
 [node name="RangedMuzzle" type="Node2D"]
 script = ExtResource("1_script")
 z_index = 10
-texture_path = "res://assets/vfxmix/fx/spark_01.png"
-frame_width = 131
-frame_height = 127
-frame_count = 16
-fps = 24.0
-vfx_scale = 0.18
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.15, 0.15)
+sprite_frames = SubResource("SpriteFrames_1")
+autoplay = ""
 centered = true

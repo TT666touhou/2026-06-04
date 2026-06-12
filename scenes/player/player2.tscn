@@ -1,10 +1,13 @@
-[gd_scene format=3 uid="uid://wj8c6qjz2js5i"]
+gd_scene load_steps=11 format=3 uid="uid://wj8c6qjz2js5i"]
 
 [ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
 [ext_resource type="Script" uid="uid://13bvchhfcwce" path="res://scripts/player/player.gd" id="2_script"]
 [ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
 [ext_resource type="PackedScene" uid="uid://c031iasmaeovd" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
 [ext_resource type="PackedScene" uid="uid://b6hudui726ex" path="res://scenes/ui/player_hud.tscn" id="5_hud"]
+[ext_resource type="PackedScene" uid="uid://melee_slash_vfx" path="res://scenes/VFX/MeleeSlash.tscn" id="6_melee_vfx"]
+[ext_resource type="PackedScene" uid="uid://ranged_muzzle_vfx" path="res://scenes/VFX/RangedMuzzle.tscn" id="7_ranged_vfx"]
+[ext_resource type="PackedScene" path="res://scenes/player/player_bullet.tscn" id="8_bullet"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 4.0
@@ -24,6 +27,9 @@ gravity = 480.0
 friction = 960.0
 jump_velocity = -191.0
 player_prefix = "p2_"
+melee_slash_scene = ExtResource("6_melee_vfx")
+muzzle_flash_scene = ExtResource("7_ranged_vfx")
+bullet_scene = ExtResource("8_bullet")
 
 [node name="VisualPivot" type="Node2D" parent="." unique_id=777777777]
 position = Vector2(0, 6)

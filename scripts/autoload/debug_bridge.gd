@@ -68,8 +68,7 @@ func _collect_state() -> Dictionary:
 		if has_node("/root/NetworkManager"):
 			var nm := get_node("/root/NetworkManager")
 			if nm.get("connected_players") != null:
-				var cp = nm.get("connected_players")
-				net["connected_count"] = (cp as Dictionary).size()
+				net["connected_count"] = nm.connected_players.size()
 				net["connected_ids"] = nm.connected_players.keys()
 	state["network"] = net
 	
