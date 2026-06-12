@@ -14,6 +14,16 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
+
+□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
+       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+       - 確認「快速總覽」中各 Phase 的當前狀態
+       - 找到你今次要實作的 Phase，閱讀「關鍵檔案」和「已知限制」
+       - 確認「尚未開始（TODO）」和「部分完成（PARTIAL）」區塊，明確目前任務範圍
+       - 確認「已鎖定設計決策」，不得修改已鎖定內容
+       ⚠️ 若不讀此文件就開始實作 → 視為嚴重違規，開發成果無效
+
 【第零步：查詢錯誤知識庫 — 先學，再做】
 
 □ 0. 查詢 docs/ERROR_LOG.md（所有錯誤前必做）：
@@ -240,9 +250,15 @@ github.create_pull_request(
 □ 5. Memory MCP 已更新任務狀態為 IN_REVIEW
 □ 6. 本次開發反省已寫入 Memory
 □ 7. GitHub PR 已建立
+□ 8. 【新增必要】更新 docs/PROJECT_STATUS.md：
+      - 在「快速總覽」更新相關 Phase 狀態（由 PARTIAL → DONE 或記錄新完成項目）
+      - 在「已完成」區塊加入實作說明和關鍵檔案
+      - 更新「尚未開始（TODO）」（若有尚未實作的子項）
+      - 在「更新日誌」加入一行記錄
 
 通過才能執行：
 git push origin feature/[任務名稱]
+# 注：PROJECT_STATUS.md 必須在同一 commit 更新
 ```
 
 ## Hook 驗證

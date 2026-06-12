@@ -15,6 +15,15 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
+
+□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
+       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+       - 確認「快速總覽」中各 Phase 的當前狀態
+       - 找到你今次工作相關的 Phase，閱讀其「關鍵檔案」和「已知限制」
+       - 確認「已鎖定設計決策」，設計不得違反
+       ⚠️ 若不讀此文件就開始工作 → 視為嚴重違規，工作成果無效
+
 【第零步：查詢錯誤知識庫 — 了解技術限制再做設計】
 
 □ 0. 查詢 docs/ERROR_LOG.md（設計工作前必做）：
@@ -213,9 +222,13 @@ github.create_issue(
 □ 4. 技術風險已標記（Architect 知道哪裡是地雷）
 □ 5. GitHub Issue 已建立通知 Architect
 □ 6. 本次工作反省已寫入 Memory
+□ 7. 【新增必要】更新 docs/PROJECT_STATUS.md：
+      - 在「快速總覽」更新相關 Phase 狀態
+      - 更新「已鎖定設計決策」（若有新增）
+      - 在「更新日誌」加入一行記錄
 
 通過才能執行：
-git add docs/GAME_DESIGN.md
+git add docs/GAME_DESIGN.md docs/PROJECT_STATUS.md
 git commit -m "[DESIGN] plan: 核心設計完成，Architect 可以開始規劃"
 ```
 

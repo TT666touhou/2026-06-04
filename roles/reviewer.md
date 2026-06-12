@@ -14,6 +14,15 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
+
+□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
+       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+       - 確認「快速總覽」中該 Phase 的狀態為 IN_REVIEW
+       - 閱讀該 Phase 的「已完成」內容，確認 Developer 宣稱完成的項目
+       - 確認「已知限制」，了解应該審查哪些技術細節
+       ⚠️ 若不讀此文件就開始審查 → 視為嚴重違規，審查結果無效
+
 【第零步：查詢錯誤知識庫 — 先了解已知問題，再審查】
 
 □ 0. 查詢 docs/ERROR_LOG.md（審查前必做）：
@@ -207,6 +216,9 @@ memory.add_observations(
 □ 5. Memory 已更新任務狀態為 IN_QA
 □ 6. 審查反省已寫入 Memory
 □ 7. QA 的測試重點已記錄在 Memory
+□ 8. 【新增必要】若審查發現「 Developer 未完成的項目」或「新技術倫务」：
+      - 在 docs/PROJECT_STATUS.md 的「尚未開始（TODO）」加入對應次項目
+      - 在「更新日誌」加入一行記錄
 ```
 
 ## Hook 驗證

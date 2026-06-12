@@ -13,6 +13,16 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
+
+□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
+       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+       - 確認「快速總覽」中各 Phase 的當前狀態（哪些 DONE / PARTIAL / TODO）
+       - 閱讀你今次要設計的 Phase 的「關鍵檔案」和「已知限制」
+       - 確認「已鎖定設計決策」，架構設計不得違反
+       - 確認「📁 關鍵檔案索引」，了解現有腳本結構
+       ⚠️ 若不讀此文件就開始設計 → 視為嚴重違規，架構計畫無效
+
 【第零步：查詢錯誤知識庫 — 先學，再做】
 □ 0. 查詢 docs/ERROR_LOG.md（所有工作前必做）：
       Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
@@ -167,9 +177,13 @@ github.create_issue(
 □ 4. 已確認沒有循環依賴
 □ 5. GitHub Issue 已建立
 □ 6. 本次工作反省已寫入 Memory
+□ 7. 【新增必要】更新 docs/PROJECT_STATUS.md：
+      - 在「快速總覽」更新相關 Phase 狀態（由 TODO → PARTIAL 或標注技術約束）
+      - 更新「📁 關鍵檔案索引」（若有新增檔案）
+      - 在「更新日誌」加入一行記錄
 
 通過才能執行：
-git add implementation_plan.md
+git add implementation_plan.md docs/PROJECT_STATUS.md
 git commit -m "[ARCH] plan: [任務名稱] 設計完成，等待開發"
 ```
 

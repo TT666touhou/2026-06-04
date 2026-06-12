@@ -14,6 +14,16 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
+
+□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
+       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+       - 確認「快速總覽」中該 Phase 的狀態，渺認需測試項目
+       - 閱讀「已完成」區塊，明確 Developer 宣稱完成了什麼
+       - 確認「尚未開始（TODO）」區塊，種入類似求
+       - 確認「📁 關鍵檔案索引」，確認將測試正確的場景和腳本
+       ⚠️ 若不讀此文件就開始測試 → 視為嚴重違規，測試結果無效
+
 【第零步：查詢錯誤知識庫 — 先學已知問題，再測試】
 
 □ 0. 查詢 docs/ERROR_LOG.md（測試前必做）：
@@ -271,6 +281,11 @@ github.add_issue_comment(
 □ 7. docs/qa-report-*.md 已建立
 □ 8. Memory 已更新任務狀態為 DONE（或 IN_DEV 若退回）
 □ 9. QA 反省已寫入 Memory
+□ 10. 【新增必要】更新 docs/PROJECT_STATUS.md：
+       通過時：在「快速總覽」將 Phase 標記為 ✅ DONE
+       失敗退回時：將 Phase 將標記為 ⚠️ PARTIAL，加入常見失敗原因
+       變更「對應已完成內容」（測試日期、測試方式、機器讀取結果）
+       在「更新日誌」加入一行記錄
 
 通過 → 通知可以 Merge
 失敗 → 退回 Developer，附上完整的 qa_game.log + qa_gut.log
