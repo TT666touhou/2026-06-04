@@ -6,6 +6,7 @@
 [ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="4_tiles"]
 [ext_resource type="Script" path="res://scripts/level/dungeon_generator.gd" id="5_dungscr"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_hud.tscn" id="6_hudscn"]
+[ext_resource type="Script" path="res://scripts/ui/screen_fader.gd" id="7_faderscr"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(800, 32)
@@ -108,3 +109,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="ScreenFader" type="CanvasLayer" parent="."]
+layer = 128
+script = ExtResource("7_faderscr")
+
+[node name="ColorRect" type="ColorRect" parent="ScreenFader"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+modulate = Color(1, 1, 1, 0)
+mouse_filter = 2

@@ -37,6 +37,11 @@
 | — | Boss AI（巡邏/衝刺，boss.gd 創建）| ✅ DONE | 2026-06-12 17:51 |
 | — | 敵人生成系統 | ❌ TODO | — |
 | — | 線上多人（ENet）| 🔒 BLOCKED | 設計決策：Phase 1 不做 |
+| **4.1** | **ScreenFader（漸黑漸亮過渡）** | **✅ DONE** | 2026-06-12 |
+| **4.2** | **RoomPortal（洞口觸發節點）** | **✅ DONE** | 2026-06-12 |
+| **4.3** | **game_world.gd Portal 擴充** | **✅ DONE** | 2026-06-12 |
+| **4.4** | **四方向走廊場景（left/right/top/bottom）** | **✅ DONE** | 2026-06-12 |
+| **4.5** | **test_room_a/b 改造（RoomPortal 整合）** | **✅ DONE** | 2026-06-12 |
 
 ---
 

@@ -192,3 +192,15 @@
 | 2026-06-12 | 創建引用 Script 的 .tscn 時 | 必須同時創建對應的 .gd 腳本；建立 .tscn 後，立刻確認 `Get-ChildItem scripts -Recurse \| Where-Object Name -eq "xxx.gd"` 存在 |
 | 2026-06-12 | ERR-001 深層修復（Area2D _ready 時序） | 「呼叫端 call_deferred」不夠；`add_child()` 後的整個處理鏈也必須放到**另一個** call_deferred 中（`_finish_room_load` 模式），確保 physics flush 已完全結束 |
 | 2026-06-12 | 房間載入最佳架構 | 1→`load_next_room()`（call_deferred 呼叫）→ 2→`_load_room_scene()`（instantiate only）→ 3→`_finish_room_load()`（add_child + cleanup + reset，call_deferred 呼叫） |
+
+---
+
+## 🟢 Phase 4 新增 PATTERN（2026-06-12 Portal 系統）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-12 | Fade 過渡換房間（四層 deferred） | `body_entered` → `call_deferred("_do_trigger")` → `game_world.load_next_room_portal()` → `fader.fade_out()` → `faded_out signal` → `call_deferred("_do_portal_room_change")` → 三層 deferred 換場。共四層，確保任何一層都不在 physics flush 中執行 |
+| 2026-06-12 | CONNECT_ONE_SHOT 信號用法 | 當只需要連接一次的 signal（如 Fade Out 完成後換場），使用 `signal.connect(callback, CONNECT_ONE_SHOT)` 避免重複觸發或手動 disconnect |
+| 2026-06-12 | Paired Door ID 房間配對 | 每個 RoomPortal 有 `door_id` 和 `target_door_id`。A房間的 `door_id="right"` 連到 B房間的 `target_door_id="right"`，B房間的 `door_id="right"` 有一個 `SpawnMarker` 子節點作為玩家出現位置 |
+| 2026-06-12 | ScreenFader CanvasLayer 層級 | ScreenFader 的 `layer = 128` 確保在所有遊戲 UI 之上（HUD layer=10）。`mouse_filter = 2` 讓輸入穿透，不阻擋玩家操作 |
+| 2026-06-12 | class_name 全域可用性 | GDScript 4 的 `class_name RoomPortal` 在整個專案中全域可用，其他腳本可直接用 `child is RoomPortal` 做型別檢查，不需 preload |

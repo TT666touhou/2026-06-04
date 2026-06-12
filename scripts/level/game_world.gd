@@ -345,3 +345,141 @@ func get_dungeon_debug_info() -> Dictionary:
 	if not _dungeon:
 		return {"status": "no_dungeon"}
 	return _dungeon.get_debug_info()
+
+# ═══════════════════════════════════════════════════════════════
+# Portal 系統 — Hollow Knight 風格洞口換房間
+# ═══════════════════════════════════════════════════════════════
+
+## 等待進入的洞口 ID（用來在新房間定位玩家）
+var _pending_entry_door_id: String = ""
+
+## 由 RoomPortal._do_trigger() 呼叫（已在 call_deferred 環境）
+## ⚠️ ERR-001/007 架構：此函式是三層 deferred 的第二層入口
+func load_next_room_portal(
+		from_door_id: String,
+		target_door_id: String,
+		target_path: String,
+		fade_dur: float = 0.4) -> void:
+	_pending_entry_door_id = target_door_id
+	print("[GameWorld] Portal 觸發：from=%s → to=%s  path=%s" % [
+		from_door_id, target_door_id,
+		target_path if not target_path.is_empty() else "[DungeonGen]"
+	])
+	## 找 ScreenFader（作為 GameWorld 子節點）
+	var fader := get_node_or_null("ScreenFader")
+	if fader and fader.has_method("fade_out"):
+		## 連接 faded_out 一次性信號（CONNECT_ONE_SHOT 自動斷開）
+		fader.faded_out.connect(
+			_on_faded_out_do_room_change.bind(target_path),
+			CONNECT_ONE_SHOT
+		)
+		fader.fade_out(fade_dur)
+	else:
+		## 無 Fader 降級：直接換房間
+		push_warning("[GameWorld] ScreenFader 不存在，使用降級模式（無 Fade）")
+		call_deferred("_do_portal_room_change", target_path)
+
+## Fade Out 完成後的 signal callback
+## ⚠️ ERR-007：signal callback 本身可能在 physics flush 中，再次 call_deferred
+func _on_faded_out_do_room_change(target_path: String) -> void:
+	call_deferred("_do_portal_room_change", target_path)
+
+## 實際決定換哪個房間（三層 deferred 的第三層入口）
+func _do_portal_room_change(target_path: String) -> void:
+	if target_path.is_empty():
+		## DungeonGenerator 決定下一間
+		if not _dungeon:
+			push_warning("[GameWorld] _do_portal_room_change: DungeonGenerator 不存在")
+			return
+		var next: String = _dungeon.advance_room()
+		if next.is_empty():
+			print("[GameWorld] Portal: Run 完成！")
+			get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/run_complete.tscn")
+			return
+		_load_room_scene_portal(next)
+	else:
+		_load_room_scene_portal(target_path)
+
+## Portal 版本的房間載入（複用三層 deferred 架構，ERR-001/007）
+func _load_room_scene_portal(scene_path: String) -> void:
+	if _is_loading_room:
+		print("[GameWorld] Portal: 忽略重複載入（正在載入中）")
+		return
+	_is_loading_room = true
+
+	if not ResourceLoader.exists(scene_path):
+		push_warning("[GameWorld] Portal 場景不存在：" + scene_path)
+		_is_loading_room = false
+		return
+
+	## 移除舊房間
+	if _current_room_node:
+		_current_room_node.queue_free()
+		_current_room_node = null
+
+	var scene := load(scene_path) as PackedScene
+	if scene == null:
+		push_error("[GameWorld] 無法載入 Portal 場景：" + scene_path)
+		_is_loading_room = false
+		return
+
+	_current_room_node = scene.instantiate()
+	## ⚠️ ERR-007：instantiate 後不立刻 add_child，延後到下一幀
+	call_deferred("_finish_portal_room_load", scene_path)
+
+## Portal 版本的房間完成載入（add_child 在此，完全遠離 physics flush）
+func _finish_portal_room_load(scene_path: String) -> void:
+	if not is_instance_valid(_current_room_node):
+		_is_loading_room = false
+		return
+	add_child(_current_room_node)
+	move_child(_current_room_node, 0)
+
+	## 清除衝突節點
+	_cleanup_room_conflicts(_current_room_node)
+
+	## 套用難度
+	if _dungeon and _dungeon.has_method("get_current_room"):
+		var room_def: Variant = _dungeon.get_current_room()
+		if room_def and room_def.get("difficulty_bonus") != null:
+			_apply_room_difficulty(roundi(float(room_def.get("difficulty_bonus"))))
+
+	## 定位玩家到指定 door_id 的 SpawnMarker
+	_reset_player_at_door(_pending_entry_door_id)
+
+	print("[GameWorld] Portal 房間載入完成：", scene_path, "  入口 door_id=", _pending_entry_door_id)
+
+	## Fade In
+	var fader := get_node_or_null("ScreenFader")
+	if fader and fader.has_method("fade_in"):
+		fader.fade_in()
+
+	call_deferred("_unlock_room_loading")
+
+## 依據 door_id 尋找目標房間的 RoomPortal，從其 SpawnMarker 定位玩家
+func _reset_player_at_door(entry_door_id: String) -> void:
+	var spawn_pos := Vector2(80.0, -80.0)  ## 後備預設位置
+
+	## 在新房間的子節點中找對應 door_id 的 RoomPortal
+	if _current_room_node and not entry_door_id.is_empty():
+		for child: Node in _current_room_node.get_children():
+			if child is RoomPortal and child.door_id == entry_door_id:
+				var marker := child.get_node_or_null("SpawnMarker")
+				if marker:
+					spawn_pos = (marker as Node2D).global_position
+					print("[GameWorld] 找到 SpawnMarker：door_id=%s pos=%s" % [entry_door_id, str(spawn_pos)])
+				else:
+					push_warning("[GameWorld] RoomPortal '%s' 沒有 SpawnMarker 子節點" % entry_door_id)
+				break
+		if spawn_pos == Vector2(80.0, -80.0):
+			push_warning("[GameWorld] 找不到 door_id='%s' 的 RoomPortal，使用預設位置" % entry_door_id)
+
+	## 放置所有玩家
+	var players := _players_root.get_children()
+	for i: int in range(players.size()):
+		var p := players[i]
+		p.global_position = spawn_pos + Vector2(float(i) * 40.0, 0.0)
+		if not p.visible:
+			p.visible = true
+			p.set_physics_process(true)
+			print("[GameWorld] 玩家 %s 從 door_id=%s 出現" % [p.name, entry_door_id])

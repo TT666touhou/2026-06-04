@@ -15,8 +15,8 @@
 [ext_resource type="Script" path="res://scripts/enemy/enemy2.gd" id="12_o1is3"]
 [ext_resource type="Script" path="res://scripts/enemy/enemy3.gd" id="14_pcxsh"]
 [ext_resource type="PackedScene" path="res://scenes/enemy/bullet_enemy3.tscn" id="15_2hnas"]
-[ext_resource type="PackedScene" path="res://scenes/level/room_transition.tscn" id="16_553pu"]
-[ext_resource type="Script" path="res://scripts/level/room_transition.gd" id="17_sm58u"]
+[ext_resource type="Script" path="res://scripts/level/room_portal.gd" id="16_portal"]
+[ext_resource type="PackedScene" path="res://scenes/level/portals/right_portal.tscn" id="17_rp"]
 
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
@@ -111,9 +111,34 @@ stats = ExtResource("10_x18lm")
 spawn_disabled = true
 bullet_scene = ExtResource("15_2hnas")
 
-[node name="RoomTransition" type="Area2D" parent="." unique_id=235625781 instance=ExtResource("16_553pu")]
-position = Vector2(150, -50)
+[node name="RightPortal" type="Area2D" parent="." unique_id=235625781]
+position = Vector2(200, -50)
 collision_layer = 0
 collision_mask = 2
-script = ExtResource("17_sm58u")
+script = ExtResource("16_portal")
+door_id = "right"
 target_room_path = "res://scenes/test_room_b.tscn"
+target_door_id = "left"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RightPortal"]
+position = Vector2(64, 0)
+shape = SubResource("RectangleShape2D_1")
+
+[node name="SpawnMarker" type="Marker2D" parent="RightPortal"]
+position = Vector2(-32, 0)
+
+[node name="LeftPortal" type="Area2D" parent="."]
+position = Vector2(-200, -50)
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("16_portal")
+door_id = "left"
+target_room_path = ""
+target_door_id = "right"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LeftPortal"]
+position = Vector2(-64, 0)
+shape = SubResource("RectangleShape2D_1")
+
+[node name="SpawnMarker" type="Marker2D" parent="LeftPortal"]
+position = Vector2(32, 0)
