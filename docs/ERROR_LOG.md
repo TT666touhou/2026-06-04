@@ -46,6 +46,9 @@
 | 2026-06-12 | 多玩家輸入 | `player_prefix` 變數在 `@export_group("Multiplayer")` 下宣告；input action 格式為 `{prefix}move_left`，prefix 為 `""/"p1_/"p2_"` 等 |
 | 2026-06-12 | 攻擊系統設計 | 短按 < 0.3s = 近戰 (`_perform_melee_attack`)；長按 >= 0.3s = 遠程 (`_fire_bullet`)；用 `_attack_hold_timer` 計時；翻滾時禁止攻擊 |
 | 2026-06-12 | Rogue-lite 房間生成 | `DungeonGenerator` 用 `class_name DungeonGenerator`；GameWorld 的 `@onready var _dungeon: Node`（不能用 DungeonGenerator 型別因前向引用問題）；`advance_room()` 回傳 `String`，明確宣告 `var x: String = _dungeon.advance_room()` |
+| 2026-06-13 | [PATTERN-VFX-POS] OneShotVFX 偏移 | `vfx_x_offset = _facing * melee_range * 0.8` ← 用攻擊範圍的 80% 作為偏移。固定值（如 14px）會讓所有特效疊在角色中心 |
+| 2026-06-13 | [PATTERN-VFX-SPEED] OneShotVFX 速度 | speed≈(幀數/攻擊鎖定時間)*0.6。16幀/0.15s*0.6≈64 → 設 60fps。預設 24fps（16幀=0.667s）遠超攻擊動作，感覺「拖尾」 |
+| 2026-06-13 | [PATTERN-VFX-FLIP] OneShotVFX 翻轉 | `spr.flip_h = (_facing < 0)` 直接賦值；**scene 內 flip_h 統一保持 false**。❌ 勿用 `not spr.flip_h`（toggle）——若場景有預設 flip_h 會雙重翻轉 |
 
 ---
 
