@@ -36,3 +36,26 @@
 - **給 Developer 的建議**：
 - **給 QA 的測試重點提示**：
 
+
+---
+
+## 2026-06-12 21:00 — Reviewer 審查記錄（Phase 5.5/5.6）
+
+### 審查範圍
+- one_shot_vfx.gd 自我配置重寫
+- 4個 VFX scenes（MeleeSlash/RangedMuzzle/EnemyHit/EnemyDeath）
+- player.gd、enemy1/2/3.gd VFX auto-load 修改
+- debug_bridge.gd、debug_overlay.gd 警告修復
+
+### 審查結論
+- ✅ BOM 掃描全通過
+- ✅ spawn_pos 重複宣告已修復（只剩 L853 一個）
+- ✅ StringName→String 顯式轉型正確
+- ✅ roundi() 替換 narrowing 轉型正確
+- ✅ AtlasTexture region 計算邏輯正確（i * frame_width, 0, frame_width, frame_height）
+- ✅ VFX UID 格式已修正為 13位英數字 Godot 標準格式
+- ✅ 所有 VFX scene 的 scale 設計符合比例要求
+
+### 建議
+- 未來 VFX 添加時，建議在 one_shot_vfx.gd 中加入 @tool 標註方便在 Editor 中預覽
+

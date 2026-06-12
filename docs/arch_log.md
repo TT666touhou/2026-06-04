@@ -48,3 +48,24 @@
 
 - **Memory 更新**：待更新（架構約束已加入各 ROLE 文件）
 
+
+---
+
+## 2026-06-12 21:00 — Architect 反省記錄（Phase 5.5/5.6）
+
+### 工作摘要
+- 協調 Sensor Level 2 觸發（ERR-018/019/020）和 Developer 修復
+- 確認 ERR-017 VFX Spritesheet 切割錯誤的根本原因分析
+- 制定 VFX 零配置架構（const path + _ready() auto-load）
+
+### 反省
+1. **架構缺失**：之前未明確要求 VFX 系統使用「零 Inspector 配置」原則
+   - 改進：在 developer.md 中加入「VFX 設計原則」節點
+2. **文件缺失**：之前的 VFX pattern 只記錄了 one_shot_vfx 模式，沒有記錄 spritesheet 量測流程
+   - 改進：ERROR_LOG 第六批 PATTERN 已補充量測和縮放設計規則
+
+### 架構決策更新
+- **VFX 系統**：所有 VFX 場景使用 const path + runtime load() 而非 @export PackedScene
+- **Spritesheet 量測**：必須用 System.Drawing 量測後計算，不允許目測估算
+- **VFX 比例**：以玩家碰撞體大小為設計基準
+

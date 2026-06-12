@@ -285,3 +285,79 @@
 | 2026-06-12 | test 場景建立 Player 節點 | 立即設定 `player_prefix = "p1_"` + `bullet_scene`，否則攻擊/輸入靜默失敗 |
 | 2026-06-12 | 攻擊輸入設計 | 優先使用即時觸發（`just_pressed`）而非需要精確計時的短按/長按，減少邊界條件 BUG |
 | 2026-06-12 | VFX 場景設計 | 使用 one_shot_vfx.gd + `animation_finished.connect(queue_free)` 模式，保持輕量 |
+
+---
+
+## 🔴 ERR-017 VFX Spritesheet 切割錯誤（2026-06-12）
+
+- **嚴重程度**：High（VFX 顯示完全錯誤、大幅超出比例）
+- **錯誤分類**：VFX Configuration Error
+- **錯誤現象**：所有 VFX 特效顯示為原始 PNG 全圖而非正確切割幀；特效大小遠超角色（角色~22px，VFX達96~139px）
+- **根本原因 1**：VFX scenes 的 AnimatedSprite2D 使用整張紋理（無 AtlasTexture 切割），每幀都是整張 spritesheet
+- **根本原因 2**：frame size 用了錯誤估算值（91px），未量測真實 PNG 尺寸
+- **根本原因 3**：@export VFX 變數要求手動 Inspector 拖入場景引用，在多個場景中都未配置
+- **根本原因 4**：all VFX scenes 的 autoplay 設為空字串 ""（應為 "default"）
+- **修復**：
+  1. one_shot_vfx.gd 改為自我配置腳本，在 _ready() 中動態建立 SpriteFrames + AtlasTexture
+  2. 用 System.Drawing 量測 PNG 尺寸，計算正確的 frame_width/height/count
+  3. 移除所有 @export VFX vars，改為 const path + _ready() auto-load
+  4. VFX scale 根據玩家高度(~22px)設計比例：melee=0.28, ranged=0.18, hit=0.26, death=0.38
+- **量測數據**：
+  - slash_01 (1456x96): 16幀 91x96
+  - spark_01 (2096x127): 16幀 131x127
+  - impact_01 (2192x98): 22幀 98x98
+  - explosion_little_02 (1424x93): 16幀 89x93
+- **教訓**：
+  - VFX 實作前必須先用 System.Drawing 量測 PNG 尺寸
+  - 所有 spritesheet 的 frame count = width / height（當 sheet 是水平列幀時）
+  - VFX 系統應使用自我配置腳本，而非依賴手動 Inspector 設定（零配置原則）
+  - scale 設計必須基於角色碰撞體大小（CapsuleShape2D radius=4, height=14 → ~22px）
+
+---
+
+## 🔴 ERR-018 GDScript 重複變數宣告（spawn_pos）（2026-06-12）
+
+- **嚴重程度**：Medium（IDE 報錯，功能受影響）
+- **錯誤分類**：Syntax Error
+- **錯誤訊息**：There is already a variable named "spawn_pos" declared in this scope.
+- **位置**：player.gd:870
+- **根本原因**：_fire_bullet() 函式中先在 L853 宣告 ar spawn_pos，VFX 部分又在 L870 重複宣告
+- **修復**：刪除 L870 的重複宣告，VFX 直接複用 L853 已宣告的 spawn_pos
+- **教訓**：複製貼上代碼時必須檢查變數名衝突；同一函式中使用 spawn_pos 的兩個用途應合併到一處
+
+---
+
+## 🟡 ERR-019 StringName/String Ternary 不相容（2026-06-12）
+
+- **嚴重程度**：Low（Warning，可能導致微妙的型別問題）
+- **錯誤分類**：INCOMPATIBLE_TERNARY Warning
+- **錯誤訊息**：(INCOMPATIBLE_TERNARY): Values of the ternary operator are not mutually compatible
+- **位置**：debug_bridge.gd（原 L136）
+- **根本原因**：scene.name 是 StringName 型別，"null" 是 String，三元運算符的兩個分支型別不一致
+- **修復**：String(scene.name) if scene != null else "null" 顯式轉型
+- **教訓**：GDScript 的 StringName 和 String 雖然可以隱式轉換，但在三元運算符中需要顯式統一型別
+
+---
+
+## 🟡 ERR-020 Float-to-Int Narrowing（Engine.get_frames_per_second）（2026-06-12）
+
+- **嚴重程度**：Low（Warning，精度可能損失）
+- **錯誤分類**：NARROWING_CONVERSION Warning
+- **錯誤訊息**：(NARROWING_CONVERSION): Narrowing conversion (float is converted to int and loses precision)
+- **位置**：debug_overlay.gd:106
+- **根本原因**：Engine.get_frames_per_second() 在 Godot 4.6 返回 float，直接賦值給 ar fps: int 產生 narrowing
+- **修復**：改為 ar fps: int = roundi(Engine.get_frames_per_second())
+- **教訓**：Godot 4 的 Engine API 有些返回 float 即使語義上是整數，應用 roundi()/floori() 明確轉型
+
+---
+
+## 🟢 新增 PATTERN（2026-06-12 第六批）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-12 | VFX Spritesheet 量測 | 實作前必須用 System.Drawing 量測 PNG: img = [Drawing.Image]::FromFile(); frameCount = round(width / height) |
+| 2026-06-12 | VFX 系統架構 | one_shot_vfx.gd @export: texture_path/frame_width/frame_height/frame_count/fps/vfx_scale; _ready() 動態建立 AtlasTexture |
+| 2026-06-12 | VFX 比例設計 | 以玩家碰撞體大小為基準（~22px）; scale = 目標顯示px / 原始幀px |
+| 2026-06-12 | VFX 自動載入 | 移除 @export PackedScene VFX vars, 改用 const path + _ready() load() (零 Inspector 配置原則) |
+| 2026-06-12 | StringName 型別安全 | 三元運算符兩側型別必須一致; StringName 賦值給 String 用 String(strname) 顯式轉型 |
+| 2026-06-12 | Engine API 返回值 | get_frames_per_second() 返回 float; 賦值給 int 用 roundi()（非強制轉型） |

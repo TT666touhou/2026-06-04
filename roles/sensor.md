@@ -241,3 +241,34 @@ Get-ChildItem "D:\2026-06-04\scenes" -Recurse -Filter "*.tscn" | ForEach-Object 
 Write-Host "✅ [Sensor] 掃描完成"
 ```
 
+
+---
+
+### 📊 Sensor 反省記錄 — 2026-06-12（Phase 5.5/5.6）
+
+#### 觸發事件
+- ERR-017: VFX Spritesheet 切割完全錯誤（Level 2）
+- ERR-018: spawn_pos 重複宣告（Level 2 — 同名變數）
+- ERR-019: INCOMPATIBLE_TERNARY (StringName vs String)（Level 2）
+- ERR-020: NARROWING_CONVERSION float→int（Level 2）
+
+#### 失職分析
+1. **VFX 系統缺乏量測步驟**：Sensor 觸發表中沒有「VFX/Spritesheet 實作前必須量測 PNG 尺寸」的觸發條件
+   - 根因：VFX 系統的設計缺陷（@export 需手動配置、無量測步驟）是 Architect 和 Developer 的責任，但 Sensor 的觸發表對「VFX 設計模式」完全空白
+   - **觸發表更新**：Level 2 新增「新增 VFX scene 且未量測 PNG 尺寸」觸發條件
+
+2. **Type Ternary 盲點**：ERR-019 (StringName/String ternary) 只有在 Godot IDE 提示時才被發現，Sensor 的 Level 2 表雖然有「三元運算符」觸發，但沒有專門針對 StringName 的子規則
+   - **觸發表更新**：Level 2 細化「三元運算符中一側為 scene.name（StringName）」
+
+3. **重複宣告掃描缺失**：ERR-018 (spawn_pos 重複) 是靜態分析可以發現的問題，但 Sensor 沒有「同函式重複 var 宣告」的掃描步驟
+
+#### 觸發表更新（本次新增）
+
+| 觸發模式 | 危險原因 | 對應 ERR |
+|---------|---------|---------|
+| 新增 VFX scene 或 Spritesheet 相關代碼 | 未量測 PNG 尺寸 + 未計算 frame_count | ERR-017 |
+| @export var x: PackedScene 用於 VFX | 需要手動 Inspector 配置，運行時為 null | ERR-017 |
+| scene.name 出現在三元運算符中 | StringName vs String 型別不相容 | ERR-019 |
+| var 宣告在函式中且與較早的 var 同名 | GDScript 重複宣告錯誤 | ERR-018 |
+| Engine.get_frames_per_second() 直接賦值給 int var | float→int narrowing | ERR-020 |
+

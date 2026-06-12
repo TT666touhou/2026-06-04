@@ -46,6 +46,8 @@
 | **5.2** | **修正 test_room player_prefix + bullet fallback** | **✅ DONE** | 2026-06-12 |
 | **5.3** | **VFX 系統（MeleeSlash/RangedMuzzle/EnemyHit/EnemyDeath）** | **✅ DONE** | 2026-06-12 |
 | **5.4** | **數文同步 Routine（GDD + ROLE 強化）** | **✅ DONE** | 2026-06-12 |
+| **5.5** | **VFX Spritesheet 切割修正（ERR-017）+ 自動配置** | **✅ DONE** | 2026-06-12 |
+| **5.6** | **BUG 修復：spawn_pos重複/StringName-String/NARROWING(ERR-018-020)** | **✅ DONE** | 2026-06-12 |
 
 ---
 
@@ -258,6 +260,7 @@
 | 2026-06-12 20:30 | Developer | Phase 5.1: 攻擊輸入重新綁定（左鍵=近戰, 右鍵=遠程），座弱舊短按/長按設計 |
 | 2026-06-12 20:30 | Developer | Phase 5.2: 修正 test_room player_prefix 和 bullet fallback 路徑（攻擊系統主要 BUG 修復） |
 | 2026-06-12 20:30 | Developer | Phase 5.3: 建立 4 個 VFX 場景（MeleeSlash/RangedMuzzle/EnemyHit/EnemyDeath）+ 強化 enemy take_damage/die |
+| 2026-06-12 21:00 | Developer/Architect | Phase 5.5: VFX 切割修正、自動配置、比例調整。ERR-017~020 記錄至 ERROR_LOG |
 
 ---
 
