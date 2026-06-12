@@ -101,3 +101,37 @@ if ([0] -ne '[') {  = '[' +  }
 - 未來所有 .tscn 修改將只使用 [IO.File]::ReadAllText + [IO.File]::WriteAllText
 - 每次 .tscn 修改後立即執行首字節驗證
 - 使用 .Replace() 而非 -replace 進行標頭修改以避免正則表達式字符歧義
+
+---
+
+## [DEV] Review - Player Flip + 8-Direction Shooting (2026-06-13)
+
+### Changes Made
+**1. Visual Left/Right Flip**
+- _visual_pivot.scale.x = _facing added to _handle_horizontal()
+- Whole VisualPivot (sprite + UI sway) flips when moving left/right
+- Attack tween now restores Vector2(_facing, 1.0) instead of Vector2.ONE to preserve flip state
+- Sway: _visual_pivot.rotation = _sway_y * _facing — fixes sway lean direction when flipped
+
+**2. 8-Direction Shooting**
+- New _get_aim_dir() -> Vector2 function computes normalized aim vector
+- Horizontal component: move_left/move_right axis
+- Vertical component: im_up (-Y) and im_down (+Y) actions
+- Fallback: no direction input → horizontal shot in _facing direction
+- _fire_bullet() now uses _get_aim_dir() for direction and spawn position
+- _perform_melee_attack() hitbox rotated by aim direction (vertical melee supported)
+- Bullet auto-rotates to direction.angle() (already in player_bullet.gd ✓)
+
+**3. Input Bindings**
+| Action | P1 Key | P2 Key | P3/P4 |
+|--------|--------|--------|-------|
+| aim_up | I | Numpad 8 | (none - uses facing) |
+| aim_down | K | Numpad 5 | (none - uses facing) |
+
+### Sensor Check
+- 7/7 PASS — No issues detected
+
+### Design Notes
+- _aim_dir state var updated by _get_aim_dir() on each attack call (not every frame) — intentional, low overhead
+- Players without aim bindings (p3/p4) gracefully fall back to horizontal shooting
+- Muzzle flash VFX flip_h follows shot_dir.x < 0.0
