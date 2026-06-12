@@ -67,16 +67,23 @@ func _try_connect_player() -> void:
 	print("[PlayerHUD] 連接到玩家：", target.name)
 
 func update_hearts(current_hp: int) -> void:
-	## ⚠️ UI 變形修復（ERR-HUD-001）：
-	## HUD 在 CanvasLayer 下，已與相機縮放解耦。
-	## 不應使用 cam.zoom 動態縮放心心大小，否則相機縮小時 UI 也會縮小變形。
-	## 固定使用像素尺寸（24px）讓 HUD 始終清晰。
+	## UI 修復（ERR-HUD-002）：
+	## 心心 TextureRect 使用 EXPAND_IGNORE_SIZE + STRETCH_KEEP_ASPECT_CENTERED
+	## 搭配固定 custom_minimum_size = 24x24，確保 8x8 atlas 等比放大不變形。
+	## size_flags 設為 SHRINK_CENTER 防止 HBoxContainer 拉伸子節點。
 	var heart_size := 24.0  ## 固定大小，不跟相機 zoom 連動
 
 	var children := heart_container.get_children()
 	var max_hp := 3
 	if _player and _player.get("max_health") != null:
 		max_hp = int(_player.get("max_health"))
+
+	## 移除多餘的心心節點（max_hp 減少時）
+	while children.size() > max_hp:
+		var last := children.back()
+		heart_container.remove_child(last)
+		last.queue_free()
+		children = heart_container.get_children()
 
 	for i: int in range(max_hp):
 		var rect: TextureRect
@@ -85,17 +92,24 @@ func update_hearts(current_hp: int) -> void:
 		else:
 			rect = TextureRect.new()
 			rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			## EXPAND_IGNORE_SIZE：讓 custom_minimum_size 控制大小，不讓 texture 決定佈局
 			rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			rect.stretch_mode = TextureRect.STRETCH_SCALE
+			## STRETCH_KEEP_ASPECT_CENTERED：等比縮放，不變形
+			rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			## SHRINK_CENTER：防止 HBoxContainer 水平/垂直拉伸此節點
+			rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			rect.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 			heart_container.add_child(rect)
 
+		## 鎖定尺寸：custom_minimum_size = 24x24，同時也鎖定 size
+		## 雙重鎖定防止 Container 重新分配空間時變形
 		rect.custom_minimum_size = Vector2(heart_size, heart_size)
 		if heart_solid and heart_empty:
 			rect.texture = heart_solid if i < current_hp else heart_empty
 		else:
 			## Fallback：沒有材質時用顏色方塊代替
 			var fallback := ColorRect.new()
-			fallback.size = Vector2(heart_size, heart_size)
+			fallback.custom_minimum_size = Vector2(heart_size, heart_size)
 			fallback.color = Color(0.9, 0.1, 0.1) if i < current_hp else Color(0.3, 0.3, 0.3)
 			if i >= children.size():
 				heart_container.add_child(fallback)

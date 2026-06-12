@@ -180,9 +180,11 @@ foreach ($f in $gdFiles) {
         elseif ($trimmed.Contains("setget ")) {
             $matched = $true; $reason = "Godot 3 'setget' keyword -- use property get/set in Godot 4"
         }
-        # Godot 3: TextureRect stretch mode constants renamed in Godot 4
-        elseif ($trimmed.Contains("STRETCH_KEEP_ASPECT_CENTERED") -or $trimmed.Contains("TextureRect.STRETCH_FIT")) {
-            $matched = $true; $reason = "Godot 3 TextureRect stretch constant"
+        # Godot 3: TextureRect.STRETCH_FIT was renamed in Godot 4 (does not exist)
+        # NOTE: STRETCH_KEEP_ASPECT_CENTERED is VALID in Godot 4 — do NOT flag it
+        # Skip comment lines (## prefix) to avoid false positives from doc comments
+        elseif (-not $trimmed.StartsWith("#") -and $trimmed.Contains("TextureRect.STRETCH_FIT")) {
+            $matched = $true; $reason = "Godot 3 TextureRect.STRETCH_FIT -- use STRETCH_KEEP_ASPECT or STRETCH_SCALE in Godot 4"
         }
 
         if ($matched) {
