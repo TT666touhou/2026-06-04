@@ -133,24 +133,10 @@ var current_health: int = 3
 var _i_frame_timer: float = 0.0
 
 
-# ── 攻擊 ──────────────────────────────────────────
-var _attack_timer: float = 0.0
-var _attack_cooldown: float = 0.0
-
-@onready var _attack_area: Area2D = $VisualPivot/AttackArea
-@onready var _attack_visual: ColorRect = $VisualPivot/AttackVisual
-@onready var _attack_col: CollisionShape2D = $VisualPivot/AttackArea/CollisionShape2D
-
 # ── 視覺傾斜 (Sway) 變數 ──────────────────────────────────────────
 var _sway_y: float = 0.0
 var _sway_yd: float = 0.0
 var _sway_xp: float = 0.0
-
-# ── BOT 控制 ──────────────────────────────────────────
-var bot_enabled: bool = false
-var bot_input_jump: bool = false
-var bot_input_roll: bool = false
-var bot_input_move_dir: float = 0.0
 
 # ═══════════════════════════════════════════════════════════════
 # 地板顏色快取將（每 0.1s 更新一次，減少 ShapeCast 像素讀取频率）
@@ -162,17 +148,7 @@ var _atlas_cache: Dictionary = {}
 
 var _skin_index: int = 0
 
-@onready var appearance: Sprite2D = $VisualPivot/Appearance
-
-@rpc("any_peer", "call_local", "reliable")
-func _set_sprite_color(id: int):
-	var appearance = $VisualPivot/Appearance
-	if not appearance:
-		return
-	
-	# Use vfxmix colors for different players
-	var colors = [Color("#ffffff"), Color("#e55c5c"), Color("#5da16e"), Color("#6f81b3")]
-	appearance.modulate = colors[id % 4]
+@onready var appearance: TileMapLayer = $VisualPivot/Appearance
 
 func _is_authority() -> bool:
 	if not multiplayer.has_multiplayer_peer():
@@ -182,16 +158,7 @@ func _is_authority() -> bool:
 # ═══════════════════════════════════════════════════════════════
 # 初始化
 # ═══════════════════════════════════════════════════════════════
-func _enter_tree():
-	set_multiplayer_authority(name.to_int())
-
 func _ready() -> void:
-	add_to_group("Players")
-	if is_multiplayer_authority():
-		_set_sprite_color.rpc(multiplayer.get_unique_id())
-	else:
-		_set_sprite_color(name.to_int())
-
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
 	
@@ -216,18 +183,11 @@ func _ready() -> void:
 	if _is_authority():
 		var cam = Camera2D.new()
 		cam.position_smoothing_enabled = true
-		cam.zoom = Vector2(4, 4)
 		add_child(cam)
-		cam.make_current()
-	var bot = Node.new()
-	bot.name = "BotController"
-	bot.set_script(load("res://scripts/player/bot_controller.gd"))
-	add_child(bot)
 
 func set_skin(index: int):
 	_skin_index = index
-	var colors = [Color("#ffffff"), Color("#e55c5c"), Color("#5da16e"), Color("#6f81b3")]
-	appearance.modulate = colors[index % 4]
+	appearance.set_cell(Vector2i(0, 0), 0, Vector2i(28 + index, 0))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -259,9 +219,6 @@ func _physics_process(delta: float) -> void:
 	if not _is_rolling:
 		_handle_horizontal(delta)
 
-	# 5.5. 攻擊
-	_handle_attack(delta)
-
 	# 6. 物理移動
 	move_and_slide()
 
@@ -289,12 +246,7 @@ func _apply_gravity(delta: float) -> void:
 # 跳躍系統（包含 Coyote、Jump Buffer、Apex 二段跳、蹬牆跳）
 # ═══════════════════════════════════════════════════════════════
 func _handle_jump(delta: float) -> void:
-	var jump_pressed := false
-	if bot_enabled:
-		jump_pressed = bot_input_jump
-	else:
-		jump_pressed = Input.is_action_just_pressed("jump")
-		
+	var jump_pressed := Input.is_action_just_pressed("jump")
 	var on_floor     := is_on_floor()
 	var ascending    := velocity.y < 0.0   # 上升中（Y 負 = 向上）
 	var descending   := velocity.y > 0.0   # 下降中（Y 正 = 向下）
@@ -389,82 +341,16 @@ func _handle_horizontal(delta: float) -> void:
 		_wall_lock_timer = max(0.0, _wall_lock_timer - delta)
 		return
 
-	var dir := 0.0
-	if bot_enabled:
-		dir = bot_input_move_dir
-	else:
-		dir = Input.get_axis("move_left", "move_right")
+	var dir := Input.get_axis("move_left", "move_right")
 
 	if dir != 0.0:
 		_facing = sign(dir)
-		_visual_pivot.scale.x = _facing
 		var accel := acceleration if is_on_floor() else acceleration * air_friction_factor
 		velocity.x = move_toward(velocity.x, dir * speed, accel * delta)
 	else:
 		# 制動：地面全力煞車，空中摩擦較少
 		var decel := friction if is_on_floor() else friction * air_friction_factor
 		velocity.x = move_toward(velocity.x, 0.0, decel * delta)
-
-# ═══════════════════════════════════════════════════════════════
-# 攻擊
-# ═══════════════════════════════════════════════════════════════
-func _handle_attack(delta: float) -> void:
-	_attack_cooldown = max(0.0, _attack_cooldown - delta)
-	_attack_timer = max(0.0, _attack_timer - delta)
-
-	if _attack_timer <= 0.0 and _attack_col and _attack_col.disabled == false:
-		_attack_col.disabled = true
-		if _attack_visual: _attack_visual.visible = false
-
-	var attack_pressed = false
-	if bot_enabled:
-		attack_pressed = false # Add bot attack later if needed
-	else:
-		if InputMap.has_action("attack"):
-			attack_pressed = Input.is_action_just_pressed("attack")
-		if not attack_pressed:
-			attack_pressed = Input.is_key_pressed(KEY_X)
-
-	if attack_pressed and _attack_cooldown <= 0.0 and not _is_rolling:
-		_perform_attack.rpc()
-
-@rpc("call_local", "reliable")
-func _perform_attack() -> void:
-	if not _attack_area or not _attack_col: return
-	_attack_timer = 0.1
-	_attack_cooldown = 0.4
-	_attack_col.disabled = false
-	if _attack_visual: _attack_visual.visible = true
-
-	# Check hits immediately on the authority
-	if _is_authority():
-		var hit_something = false
-		for body in _attack_area.get_overlapping_bodies():
-			if body != self and body.is_in_group("enemies") and body.has_method("take_damage"):
-				hit_something = true
-				# Deal 10 damage to enemies
-				if body.has_method("take_damage") and body.get_node_or_null("MultiplayerSynchronizer"):
-					body.take_damage.rpc(10, sign(_facing))
-				
-				# Pogo / Knockback
-				var bounce_dir = Vector2(-sign(_facing), -1).normalized()
-				apply_bounce_impulse(bounce_dir * 300.0)
-				
-		if hit_something:
-			_trigger_hit_effects.rpc()
-
-@rpc("call_local", "reliable")
-func _trigger_hit_effects() -> void:
-	# Camera shake
-	var cameras = get_tree().get_nodes_in_group("camera")
-	for cam in cameras:
-		if cam.has_method("apply_shake"):
-			cam.apply_shake(10.0, 0.2)
-	
-	# Small hitstop (only local, to avoid desyncing physics simulation across network)
-	# For now, just flash the screen or something, or rely on shake.
-
-
 
 # ═══════════════════════════════════════════════════════════════
 # 視覺傾斜 (Visual Sway)
@@ -512,14 +398,8 @@ func _handle_roll(delta: float) -> void:
 			_is_rolling  = false
 			is_invincible = false
 	else:
-		var roll_pressed = false
-		if bot_enabled:
-			roll_pressed = bot_input_roll
-		else:
-			roll_pressed = Input.is_action_just_pressed("roll")
-			
 		# 觸發翻滾：地面 + 有冷卻時間 + 有耐力
-		if roll_pressed and is_on_floor() \
+		if Input.is_action_just_pressed("roll") and is_on_floor() \
 		   and _roll_cooldown <= 0.0 and _has_stamina():
 			_is_rolling    = true
 			_roll_timer    = roll_duration
@@ -772,23 +652,10 @@ func take_damage(amount: int) -> void:
 		_i_frame_timer = i_frame_duration
 		print("[Player] Took damage! HP remaining: ", current_health)
 
-func apply_bounce_impulse(impulse: Vector2) -> void:
-	velocity = impulse
-	_wall_lock_timer = 0.5 # Optional: lock horizontal input momentarily so they don't immediately push back
-
 func die() -> void:
 	print("[Player] Died!")
-	# 通知 NetworkManager 處理死亡與全滅判定
-	if get_node("/root/NetworkManager").has_method("notify_player_died"):
-		# 獲取 player 的 id (name 就是 peer_id 的字串)
-		get_node("/root/NetworkManager").rpc("notify_player_died", name.to_int())
-	
-	# 隱藏玩家、關閉物理碰撞與腳本處理，保持在場景中但不運作
-	hide()
-	set_physics_process(false)
-	set_process(false)
-	collision_layer = 0
-	collision_mask = 0
+	# 重新載入場景 (使用 call_deferred 避免在物理 callback 中直接銷毀物理節點)
+	get_tree().call_deferred("reload_current_scene")
 
 func _handle_invincibility(delta: float) -> void:
 	if _i_frame_timer > 0.0:

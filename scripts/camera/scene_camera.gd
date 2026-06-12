@@ -83,32 +83,25 @@ func _apply_limits() -> void:
 	limit_bottom = int(_lim_bottom.global_position.y)  if _lim_bottom != null else  10_000_000
 
 # ═══════════════════════════════════════════════════════════════
-# 每幀更新：追蹤最前方的玩家，並對畫面外的玩家施加懲罰
+# 每幀更新：追蹤 Player + 前瞻偏移（含手動 limit clamp）
 # ═══════════════════════════════════════════════════════════════
 func _process(delta: float) -> void:
-	var players = get_tree().get_nodes_in_group("Players")
-	if players.size() == 0:
+	if _player == null:
 		return
-	
-	# 找出最前方的玩家
-	var front_player = players[0]
-	for p in players:
-		if p.global_position.x > front_player.global_position.x:
-			front_player = p
-			
+
 	# 更新朝向
-	if front_player.velocity.x > 0.1:
+	if _player.velocity.x > 0.1:
 		_facing =  1.0
-	elif front_player.velocity.x < -0.1:
+	elif _player.velocity.x < -0.1:
 		_facing = -1.0
 
 	# 前瞻偏移插值
 	var target_look := _facing * look_ahead_tiles * 8.0
 	_look_offset     = lerp(_look_offset, target_look, delta * look_ahead_speed)
 
-	# ── 計算理想視窗中心 ────────────────
-	var cx: float = front_player.global_position.x + _look_offset
-	var cy: float = front_player.global_position.y + vertical_offset
+	# ── 計算理想視窗中心（player 位置 + 所有偏移）────────────────
+	var cx: float = _player.global_position.x + _look_offset
+	var cy: float = _player.global_position.y + vertical_offset
 
 	# ── 取得視窗半尺寸（世界單位）────────────────────────────────
 	var vp      := get_viewport().get_visible_rect().size
@@ -116,13 +109,15 @@ func _process(delta: float) -> void:
 	var half_h  := vp.y / (2.0 * zoom.y)
 
 	# ── 手動 clamp：確保 viewport 邊緣不超出 limit ───────────────
+	# 水平
 	var l_min_x := float(limit_left)  + half_w
 	var l_max_x := float(limit_right) - half_w
 	if l_min_x <= l_max_x:
 		cx = clamp(cx, l_min_x, l_max_x)
 	else:
+		# limit 範圍比視窗小：置中顯示
 		cx = (float(limit_left) + float(limit_right)) * 0.5
-		
+	# 垂直
 	var l_min_y := float(limit_top)    + half_h
 	var l_max_y := float(limit_bottom) - half_h
 	if l_min_y <= l_max_y:
@@ -130,22 +125,6 @@ func _process(delta: float) -> void:
 	else:
 		cy = (float(limit_top) + float(limit_bottom)) * 0.5
 
+	# ── 直接以 clamped center 設定攝影機位置，offset 歸零 ────────
 	global_position = Vector2(cx, cy)
 	offset          = Vector2.ZERO
-
-	# ── 畫面外懲罰 (Bounce & Damage) ────────────────────────────────
-	var left_bound = global_position.x - half_w
-	var right_bound = global_position.x + half_w
-	var bottom_bound = global_position.y + half_h
-	
-	for p in players:
-		if not p.has_method("take_damage"):
-			continue
-		# 檢查是否掉出畫面左側或下方死亡區
-		if p.global_position.x < left_bound - 16.0 or p.global_position.y > bottom_bound + 32.0:
-			p.take_damage(1)
-			# 彈回邏輯：如果血量 > 0，將其傳送到鏡頭中心上方
-			if p.get("current_health") != null and p.current_health > 0:
-				p.global_position = global_position + Vector2(0, -32)
-				if "velocity" in p:
-					p.velocity = Vector2.ZERO

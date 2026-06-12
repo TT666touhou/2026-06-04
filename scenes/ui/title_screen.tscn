@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://dydcj4xup0auq"]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_tsgd"]
 
@@ -18,58 +18,30 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0, 0.0, 0.0, 1)
+color = Color(0.211765, 0.196078, 0.196078, 1)
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -100.0
-offset_right = 150.0
-offset_bottom = 100.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 20
+[node name="HostButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 220.0
+offset_right = 676.0
+offset_bottom = 280.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "HOST GAME"
 
-[node name="Label" type="Label" parent="VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
-theme_override_font_sizes/font_size = 48
-text = "GOTHIC SURVIVOR"
-horizontal_alignment = 1
+[node name="JoinButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 360.0
+offset_right = 676.0
+offset_bottom = 420.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "JOIN GAME"
 
-[node name="LocalButton" type="Button" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-text = "PLAY LOCAL"
-
-[node name="HostButton" type="Button" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 50)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-text = "HOST ONLINE"
-
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
-layout_mode = 2
-
-[node name="JoinButton" type="Button" parent="VBoxContainer/HBoxContainer"]
-custom_minimum_size = Vector2(120, 50)
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.933333, 0.807843, 0.352941, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-text = "JOIN"
-
-[node name="IPInput" type="LineEdit" parent="VBoxContainer/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
+[node name="IPInput" type="LineEdit" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 310.0
+offset_right = 676.0
+offset_bottom = 341.0
 placeholder_text = "127.0.0.1"
-alignment = 1

@@ -1,71 +1,21 @@
-[gd_scene load_steps=4 format=3 uid="uid://cboss1"]
+[gd_scene format=3 uid="uid://bsle8qwivy1wq"]
 
-[ext_resource type="Texture2D" uid="uid://ddl1dvehy2c54" path="res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png" id="1_tex"]
-[ext_resource type="Script" path="res://scripts/enemy/boss.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/enemy/boss.gd" id="1_script"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
-size = Vector2(48, 64)
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_boss"]
+size = Vector2(64, 64)
 
-[node name="Boss" type="CharacterBody2D" groups=["enemies"]]
-script = ExtResource("2_script")
+[node name="Boss" type="CharacterBody2D" unique_id=901996348]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("1_script")
 
-[node name="Head" type="Sprite2D" parent="."]
-texture_filter = 1
-position = Vector2(0, -24)
-scale = Vector2(4, 4)
-texture = ExtResource("1_tex")
-region_enabled = true
-region_rect = Rect2(8, 24, 8, 8)
+[node name="ColorRect" type="ColorRect" parent="." unique_id=477929646]
+offset_left = -32.0
+offset_top = -64.0
+offset_right = 32.0
+color = Color(0.545098, 0, 0, 1)
 
-[node name="Body" type="Sprite2D" parent="."]
-texture_filter = 1
-position = Vector2(0, 0)
-scale = Vector2(4, 4)
-texture = ExtResource("1_tex")
-region_enabled = true
-region_rect = Rect2(48, 24, 8, 8)
-
-[node name="LegLeft" type="Sprite2D" parent="."]
-texture_filter = 1
-position = Vector2(-12, 24)
-scale = Vector2(4, 4)
-texture = ExtResource("1_tex")
-region_enabled = true
-region_rect = Rect2(48, 24, 8, 8)
-
-[node name="LegRight" type="Sprite2D" parent="."]
-texture_filter = 1
-position = Vector2(12, 24)
-scale = Vector2(4, 4)
-texture = ExtResource("1_tex")
-region_enabled = true
-region_rect = Rect2(48, 24, 8, 8)
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_1")
-
-[node name="Hitbox" type="Area2D" parent="."]
-collision_layer = 0
-collision_mask = 1
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Hitbox"]
-shape = SubResource("RectangleShape2D_1")
-
-[node name="HitParticles" type="CPUParticles2D" parent="."]
-emitting = false
-amount = 16
-lifetime = 0.3
-one_shot = true
-explosiveness = 0.9
-emission_shape = 1
-emission_sphere_radius = 24.0
-direction = Vector2(0, -1)
-spread = 60.0
-gravity = Vector2(0, 800)
-initial_velocity_min = 200.0
-initial_velocity_max = 400.0
-scale_amount_min = 2.0
-scale_amount_max = 4.0
-color = Color(1, 1, 1, 1)
-
-[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=197388558]
+position = Vector2(0, -32)
+shape = SubResource("RectangleShape2D_boss")
