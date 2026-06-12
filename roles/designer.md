@@ -184,6 +184,16 @@ memory.add_observations(
 - ❌ 禁止修改已標記為 `[LOCKED]` 的設計區塊（除非用戶明確要求重新討論）
 - ❌ 禁止使用瀏覽器工具（改用 search_web + read_url_content）
 - ❌ **禁止提出多人遊戲不相容的機制設計**（見下方 MMP 清單）
+- ❌ **[ERR-DOC-001] 禁止使用 PowerShell `-replace` 修改 .md 文檔**。原因：`-replace` 的雙引號替換字串中 `$1` 被展開為 PS 變數（空值），導致中文內容靜默損壞。**唯一正確方式：使用 `replace_file_content` 或 `multi_replace_file_content` 工具直接修改文件。**
+
+## 📋 Designer 反省記錄 [2026-06-13]
+
+**ERR-DOC-001：GDD 文件損壞事件**
+- 根因：在更新 GDD section 8.3 的 VFX 速度時，使用 PowerShell `-replace '(MeleeSlash\.tscn.*?)24fps', '$160fps'`
+- `$1` 在 PowerShell 雙引號字串中被展開為空值，導致整個 section 8.3、8.3.1 內容被靜默清空或損壞
+- 損壞內容：3-Combo VFX 速度規格表、Marker2D 架構文件、8.5 實作狀態
+- 修復行動：重建 section 8.3, 8.3.1, 8.5 的完整內容；新增 ERR-DOC-001 至 ERROR_LOG.md
+- **未來規則**：文檔修改永遠使用 replace_file_content 工具，任何 PS regex 替換前先在獨立環境測試
 
 ## 🚫 多人遊戲設計限制備忘錄（MMP — Multiplayer Mechanism Prohibition）
 

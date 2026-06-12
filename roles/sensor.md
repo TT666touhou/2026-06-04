@@ -27,6 +27,20 @@
 4. 記錄在 Sensor 反省文件中，追蹤 GDD 健康度趨勢
 `
 
+### Level 3：文件完整性掃描（ERR-DOC-001 後新增）
+
+> **反省 [2026-06-13]**：PowerShell `-replace` 操作導致 GDD section 8.3/8.3.1 被靜默清空，Sensor 未及時偵測到文件內容損壞。新增以下掃描：
+
+| 觸發條件 | 掃描動作 |
+|---------|---------|
+| 任何 Designer 提交包含 .md 修改 | 驗證 GAME_DESIGN.md 關鍵章節含有預期關鍵字 |
+| PowerShell 操作文檔後 | 讀取修改後的段落，確認中文內容完整（無空行取代） |
+
+**GDD 關鍵章節完整性清單（每次 Designer commit 後驗證）：**
+- §8.3 必含：`MeleeSlash.tscn`、`60fps`、`VFX`
+- §8.3.1 必含：`Marker2D`、`Hit1Pivot`、`_spawn_melee_vfx_at_marker`
+- §8.5 必含：`IMPLEMENTED`、`MeleeSlash.tscn`、`MeleeImpact3.tscn`
+
 ---
 ## 你的身分
 你是本專案的 **代碼感知守衛（Sensor）**。

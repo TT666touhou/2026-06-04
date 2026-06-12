@@ -16,6 +16,7 @@
 | 2026-06-12 | [ERR-009] GDScript class body 呼叫 | `Parse Error: Unexpected identifier "add_to_group" in class body` | 在 class 頂層直接呼叫 `add_to_group()`，GDScript 不允許在 class body 中直接執行語句 | 將 `add_to_group()` 移入 `_ready()` 函式中執行 |
 | 2026-06-12 | [ERR-010] .tscn UID 重複 | `UID duplicate detected between res://scenes/player/player2.tscn and ...` | 複製 .tscn 文件後沒有修改第一行的 `uid=` 字段，所有複本共用同一個 UID | 為每個複製的 `.tscn` 手動生成唯一 UID（用 PowerShell New-GodotUID 腳本），或在 Godot Editor 重新保存場景 |
 | 2026-06-12 | [ERR-011] UTF-16 BOM 腳本 | `Unicode parsing error, Invalid UTF-8 leading byte (ff/fe)` + `Script contains invalid unicode` | 用某些編輯器（如記事本 Windows）儲存 .gd 文件時選擇 UTF-16 編碼，產生 FF FE 前綴 | 用 `[System.IO.File]::WriteAllText(, , New-Object System.Text.UTF8Encoding(False))` 轉換為 UTF-8 無 BOM；pre-commit hook 已可自動偵測 |
+| 2026-06-13 | [ERR-DOC-001] PowerShell regex 破壞文檔 | GDD 章節 8.3/8.3.1 內容被替換成亂碼或遺失 | `$content -replace '(pattern)', '$1replacement'` 中 `$1` 在 PowerShell **雙引號字串**中被當作 PS 變數展開（=空值），非 regex 回捕。反斜線也在 PS 字串中有意義。→ 替換結果靜默損壞中文內容 | **禁止** 用 `-replace` 操作多行中文文檔。修改文檔用 `replace_file_content` 工具直接替換。若必須用 PS，改用**單引號字串**：`'$1replacement'`（不展開 PS 變數） |
 ---
 
 ## 🟡 Warning — 常見陷阱
@@ -39,6 +40,7 @@
 | 2026-06-13 | [PATTERN-VFX-FLIP] OneShotVFX 翻轉 | `spr.flip_h = (_facing < 0)` 直接賦值；**scene 內 flip_h 統一保持 false**。❌ 勿用 `not spr.flip_h`（toggle）——若場景有預設 flip_h 會雙重翻轉 |
 | 2026-06-13 | [PATTERN-VFX-ADJUST] VFX 位置手動調整 | 方法A：開啟 tscn → 選 MeleeVFXPivots/HitNPivot Marker2D → Inspector 改 Position。以右為正 X，面左自動鏡像。方法B（舊）：改 player.gd 中的 hardcode 偏移值（已廢棄，不推薦） |
 | 2026-06-13 | [PATTERN-VFX-MARKER] Marker2D VFX 定位系統 | **近戰 VFX 位置統一用 Marker2D 定義**（非 hardcode）。結構：Player/MeleeVFXPivots/Hit1Pivot（Marker2D）。以右為正 X，`_facing * marker.position.x` 自動鏡像。`_spawn_melee_vfx_at_marker(scene, marker)` 為標準接口。場景中可視化調整無需改代碼 |
+| 2026-06-13 | [PATTERN-DOC-EDIT] Markdown 文檔修改 | **永遠使用 `replace_file_content` 或 `multi_replace_file_content` 工具**修改 .md 文檔，**禁止使用 PowerShell `-replace` 操作多行中文內容**。根源：PS `-replace` 在雙引號字串中 `$1` 被展開為 PS 變數（空值），導致中文內容靜默損壞（ERR-DOC-001） |
 | 2026-06-12 | 寫入 Godot 文件（.gd/.tscn/.tres）| 使用 `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` 確保無 BOM |
 | 2026-06-12 | 手動建立 `.tscn` | `[gd_scene format=4]`（不加 uid）+ `[ext_resource]` 只引用已存在的 UID；SubResource 定義必須在引用之前 |
 | 2026-06-12 | 主場景設定 | `project.godot` 中用路徑 `res://scenes/level/game_world.tscn` 而非 UID，Godot 啟動後自動更新為 UID |
