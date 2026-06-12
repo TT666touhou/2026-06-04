@@ -43,17 +43,20 @@ func _check_transition() -> void:
 		_trigger_transition()
 
 func _trigger_transition() -> void:
-	## 優先使用 GameWorld.load_next_room()（Rogue-lite 模式）
+	## ⚠️ 重要：此函式由 _on_body_entered（物理 callback）觸發
+	## 必須使用 call_deferred 延後執行場景樹修改，
+	## 否則 Godot 4 會報 "Can't change state while flushing queries"
 	var game_world := get_node_or_null("/root/GameWorld")
 	if game_world == null:
-		## 嘗試從場景樹根找 GameWorld
 		game_world = get_tree().get_root().get_node_or_null("GameWorld")
 
 	if game_world and game_world.has_method("load_next_room"):
 		if multiplayer.has_multiplayer_peer():
-			_trigger_rpc.rpc()
+			## RPC 本身已是非同步，但仍需 deferred 確保安全
+			call_deferred("_trigger_rpc_deferred")
 		else:
-			game_world.load_next_room()
+			## 單機模式：必須 deferred，避免在物理 callback 中修改場景樹
+			game_world.call_deferred("load_next_room")
 		return
 
 	## 降級：使用舊的 target_room_path 邏輯
@@ -64,7 +67,10 @@ func _trigger_transition() -> void:
 	if multiplayer.has_multiplayer_peer():
 		_load_room.rpc(target_room_path)
 	else:
-		_load_room(target_room_path)
+		get_tree().call_deferred("change_scene_to_file", target_room_path)
+
+func _trigger_rpc_deferred() -> void:
+	_trigger_rpc.rpc()
 
 @rpc("authority", "call_local", "reliable")
 func _trigger_rpc() -> void:

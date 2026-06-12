@@ -64,6 +64,16 @@
 4. 驗證 Debug 系統整合是否正確（group/屬性/錯誤處理）
 5. 用 GitHub MCP 直接在 PR 上留下結構化審查意見
 6. 更新 Memory 中的任務狀態
+7. **【新增 ERR-004 後】修復審查後全局掃描同類問題**：
+   審查任何錯誤修復後，必須執行全局搜索確認同一模式不存在於其他檔案：
+   ```powershell
+   ## 範例：審查 narrowing fix 後
+   Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
+       Select-String -Pattern "\bint\(" |
+       ForEach-Object { "$($_.Filename):$($_.LineNumber) → $($_.Line.Trim())" }
+   ```
+   ⚠️ ERR-004 案例：修復 multiplayer_camera.gd 的 narrowing 後，
+   scene_camera.gd 有完全相同的問題被漏掉，導致用戶還是看到同樣錯誤
 
 ---
 
@@ -89,6 +99,31 @@
 □ SceneReplicationConfig 屬性列表是否完整
 ```
 
+### 【新增 ERR-001 後】物理 Callback 呼叫鏈強制追蹤
+```
+⚠️ 這是 Reviewer 必須執行的最重要新增步驟（ERR-001 事件教訓）
+
+□ 找出所有 body_entered.connect / area_entered.connect 的連接點
+□ 對每個 _on_body_entered / _on_area_entered 函式：
+    1. 列出函式體內的所有函式呼叫
+    2. 遞迴追蹤每個呼叫，直到葉節點為止
+    3. 確認整條鏈中無以下操作：
+       - add_child() → 如有：必須改為 call_deferred("add_child", ...)
+       - queue_free() → 如有：必須改為 call_deferred("queue_free")
+       - change_scene_to_file() → 如有：必須用 get_tree().call_deferred(...)
+       - load_next_room() → 如有：必須用 node.call_deferred("load_next_room")
+
+□ 標準危險鏈路（參考 ERR-001）：
+   _on_body_entered → _check_transition → _trigger_transition
+   → game_world.load_next_room() → _load_room_scene() → add_child()  ← 危險！
+   ✅ 正確修復：在 _trigger_transition 處加入 call_deferred
+
+□ 確認高頻觸發函式有防重入守衛：
+   若函式可能在同一幀被多次呼叫（如物理 callback），
+   必須有 _is_xxx: bool = false 守衛
+   無守衛 → 封鎖審查通過（如 ERR-001 的 28 次重複）
+```
+
 ---
 
 ## 🚨 遇到技術疑問時的解決路徑（禁止使用瀏覽器）
@@ -111,6 +146,14 @@
 4. 硬編碼機密或 API Key
 5. 新節點未加入正確 group（DebugBridge 感知失敗）
 6. 缺少型別標注導致 Variant 推斷錯誤
+7. **【新增 ERR-001 後】物理 callback 內有直接場景樹修改**：
+   `_on_body_entered`/`_on_area_entered` 函式體內（或其呼叫鏈中）
+   出現 `add_child()`/`queue_free()`/`load_next_room()`/`change_scene_to_file()`
+   且未使用 `call_deferred()` → 立即封鎖，退回 Developer
+8. **【新增 ERR-002/003 後】narrowing conversion 或 ternary 型別不相容**：
+   `int(float_value)` → 必須改為 `roundi()`
+   三元運算符兩分支型別不同 → 必須展開為 if/else 區塊
+
 
 ### 🟡 要求改善（可在下次提交修復）
 1. 缺少 push_error/push_warning（改用 print 代替）

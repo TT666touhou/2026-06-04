@@ -90,27 +90,36 @@ func _start_as_client() -> void:
 
 func _start_solo() -> void:
 	## 單機測試：直接生成1個玩家，不需要網路
+	## ⚠️ 閃爍/墜入虛空修復（ERR-SPAWN-001）：
+	## 玩家必須先隱藏+停用物理，等房間載入完成再顯示。
+	## 否則玩家會在虛空出現、受重力下墜、產生閃爍。
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "SoloPlayer"
 	player.player_prefix = "p1_"  ## 單機用 p1_ 前綴（Input Map 有定義 p1_attack/move 等）
 	player.bullet_scene = BULLET_SCENE  ## 注入子彈場景
+	player.visible = false              ## 隱藏直到房間載入完成
+	player.set_physics_process(false)   ## 停用物理（不受重力影響）
 	_players_root.add_child(player)
-	player.global_position = Vector2(100, -50)
+	player.global_position = Vector2(100, -200)  ## 放到畫面外，防止相機抖動
 	player.apply_player_color(0)
 	## 連接死亡信號
 	if player.has_signal("died"):
 		player.died.connect(_on_player_died.bind(player))
-	print("[GameWorld] 單機玩家生成完成")
+	print("[GameWorld] 單機玩家節點建立完成（隱藏中，等待房間載入）")
 
-	## 啟動 Rogue-lite 生成
+	## 啟動 Rogue-lite 生成（房間載入後會呼叫 _reset_player_positions 顯示玩家）
 	if _dungeon:
 		_dungeon.generate_run()
 		var first_room: String = _dungeon.advance_room()
 		if not first_room.is_empty():
 			_load_room_scene(first_room)
 			print("[GameWorld] 載入第一間房")
+		else:
+			## 無房間路徑：直接顯示玩家在預設位置
+			_show_all_players()
 	else:
 		push_warning("[GameWorld] DungeonGenerator 節點不存在，跳過房間生成")
+		_show_all_players()
 
 # ═══════════════════════════════════════════════════════════════
 # 玩家生成（Server 端）
@@ -214,12 +223,22 @@ func _respawn_player(player: Node) -> void:
 	print("[GameWorld] 玩家 %s 重生" % player.name)
 
 ## 實際載入房間場景（加入為子節點而非切換主場景）
+## ⚠️ 此函式必須透過 call_deferred 呼叫，不可在物理 callback 中直接執行
+var _is_loading_room: bool = false  ## 防重入守衛（避免 body_entered 重複觸發）
+
 func _load_room_scene(scene_path: String) -> void:
+	## 防重入：若正在載入中則忽略重複呼叫（28次錯誤的根源）
+	if _is_loading_room:
+		print("[GameWorld] 忽略重複的 load_room_scene 呼叫（正在載入中）")
+		return
+	_is_loading_room = true
+
 	if not ResourceLoader.exists(scene_path):
 		push_warning("[GameWorld] 房間場景不存在：" + scene_path)
+		_is_loading_room = false
 		return
 
-	## 移除舊房間
+	## 移除舊房間（已在 deferred 上下文，可直接操作）
 	if _current_room_node:
 		_current_room_node.queue_free()
 		_current_room_node = null
@@ -228,6 +247,7 @@ func _load_room_scene(scene_path: String) -> void:
 	var scene := load(scene_path) as PackedScene
 	if scene == null:
 		push_error("[GameWorld] 無法載入場景：" + scene_path)
+		_is_loading_room = false
 		return
 
 	_current_room_node = scene.instantiate()
@@ -236,8 +256,6 @@ func _load_room_scene(scene_path: String) -> void:
 	move_child(_current_room_node, 0)
 
 	## ─── 清除房間內硬編碼的 Player 和 Camera（避免衝突）───
-	## 某些舊房間場景包含靜態 Player/Camera 節點，這會與
-	## GameWorld 動態生成的玩家和 MultiplayerCamera 衝突
 	_cleanup_room_conflicts(_current_room_node)
 
 	## 套用房間難度
@@ -250,6 +268,11 @@ func _load_room_scene(scene_path: String) -> void:
 	_reset_player_positions()
 
 	print("[GameWorld] 房間已載入：", scene_path)
+	## 解除防重入鎖（稍微延後，讓本幀物理完全結算）
+	call_deferred("_unlock_room_loading")
+
+func _unlock_room_loading() -> void:
+	_is_loading_room = false
 
 ## 清除房間內硬編碼的 Player 和 Camera 節點（避免與動態生成衝突）
 func _cleanup_room_conflicts(room_node: Node) -> void:
@@ -266,13 +289,26 @@ func _cleanup_room_conflicts(room_node: Node) -> void:
 	for n: Node in nodes_to_remove:
 		n.queue_free()
 
-## 重設所有玩家到生成位置
+## 重設所有玩家到生成位置（在房間載入後呼叫）
+## ⚠️ 此函式同時負責「顯示」因閃爍修復而隱藏的玩家
 func _reset_player_positions() -> void:
-	var spawn_x := 100
+	var spawn_x := 80
 	var players := _players_root.get_children()
 	for i: int in range(players.size()):
 		var p := players[i]
-		p.global_position = Vector2(spawn_x + i * 40, -50)
+		p.global_position = Vector2(spawn_x + i * 50, -80)  ## Y=-80 讓玩家站在地板上方
+		## 顯示並啟用物理（閃爍修復：此處才讓玩家可見）
+		if not p.visible:
+			p.visible = true
+			p.set_physics_process(true)
+			print("[GameWorld] 玩家 %s 顯示（房間就緒）" % p.name)
+
+func _show_all_players() -> void:
+	## 緊急顯示：無房間時直接顯示玩家
+	for p in _players_root.get_children():
+		p.visible = true
+		p.set_physics_process(true)
+		p.global_position = Vector2(100, -80)
 
 ## 套用房間難度（影響敵人數量）
 func _apply_room_difficulty(bonus: int) -> void:

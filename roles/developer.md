@@ -49,6 +49,31 @@
         -Wait -NoNewWindow -RedirectStandardError "godot_check.log"
       Get-Content "godot_check.log" | Select-String "error|warning" -CaseSensitive:$false
 
+□ 3.5. 【新增】Sensor 前置掃描（寫物理/信號相關代碼時必做）：
+       ★ 凡是涉及 Area2D、body_entered、物理 callback 的代碼，必須先確認：
+         a. _on_body_entered / _on_area_entered 的函式體內，禁止出現：
+            add_child() / queue_free() / load_next_room() / change_scene_to_file()
+            → 違反時立即改為 call_deferred()
+         b. 所有 int() 轉換：來源是否為 float？ → 若是，改為 roundi()
+         c. 三元運算符 A if cond else B：兩分支型別是否相同？ → 不同則展開為 if/else
+         d. 新增的高頻觸發函式：是否需要防重入守衛？ → 若可能重複觸發，加 _is_xxx bool
+         e. 【ERR-004 後】修復 narrowing/ternary 後全局掃描同類問題：
+            Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
+              Select-String "\bint\(" | ForEach-Object { "$($_.Filename):$($_.LineNumber)" }
+         f. 【ERR-005 後】手寫 .tscn 時確認 shape 使用 SubResource：
+            禁止 `shape = RectangleShape2D new()`
+            正確：先定義 `[sub_resource type="RectangleShape2D" id="xxx"]`，再用 `shape = SubResource("xxx")`
+         g. 【ERR-HUD-001 後】HUD 在 CanvasLayer 下：
+            禁止用 `cam.zoom` 縮放 HUD 元素大小
+            必須設 `texture_filter = TEXTURE_FILTER_NEAREST` + `filter_clip = true`
+         h. 【ERR-SPAWN-001 後】玩家生成時序：
+            若房間是 deferred 載入，玩家必須先 `visible=false` + `set_physics_process(false)`
+       ★ 掃描腳本（可直接執行）：
+         Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
+           Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |
+           ForEach-Object { Write-Host "$($_.Filename):$($_.LineNumber) → $($_.Line.Trim())" }
+       ⚠️ 未做 Sensor 掃描即提交物理/信號相關代碼 → 視為嚴重違規（ERR-001 前車之鑑）
+
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：
       memory.search_nodes("arch_decision_[功能名稱]")
       memory.search_nodes("task_[功能名稱]")
@@ -56,6 +81,44 @@
 □ 5. 確認 Debug 整合要求（從架構決策中取得）
 
 ⚠️ 任何 error 必須在開始新代碼之前修復，不允許累積
+```
+
+---
+
+## 📋 Developer 物理信號代碼守則（ERR-001 後新增）
+
+**每次寫到以下模式時，Developer 必須暫停並做 Sensor 掃描：**
+
+```gdscript
+## ❌ 危險模式（必須修改）
+func _on_body_entered(body):
+    game_world.load_next_room()  # 在物理 callback 中直接呼叫！
+
+## ✅ 正確模式
+func _on_body_entered(body):
+    game_world.call_deferred("load_next_room")  # 延後到物理查詢結束後執行
+
+## ❌ 危險模式（narrowing + ternary）
+limit_top = int(pos.y) if node != null else -10_000_000
+
+## ✅ 正確模式（明確型別 + if/else 區塊）
+if node != null:
+    limit_top = roundi(pos.y)
+else:
+    limit_top = -10_000_000
+
+## ❌ 危險模式（無防重入守衛的高頻觸發函式）
+func load_room():
+    add_child(new_room)  # 可能被呼叫 28 次！
+
+## ✅ 正確模式（有防重入守衛）
+var _is_loading: bool = false
+func load_room():
+    if _is_loading: return
+    _is_loading = true
+    add_child(new_room)
+    call_deferred("_unlock")
+func _unlock(): _is_loading = false
 ```
 
 ---

@@ -12,6 +12,9 @@ var _player: Node = null
 var _search_timer: float = 0.0
 
 func _ready() -> void:
+	## 強制 CanvasLayer 所有子節點使用 Nearest 材質過濾（像素遊戲防模糊）
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
 	## 載入愛心圖案
 	var atlas_path := "res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png"
 	if ResourceLoader.exists(atlas_path):
@@ -19,10 +22,12 @@ func _ready() -> void:
 		heart_solid = AtlasTexture.new()
 		heart_solid.atlas = atlas_tex
 		heart_solid.region = Rect2(24, 120, 8, 8)
+		heart_solid.filter_clip = true  ## ⚠️ 防止 atlas 區域間像素滲透（防模糊關鍵）
 
 		heart_empty = AtlasTexture.new()
 		heart_empty.atlas = atlas_tex
 		heart_empty.region = Rect2(32, 120, 8, 8)
+		heart_empty.filter_clip = true  ## 同上
 
 	## 等一幀讓玩家先生成
 	call_deferred("_try_connect_player")
@@ -62,11 +67,11 @@ func _try_connect_player() -> void:
 	print("[PlayerHUD] 連接到玩家：", target.name)
 
 func update_hearts(current_hp: int) -> void:
-	## 動態計算 heart 大小（配合 camera zoom）
-	var heart_size := 48.0
-	var cam := get_tree().get_root().find_child("MultiplayerCamera", true, false) as Camera2D
-	if cam:
-		heart_size = 8.0 * cam.zoom.x
+	## ⚠️ UI 變形修復（ERR-HUD-001）：
+	## HUD 在 CanvasLayer 下，已與相機縮放解耦。
+	## 不應使用 cam.zoom 動態縮放心心大小，否則相機縮小時 UI 也會縮小變形。
+	## 固定使用像素尺寸（24px）讓 HUD 始終清晰。
+	var heart_size := 24.0  ## 固定大小，不跟相機 zoom 連動
 
 	var children := heart_container.get_children()
 	var max_hp := 3

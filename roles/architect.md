@@ -77,6 +77,32 @@
 □ 所有同步屬性必須透過 MultiplayerSynchronizer 的 SceneReplicationConfig 宣告
 ```
 
+### 【新增 ERR-001 後】物理系統安全架構約束（不可違反）
+```
+⚠️ 這是 2026-06-12 ERR-001（28次 physics flush 崩潰）事件後的強制約束。
+
+□ 任何涉及 Area2D / CharacterBody2D 的設計：
+    若信號（body_entered / area_entered）的觸發鏈最終需要修改場景樹，
+    架構師必須在 implementation_plan.md 中明確標注：
+    "此操作必須透過 call_deferred 執行，不可在物理 callback 中直接呼叫"
+
+□ 房間切換架構（RoomTransition → GameWorld）：
+    觸發鏈必須設計為：
+    _on_body_entered → call_deferred("load_next_room") → [deferred] _load_room_scene
+    而非：
+    _on_body_entered → load_next_room() → _load_room_scene → add_child [危險！]
+
+□ 高頻觸發設計：
+    任何可能被同一幀多次觸發的函式（如物理 callback 觸發的操作），
+    架構設計中必須要求 Developer 加入防重入守衛：
+    "此函式需要 _is_xxx: bool 防重入守衛"
+
+□ float→int 型別邊界：
+    Camera2D.limit_* 等屬性是 int。
+    涉及 Vector2/position 計算並賦值給 int 屬性的設計，
+    必須在計畫中標注：使用 roundi() 而非 int()
+```
+
 ---
 
 ## 📊 架構反省記錄（每次工作結束必寫）

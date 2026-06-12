@@ -77,10 +77,28 @@ func _ready() -> void:
 	_apply_limits()
 
 func _apply_limits() -> void:
-	limit_left   = int(_lim_left.global_position.x)   if _lim_left   != null else -10_000_000
-	limit_right  = int(_lim_right.global_position.x)  if _lim_right  != null else  10_000_000
-	limit_top    = int(_lim_top.global_position.y)     if _lim_top    != null else -10_000_000
-	limit_bottom = int(_lim_bottom.global_position.y)  if _lim_bottom != null else  10_000_000
+	## ⚠️ Camera2D.limit_* 是 int 屬性，float→int 必須用 roundi()
+	## 三元運算符兩分支型別不一致會觸發 "ternary not mutually compatible"
+	## 改用 if/else 區塊確保型別一致（ERR-002/ERR-003 修復）
+	if _lim_left != null:
+		limit_left = roundi(_lim_left.global_position.x)
+	else:
+		limit_left = -10_000_000
+
+	if _lim_right != null:
+		limit_right = roundi(_lim_right.global_position.x)
+	else:
+		limit_right = 10_000_000
+
+	if _lim_top != null:
+		limit_top = roundi(_lim_top.global_position.y)
+	else:
+		limit_top = -10_000_000
+
+	if _lim_bottom != null:
+		limit_bottom = roundi(_lim_bottom.global_position.y)
+	else:
+		limit_bottom = 10_000_000
 
 # ═══════════════════════════════════════════════════════════════
 # 每幀更新：追蹤 Player + 前瞻偏移（含手動 limit clamp）

@@ -91,6 +91,36 @@ Start-Sleep -Seconds 5
 □ F5 強制寫出 JSON 有輸出
 ```
 
+### 步驟 2.5：【強制動態測試 — ERR-001 教訓】物理 Callback 驗證
+```
+⚠️ 這是 2026-06-12 事件後新增的強制步驟。
+   靜態 --check-only 無法偵測物理 callback 執行時期錯誤，
+   只有親自執行遊戲並觸發相關動作才能發現。
+
+□ 觸發房間轉換：
+   1. 操控玩家走到地圖邊緣的 RoomTransition 區域
+   2. 進入觸發區域，等待房間切換
+   3. 觀察 Godot Console：
+      ✅ 正常：看到 "[GameWorld] 房間已載入：" 訊息
+      ❌ 異常：看到 "Can't change this state while flushing queries"
+              → 立即退回 Developer（ERR-001 回歸）
+   4. 確認切換後新房間正確載入，玩家位置重設
+   5. 確認 Console 中 "[GameWorld] 房間已載入" 只出現一次（防重入有效）
+
+□ 觸發玩家受傷/死亡：
+   1. 讓玩家受到傷害
+   2. 確認 PlayerHUD 血條正確更新
+   3. 讓玩家 HP 歸零
+   4. 確認 "GAME OVER" 畫面正確顯示（不崩潰）
+
+□ 觸發完整關卡流程（通過所有房間）：
+   1. 連續觸發多次 RoomTransition
+   2. 確認每次切換都乾淨，無錯誤
+   3. 到達最終房間後確認切換到 run_complete.tscn
+
+⚠️ 若任何步驟出現 Console 錯誤 → 截圖，立即記錄到 ERROR_LOG.md
+```
+
 ### 步驟 3：驗證 DebugBridge JSON 輸出
 ```powershell
 # 等待 DebugBridge 寫出（1-2 秒）

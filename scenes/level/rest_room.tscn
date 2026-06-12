@@ -1,6 +1,18 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/level/rest_room.gd" id="1_rest"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(600, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_heal"]
+size = Vector2(128, 8)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_healarea"]
+size = Vector2(128, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_exit"]
+size = Vector2(80, 120)
 
 [node name="RestRoom" type="Node2D"]
 script = ExtResource("1_rest")
@@ -15,7 +27,7 @@ position = Vector2(0, 0)
 
 [node name="FloorShape" type="CollisionShape2D" parent="Floor"]
 position = Vector2(0, 8)
-shape = RectangleShape2D new()
+shape = SubResource("RectangleShape2D_floor")
 
 [node name="FloorSprite" type="ColorRect" parent="Floor"]
 position = Vector2(-300, 0)
@@ -27,7 +39,7 @@ position = Vector2(0, -48)
 
 [node name="HealPlatformShape" type="CollisionShape2D" parent="HealPlatform"]
 position = Vector2(0, 4)
-shape = RectangleShape2D new()
+shape = SubResource("RectangleShape2D_heal")
 
 [node name="HealPlatformSprite" type="ColorRect" parent="HealPlatform"]
 position = Vector2(-64, 0)
@@ -39,7 +51,7 @@ position = Vector2(0, -64)
 collision_mask = 2
 
 [node name="HealAreaShape" type="CollisionShape2D" parent="HealArea"]
-shape = RectangleShape2D new()
+shape = SubResource("RectangleShape2D_healarea")
 
 [node name="HealLabel" type="Label" parent="."]
 position = Vector2(-150, -140)
@@ -54,7 +66,7 @@ position = Vector2(250, -32)
 collision_mask = 2
 
 [node name="ExitAreaShape" type="CollisionShape2D" parent="ExitArea"]
-shape = RectangleShape2D new()
+shape = SubResource("RectangleShape2D_exit")
 
 [node name="ExitLabel" type="Label" parent="."]
 position = Vector2(170, -90)

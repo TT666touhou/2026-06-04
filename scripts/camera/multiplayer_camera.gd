@@ -47,10 +47,30 @@ func _ready() -> void:
 	var lim_left   := get_node_or_null(limit_left_path)   as Marker2D
 	var lim_right  := get_node_or_null(limit_right_path)  as Marker2D
 	
-	limit_top    = int(lim_top.global_position.y)    if lim_top    != null else -10_000_000
-	limit_bottom = int(lim_bottom.global_position.y) if lim_bottom != null else  10_000_000
-	limit_left   = int(lim_left.global_position.x)   if lim_left   != null else -10_000_000
-	limit_right  = int(lim_right.global_position.x)  if lim_right  != null else  10_000_000
+	## ⚠️ Camera2D.limit_* 屬性是 int。
+	## 必須明確用 roundi() 轉換，避免 float→int narrowing conversion。
+	## 三元運算符 (if/else) 的兩個分支型別必須完全一致，
+	## 所以改用 if/else 區塊寫法，避免 "ternary not mutually compatible" 警告。
+	if lim_top != null:
+		limit_top = roundi(lim_top.global_position.y)
+	else:
+		limit_top = -10_000_000
+
+	if lim_bottom != null:
+		limit_bottom = roundi(lim_bottom.global_position.y)
+	else:
+		limit_bottom = 10_000_000
+
+	if lim_left != null:
+		limit_left = roundi(lim_left.global_position.x)
+	else:
+		limit_left = -10_000_000
+
+	if lim_right != null:
+		limit_right = roundi(lim_right.global_position.x)
+	else:
+		limit_right = 10_000_000
+
 
 func _process(delta: float) -> void:
 	var players := get_tree().get_nodes_in_group("Players")
