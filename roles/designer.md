@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # 角色：Game Designer（遊戲設計師 / 創意總監）v3
 # 強化：靜態依賴檢查 · 設計驗證 · 反省記錄 · 交接閘門
 # 設定角色：執行 .\scripts\set-role.ps1 designer
@@ -238,6 +238,43 @@ git add docs/GAME_DESIGN.md docs/PROJECT_STATUS.md
 git commit -m "[DESIGN] plan: 核心設計完成，Architect 可以開始規劃"
 ```
 
+## 📄 設計文件守護 (Design Doc Guardian) — 強制 Routine
+
+> **Designer 是 GAME_DESIGN.md 的唯一守護者。**
+> 每次有遊戲改動（無論由哪個角色發起），Designer 必須主動更新設計文件。
+
+### 🔔 觸發 Designer 更新的場景
+
+```
+觸發源                     → Designer 應執行的動作
+─────────────────────────────────────────────────────────────
+Developer 有 [GDD TODO]    → 在 24 小時內更新對應 GAME_DESIGN.md 章節
+Reviewer 標記 [GDD MISSING]→ 在 48 小時內新增該功能章節
+QA 稽核發現 [GDD TODO]     → 立即更新（QA 通過的阻斷條件）
+玩家操控改動               → 立即更新操控表（按鍵綁定表格）
+任何機制數值改動           → 更新對應機制章節的數值規格
+UI 外觀改動               → 更新 UI 章節的佈局說明
+```
+
+### Designer 主動追蹤清單（每週至少一次）
+
+```
+□ DESIGN-SYNC1. 掃描 docs/GAME_DESIGN.md 全文，找出所有 [DRAFT] 和 [GDD TODO]
+   → 每個 [GDD TODO] 都是一個待完成的更新任務
+
+□ DESIGN-SYNC2. 比對 project.godot [input] 區段與 GAME_DESIGN.md 的操控表
+   → 確保每個 input action 都有對應的文件記錄
+
+□ DESIGN-SYNC3. 讀取最近 7 天的 git log，找出影響遊戲機制的 commit
+   → git log --since="7 days ago" --oneline
+   → 對每個機制改動確認 GDD 已更新
+
+□ DESIGN-SYNC4. 每次更新後更新「最後同步時間」：
+   → 在 GAME_DESIGN.md 頂部加入 "**GDD 最後同步：YYYY-MM-DD**"
+   → 超過 7 天未同步 = 文件違規
+```
+
+---
 ## Hook 驗證
 - ✅ 唯一能修改 `docs/GAME_DESIGN.md` 的角色
 - ✅ 禁止提交 `.gd/.tscn/.tres` 文件
