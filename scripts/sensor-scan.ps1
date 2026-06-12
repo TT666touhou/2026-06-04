@@ -1,30 +1,52 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v2
+## sensor-scan.ps1 -- Sensor Automated Scan Script v3
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
+##
+## Checks:
+##   1/7  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/7  .tscn ext_resource UID self-reference (ERR-013)
+##   3/7  Physics callback dangerous patterns (ERR-001)
+##   4/7  int() narrowing conversion (ERR-002)
+##   5/7  Godot 3 deprecated API (ERR-014)
+##   6/7  .tscn header first byte validity (ERR-023)
+##   7/7  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
 
 param(
     [string]$Root = "D:\2026-06-04"
 )
 
-$hasError = $false
+$hasError   = $false
 $hasWarning = $false
 
-function Write-Pass  { param($msg) Write-Host "  [PASS] $msg" -ForegroundColor Green }
-function Write-Fail  { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Red; $script:hasError = $true }
-function Write-Warn  { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
+function Write-Pass { param($msg) Write-Host "  [PASS] $msg" -ForegroundColor Green }
+function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Red;    $script:hasError   = $true }
+function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v2] Godot Project Integrity Scan" -ForegroundColor Cyan
-Write-Host " Root: $Root" -ForegroundColor Cyan
+Write-Host " [Sensor v3] Godot Project Integrity Scan"                    -ForegroundColor Cyan
+Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 ## ============================================================
-## 1. BOM Scan -- all .gd files must be UTF-8 without BOM
+## Collect file lists once — used across multiple checks
 ## ============================================================
-Write-Host "`n[1/7] Scanning .gd file encoding..." -ForegroundColor Yellow
-$gdFiles = @(Get-ChildItem $Root -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch "\\addons\\" -and $_.FullName -notmatch "\\gut\\" })
+$gdFiles = [array](Get-ChildItem $Root -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue |
+    Where-Object { (-not $_.FullName.Contains("\addons\")) -and (-not $_.FullName.Contains("\gut\")) })
+
+$tscnFiles = [array](Get-ChildItem $Root -Recurse -Filter "*.tscn" -ErrorAction SilentlyContinue |
+    Where-Object { -not $_.FullName.Contains("\.git\") })
+
+$scriptFiles = [array](Get-ChildItem (Join-Path $Root "scripts") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue)
+
+if ($null -eq $gdFiles)     { $gdFiles     = @() }
+if ($null -eq $tscnFiles)   { $tscnFiles   = @() }
+if ($null -eq $scriptFiles) { $scriptFiles = @() }
+
+## ============================================================
+## 1/7  BOM Scan -- all .gd files must be UTF-8 without BOM
+## ============================================================
+Write-Host "`n[1/7] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
 $bomCount = 0
 
 foreach ($f in $gdFiles) {
@@ -45,77 +67,66 @@ foreach ($f in $gdFiles) {
     }
 }
 if ($bomCount -eq 0) { Write-Pass "All $($gdFiles.Count) .gd files have no BOM" }
-else { Write-Fail "Found $bomCount BOM issues total" }
+else { Write-Fail "Found $bomCount BOM issues in .gd files" }
 
 ## ============================================================
-## 2. .tscn ext_resource UID self-reference scan (ERR-013)
+## 2/7  .tscn ext_resource UID self-reference scan (ERR-013)
+##      Detects scenes where an ext_resource uid equals the scene's own uid
 ## ============================================================
-Write-Host "`n[2/7] Scanning .tscn ext_resource UID self-references..." -ForegroundColor Yellow
-$scenesDir = Join-Path $Root "scenes"
-$tscnFiles = @(Get-ChildItem $scenesDir -Recurse -Filter "*.tscn" -ErrorAction SilentlyContinue)
+Write-Host "`n[2/7] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
 $uidSelfRefCount = 0
 
 foreach ($f in $tscnFiles) {
-    $content = Get-Content $f.FullName -Raw -ErrorAction SilentlyContinue
-    if (-not $content) { continue }
-    
+    $content = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::UTF8)
     $sceneUIDMatch = [regex]::Match($content, 'gd_scene[^"]*uid="([^"]+)"')
-    if ($sceneUIDMatch.Success) {
-        $sceneUID = $sceneUIDMatch.Groups[1].Value
-        $extMatches = [regex]::Matches($content, 'ext_resource[^"]*uid="([^"]+)"')
-        foreach ($m in $extMatches) {
-            $extUID = $m.Groups[1].Value
-            if ($extUID -eq $sceneUID) {
-                Write-Fail "UID self-reference (ERR-013): $($f.Name) -- ext_resource uid=$extUID equals scene uid"
-                $uidSelfRefCount++
-            }
+    if (-not $sceneUIDMatch.Success) { continue }
+
+    $sceneUID   = $sceneUIDMatch.Groups[1].Value
+    $extMatches = [regex]::Matches($content, 'ext_resource[^"]*uid="([^"]+)"')
+    foreach ($m in $extMatches) {
+        if ($m.Groups[1].Value -eq $sceneUID) {
+            Write-Fail "UID self-reference (ERR-013): $($f.Name) -- ext_resource uid=$($m.Groups[1].Value) equals scene uid"
+            $uidSelfRefCount++
         }
     }
 }
 if ($uidSelfRefCount -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files have no UID self-references" }
 
 ## ============================================================
-## 3. Physics callback dangerous pattern scan (Level 1 ERR-001)
+## 3/7  Physics callback dangerous pattern scan (ERR-001)
+##      queue_free/add_child/change_scene called directly inside body_entered etc.
 ## ============================================================
-Write-Host "`n[3/7] Scanning physics callback dangerous patterns..." -ForegroundColor Yellow
-$scriptsDir = Join-Path $Root "scripts"
-$gdScripts = @(Get-ChildItem $scriptsDir -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue)
-$physicsIssues = 0
+Write-Host "`n[3/7] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
+$physicsIssues  = 0
+$dangerCalls    = @("add_child(", "queue_free(", "change_scene_to_file(")
+$callbackFuncs  = @("func _on_body_entered", "func _on_area_entered", "func _on_body_exited", "func _on_area_exited")
 
-$dangerousInCallback = @("add_child", "queue_free", "change_scene_to_file")
-$callbackFuncs = @("func _on_body_entered", "func _on_area_entered", "func _on_body_exited", "func _on_area_exited")
-
-foreach ($f in $gdScripts) {
-    $lines = Get-Content $f.FullName -ErrorAction SilentlyContinue
-    if (-not $lines) { continue }
-    
-    $inCallback = $false
+foreach ($f in $scriptFiles) {
+    $lines = [System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8)
+    $inCallback    = $false
     $funcIndentLen = 0
-    
+
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        $line = $lines[$i]
-        
-        # Check if entering a callback function
+        $line    = $lines[$i]
+        $trimmed = $line.TrimStart()
+        $lineIndent = $line.Length - $trimmed.Length
+
         foreach ($cb in $callbackFuncs) {
-            if ($line.TrimStart() -eq ($line -replace "^\s*", "") -and $line -match [regex]::Escape($cb)) {
-                $inCallback = $true
-                $funcIndentLen = $line.Length - $line.TrimStart().Length
+            if ($line.Contains($cb)) {
+                $inCallback    = $true
+                $funcIndentLen = $lineIndent
                 break
             }
         }
-        
-        if ($inCallback) {
-            $trimmed = $line.TrimStart()
-            $lineIndent = $line.Length - $trimmed.Length
-            # Exit callback when we see a new func at same or lower indent level
-            if ($trimmed -ne "" -and $lineIndent -le $funcIndentLen -and $trimmed.StartsWith("func ") -and $i -gt 0) {
+
+        if ($inCallback -and $trimmed.Length -gt 0) {
+            if ($trimmed.StartsWith("func ") -and $lineIndent -le $funcIndentLen -and $i -gt 0) {
                 $inCallback = $false
                 continue
             }
-            # Check for dangerous patterns without call_deferred
-            foreach ($danger in $dangerousInCallback) {
-                if ($line -match ($danger + "\(") -and $line -notmatch "call_deferred") {
-                    Write-Fail "Direct call in physics callback (ERR-001): $($f.Name):$($i+1) -- $($trimmed)"
+            foreach ($danger in $dangerCalls) {
+                if ($line.Contains($danger) -and -not $line.Contains("call_deferred")) {
+                    Write-Fail "Direct call in physics callback (ERR-001): $($f.Name):$($i+1) -- $trimmed"
                     $physicsIssues++
                 }
             }
@@ -125,13 +136,14 @@ foreach ($f in $gdScripts) {
 if ($physicsIssues -eq 0) { Write-Pass "No physics callback dangerous patterns found" }
 
 ## ============================================================
-## 4. Narrowing conversion scan (Level 2 ERR-002)
+## 4/7  Narrowing conversion scan (ERR-002)
+##      int(node.x) or int(node.y) should be roundi()
 ## ============================================================
-Write-Host "`n[4/7] Scanning for int() narrowing conversion patterns..." -ForegroundColor Yellow
+Write-Host "`n[4/7] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
 $narrowingCount = 0
-foreach ($f in $gdScripts) {
-    $hits = Get-Content $f.FullName -ErrorAction SilentlyContinue | 
-        Select-String -Pattern "=\s*int\([a-z_]+\.[xy]\)" -ErrorAction SilentlyContinue
+
+foreach ($f in $scriptFiles) {
+    $hits = Select-String -Path $f.FullName -Pattern "=\s*int\([a-z_]+\.[xy]\)" -ErrorAction SilentlyContinue
     foreach ($h in $hits) {
         Write-Warn "Narrowing conversion (ERR-002): $($f.Name):$($h.LineNumber) -- $($h.Line.Trim())"
         $narrowingCount++
@@ -140,117 +152,130 @@ foreach ($f in $gdScripts) {
 if ($narrowingCount -eq 0) { Write-Pass "No int() narrowing conversion issues found" }
 
 ## ============================================================
-## 5. Godot 3 deprecated API scan (Level 2 ERR-014)
+## 5/7  Godot 3 deprecated API scan (ERR-014)
+##      BAD (Godot 3): export var, onready var, setget, old stretch constants
+##      GOOD (Godot 4): @export var, @onready var  <-- must NOT be flagged
 ## ============================================================
-Write-Host "`n[5/7] Scanning for Godot 3 deprecated APIs..." -ForegroundColor Yellow
-$deprecatedAPIs = @(
-    "TextureRect\.STRETCH_KEEP_ASPECT_CENTERED",
-    "TextureRect\.STRETCH_FIT",
-    "setget ",
-    "^export var ",     # Godot 3: no @ prefix
-    "^onready var "     # Godot 3: no @ prefix
-)
-
+Write-Host "`n[5/7] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
 $deprecatedCount = 0
+
 foreach ($f in $gdFiles) {
-    $lines = Get-Content $f.FullName -ErrorAction SilentlyContinue
-    if (-not $lines) { continue }
-    $lineNum = 0
+    $lines  = [System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8)
+    $lineNo = 0
     foreach ($line in $lines) {
-        $lineNum++
+        $lineNo++
         $trimmed = $line.TrimStart()
-        foreach ($api in $deprecatedAPIs) {
-            # For ^ patterns, check trimmed line start
-            $pattern = $api.TrimStart("^")
-            if ($api.StartsWith("^")) {
-                if ($trimmed.StartsWith($pattern)) {
-                    Write-Warn "Deprecated Godot 3 API (ERR-014): $($f.Name):$lineNum -- $trimmed"
-                    $deprecatedCount++
-                    break
-                }
-            } else {
-                if ($trimmed -match [regex]::Escape($pattern)) {
-                    Write-Warn "Deprecated Godot 3 API (ERR-014): $($f.Name):$lineNum -- $trimmed"
-                    $deprecatedCount++
-                    break
-                }
-            }
+        $matched = $false
+        $reason  = ""
+
+        # Godot 3: 'export var' without @ prefix  (Godot 4: '@export var')
+        if ($trimmed.StartsWith("export var ")) {
+            $matched = $true; $reason = "Godot 3 'export var' -- use '@export var' instead"
+        }
+        # Godot 3: 'onready var' without @ prefix  (Godot 4: '@onready var')
+        elseif ($trimmed.StartsWith("onready var ")) {
+            $matched = $true; $reason = "Godot 3 'onready var' -- use '@onready var' instead"
+        }
+        # Godot 3: 'setget' keyword
+        elseif ($trimmed.Contains("setget ")) {
+            $matched = $true; $reason = "Godot 3 'setget' keyword -- use property get/set in Godot 4"
+        }
+        # Godot 3: TextureRect stretch mode constants renamed in Godot 4
+        elseif ($trimmed.Contains("STRETCH_KEEP_ASPECT_CENTERED") -or $trimmed.Contains("TextureRect.STRETCH_FIT")) {
+            $matched = $true; $reason = "Godot 3 TextureRect stretch constant"
+        }
+
+        if ($matched) {
+            Write-Warn "Deprecated Godot 3 API (ERR-014): $($f.Name):$lineNo -- [$reason]"
+            $deprecatedCount++
         }
     }
 }
 if ($deprecatedCount -eq 0) { Write-Pass "No Godot 3 deprecated API found" }
 
 ## ============================================================
-## 6. .tscn header validity scan (ERR-023)
-##    Every .tscn must start with '[gd_scene' on line 1
-##    Missing '[' = file was corrupted by PowerShell regex substitution
+## 6/7  .tscn header first-byte validity (ERR-023)
+##      Every .tscn must begin with '[' (0x5B) after optional BOM
+##      PowerShell Get-Content/Set-Content pipelines can silently strip it
 ## ============================================================
-Write-Host "`n[6/7] Scanning .tscn header line validity (ERR-023)..." -ForegroundColor Yellow
-$allTscnFiles = @(Get-ChildItem $Root -Recurse -Filter "*.tscn" -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notmatch "\\.git" })
+Write-Host "`n[6/7] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
 $headerIssues = 0
 
-foreach ($f in $allTscnFiles) {
+foreach ($f in $tscnFiles) {
     try {
         $bytes = [System.IO.File]::ReadAllBytes($f.FullName)
         if ($bytes.Length -eq 0) { Write-Warn "Empty .tscn file: $($f.Name)"; continue }
-        
-        # Skip BOM if present (EF BB BF)
+
+        # Determine start index (skip UTF-8 BOM EF BB BF or UTF-16 BOM FF FE / FE FF)
         $startIdx = 0
         if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
             $startIdx = 3
-        } elseif ($bytes.Length -ge 2 -and ($bytes[0] -eq 0xFF -or $bytes[0] -eq 0xFE)) {
-            $startIdx = 2  # UTF-16 BOM
+        } elseif ($bytes.Length -ge 2 -and ($bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE)) {
+            $startIdx = 2
+        } elseif ($bytes.Length -ge 2 -and ($bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF)) {
+            $startIdx = 2
         }
-        
-        $firstMeaningfulByte = $bytes[$startIdx]
-        $firstChar = [char]$firstMeaningfulByte
-        
-        if ($firstChar -ne '[') {
+
+        if ([char]$bytes[$startIdx] -ne '[') {
             $preview = [System.Text.Encoding]::UTF8.GetString($bytes, $startIdx, [Math]::Min(40, $bytes.Length - $startIdx))
-            Write-Fail "Invalid .tscn header (ERR-023): $($f.Name) -- first char='$firstChar' expected '['. Preview: $preview"
+            Write-Fail "Invalid .tscn header (ERR-023): $($f.Name) -- first char='$([char]$bytes[$startIdx])' expected '['. Preview: $preview"
             $headerIssues++
         }
     } catch {
-        Write-Warn "Cannot read .tscn: $($f.Name) -- $_"
+        Write-Warn "Cannot read .tscn for header check: $($f.Name) -- $_"
     }
 }
-if ($headerIssues -eq 0) { Write-Pass "All $($allTscnFiles.Count) .tscn files have valid '[gd_scene' headers" }
+if ($headerIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files have valid '[gd_scene' headers" }
 
 ## ============================================================
-## 7. SpriteFrames 'region' in frame dict scan (ERR-024)
-##    In Godot 4, frame dicts with 'region' key are IGNORED.
-##    Each frame must use an AtlasTexture sub-resource.
+## 7/7  SpriteFrames ERR-024: frame dict must use AtlasTexture, not raw region
+##
+##  BAD (Godot 4 ignores the "region" key in frame dicts):
+##    "frames": [{"texture": ExtResource("2_tex"), "region": Rect2(0,0,w,h)}]
+##
+##  GOOD (AtlasTexture sub-resource with atlas+region, referenced by SubResource):
+##    [sub_resource type="AtlasTexture" id="AT_0"]
+##    atlas = ExtResource("2_tex")
+##    region = Rect2(0, 0, w, h)
+##    "frames": [{"texture": SubResource("AT_0"), "duration": 1.0}]
+##
+##  Detection: a file that has BOTH
+##    (a) "texture": ExtResource(    <- raw texture ref inside a frame dict (quoted key)
+##    (b) "region": Rect2(           <- region key inside a frame dict (quoted key)
+##  is using the wrong format.
+##  Note: correct AtlasTexture files have 'atlas = ExtResource(' (no quotes, different key name)
 ## ============================================================
-Write-Host "`n[7/7] Scanning SpriteFrames for incorrect 'region' in frame dict (ERR-024)..." -ForegroundColor Yellow
+Write-Host "`n[7/7] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
 $spriteFramesIssues = 0
 
-foreach ($f in $allTscnFiles) {
+# Exact byte strings to search for (quoted keys only appear in the wrong format)
+$wrongTexKey    = '"texture": ExtResource('   # quoted "texture" key = inside frame dict JSON
+$wrongRegionKey = '"region": Rect2('          # quoted "region" key = inside frame dict JSON
+
+foreach ($f in $tscnFiles) {
     try {
         $content = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::UTF8)
-        # Check for the pattern: "region": Rect2 inside a "frames" block with an ExtResource texture
-        # This means: texture is a full PNG (not AtlasTexture), but trying to use region in frame dict
-        if ($content -match '"texture":\s*ExtResource\(' -and $content -match '"region":\s*Rect2\(') {
-            Write-Fail "SpriteFrames uses 'region' in frame dict (ERR-024): $($f.Name) -- use AtlasTexture sub-resource instead"
+        if ($content.Contains($wrongTexKey) -and $content.Contains($wrongRegionKey)) {
+            Write-Fail "SpriteFrames uses 'region' in frame dict (ERR-024): $($f.Name) -- Replace each frame with an AtlasTexture sub-resource"
             $spriteFramesIssues++
         }
     } catch {
-        Write-Warn "Cannot read .tscn: $($f.Name) -- $_"
+        Write-Warn "Cannot read .tscn for SpriteFrames check: $($f.Name) -- $_"
     }
 }
-if ($spriteFramesIssues -eq 0) { Write-Pass "All VFX .tscn files use correct AtlasTexture format for SpriteFrames" }
+if ($spriteFramesIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files use correct AtlasTexture format for SpriteFrames" }
 
 ## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v2] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v3] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v2] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v3] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v2] PASSED -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v3] PASSED -- No issues found." -ForegroundColor Green
     exit 0
 }
