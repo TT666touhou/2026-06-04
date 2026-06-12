@@ -296,3 +296,24 @@ Write-Host "✅ [Sensor] 掃描完成"
 2. **觸發表升級**: Level 2 新增「.tscn 修改後使用 Get-Content/Set-Content」和「.tscn 首字節驗證失敗」兩個模式。
 3. **工具升級**: sensor-scan.ps1 從 5/5 升級到 6/6，pre-commit 從 rule 1b 擴展到 rule 1c。
 4. **給 Architect 的建議**: 應在 developer.md 中明確禁止 Get-Content -Encoding UTF8 用於 .tscn，並提供唯一安全的讀寫模板（已完成）。
+
+## 📊 Sensor 反省記錄（Session 9 - 2026-06-13）
+
+### 觸發事件
+- **ERR-024**: 所有 4 個 VFX .tscn 文件的 SpriteFrames 使用錯誤的 	exture+region 格式
+- **症狀**: 每次播放特效時顯示整個 spritesheet 條帶，而非逐幀動畫
+- **根本原因**: Godot 4 SpriteFrames frame dict 中的 egion 欄位被完全忽略，必須使用 AtlasTexture sub-resource
+
+### Sensor 自我學習更新
+
+**新增觸發模式（Level 2）**：
+- 任何 .tscn 的 SpriteFrames 包含 "texture": ExtResource(...) + "region": Rect2(...) 組合 → ERR-024
+
+**Sensor 掃描腳本 v2 (7/7) 新增項目**：
+- Check 7/7: 掃描 .tscn 中 SpriteFrames 是否使用正確的 AtlasTexture 格式
+
+**Sensor 反省**：
+1. ERR-024 是「API 格式知識盲點」——前代 Sensor 不知道 Godot 4 frame dict 的 egion 欄位行為，導致錯誤配置未被偵測。
+2. 此問題的視覺表現（整條 spritesheet 顯示）與代碼層面的檢測點（JSON 格式中特定 key 的存在）有很大距離，需要 Sensor 具備 Godot 4 API 知識才能正確識別。
+3. 觸發表新增「SpriteFrames frame dict 包含 egion 直接欄位」模式，並建立 sensor-scan.ps1 Check 7/7 自動偵測。
+4. 給 Architect 的建議：所有新 VFX 場景應有標準模板文件（含 AtlasTexture 格式），避免開發者從頭寫 SpriteFrames。

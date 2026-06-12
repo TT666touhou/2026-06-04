@@ -22,7 +22,7 @@ Write-Host "============================================================" -Foreg
 ## ============================================================
 ## 1. BOM Scan -- all .gd files must be UTF-8 without BOM
 ## ============================================================
-Write-Host "`n[1/6] Scanning .gd file encoding..." -ForegroundColor Yellow
+Write-Host "`n[1/7] Scanning .gd file encoding..." -ForegroundColor Yellow
 $gdFiles = @(Get-ChildItem $Root -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -notmatch "\\addons\\" -and $_.FullName -notmatch "\\gut\\" })
 $bomCount = 0
@@ -50,7 +50,7 @@ else { Write-Fail "Found $bomCount BOM issues total" }
 ## ============================================================
 ## 2. .tscn ext_resource UID self-reference scan (ERR-013)
 ## ============================================================
-Write-Host "`n[2/6] Scanning .tscn ext_resource UID self-references..." -ForegroundColor Yellow
+Write-Host "`n[2/7] Scanning .tscn ext_resource UID self-references..." -ForegroundColor Yellow
 $scenesDir = Join-Path $Root "scenes"
 $tscnFiles = @(Get-ChildItem $scenesDir -Recurse -Filter "*.tscn" -ErrorAction SilentlyContinue)
 $uidSelfRefCount = 0
@@ -77,7 +77,7 @@ if ($uidSelfRefCount -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files ha
 ## ============================================================
 ## 3. Physics callback dangerous pattern scan (Level 1 ERR-001)
 ## ============================================================
-Write-Host "`n[3/6] Scanning physics callback dangerous patterns..." -ForegroundColor Yellow
+Write-Host "`n[3/7] Scanning physics callback dangerous patterns..." -ForegroundColor Yellow
 $scriptsDir = Join-Path $Root "scripts"
 $gdScripts = @(Get-ChildItem $scriptsDir -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue)
 $physicsIssues = 0
@@ -127,7 +127,7 @@ if ($physicsIssues -eq 0) { Write-Pass "No physics callback dangerous patterns f
 ## ============================================================
 ## 4. Narrowing conversion scan (Level 2 ERR-002)
 ## ============================================================
-Write-Host "`n[4/6] Scanning for int() narrowing conversion patterns..." -ForegroundColor Yellow
+Write-Host "`n[4/7] Scanning for int() narrowing conversion patterns..." -ForegroundColor Yellow
 $narrowingCount = 0
 foreach ($f in $gdScripts) {
     $hits = Get-Content $f.FullName -ErrorAction SilentlyContinue | 
@@ -142,7 +142,7 @@ if ($narrowingCount -eq 0) { Write-Pass "No int() narrowing conversion issues fo
 ## ============================================================
 ## 5. Godot 3 deprecated API scan (Level 2 ERR-014)
 ## ============================================================
-Write-Host "`n[5/6] Scanning for Godot 3 deprecated APIs..." -ForegroundColor Yellow
+Write-Host "`n[5/7] Scanning for Godot 3 deprecated APIs..." -ForegroundColor Yellow
 $deprecatedAPIs = @(
     "TextureRect\.STRETCH_KEEP_ASPECT_CENTERED",
     "TextureRect\.STRETCH_FIT",
@@ -185,7 +185,7 @@ if ($deprecatedCount -eq 0) { Write-Pass "No Godot 3 deprecated API found" }
 ##    Every .tscn must start with '[gd_scene' on line 1
 ##    Missing '[' = file was corrupted by PowerShell regex substitution
 ## ============================================================
-Write-Host "`n[6/6] Scanning .tscn header line validity (ERR-023)..." -ForegroundColor Yellow
+Write-Host "`n[6/7] Scanning .tscn header line validity (ERR-023)..." -ForegroundColor Yellow
 $allTscnFiles = @(Get-ChildItem $Root -Recurse -Filter "*.tscn" -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -notmatch "\\.git" })
 $headerIssues = 0
@@ -216,6 +216,29 @@ foreach ($f in $allTscnFiles) {
     }
 }
 if ($headerIssues -eq 0) { Write-Pass "All $($allTscnFiles.Count) .tscn files have valid '[gd_scene' headers" }
+
+## ============================================================
+## 7. SpriteFrames 'region' in frame dict scan (ERR-024)
+##    In Godot 4, frame dicts with 'region' key are IGNORED.
+##    Each frame must use an AtlasTexture sub-resource.
+## ============================================================
+Write-Host "`n[7/7] Scanning SpriteFrames for incorrect 'region' in frame dict (ERR-024)..." -ForegroundColor Yellow
+$spriteFramesIssues = 0
+
+foreach ($f in $allTscnFiles) {
+    try {
+        $content = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::UTF8)
+        # Check for the pattern: "region": Rect2 inside a "frames" block with an ExtResource texture
+        # This means: texture is a full PNG (not AtlasTexture), but trying to use region in frame dict
+        if ($content -match '"texture":\s*ExtResource\(' -and $content -match '"region":\s*Rect2\(') {
+            Write-Fail "SpriteFrames uses 'region' in frame dict (ERR-024): $($f.Name) -- use AtlasTexture sub-resource instead"
+            $spriteFramesIssues++
+        }
+    } catch {
+        Write-Warn "Cannot read .tscn: $($f.Name) -- $_"
+    }
+}
+if ($spriteFramesIssues -eq 0) { Write-Pass "All VFX .tscn files use correct AtlasTexture format for SpriteFrames" }
 
 ## ============================================================
 ## Result summary

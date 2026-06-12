@@ -130,6 +130,18 @@
                 $b = [System.IO.File]::ReadAllBytes("xxx.tscn")
                 if ([char]$b[0] -ne '[') { Write-Error "ERR-023: .tscn header broken!" }
              根本原因：Get-Content -Encoding UTF8 在遇到 BOM 文件時將 U+FEFF 注入字符串，
+
+          r. 【ERR-024 後】VFX SpriteFrames 幀切割必須使用 AtlasTexture sub-resource：
+             ❌ 絕對禁止（Godot 4 忽略 region 欄位，顯示整個 spritesheet）：
+                "frames": [{"texture": ExtResource("tex_id"), "region": Rect2(0,0,132,126)}]
+             ✅ 正確格式（每幀一個 AtlasTexture sub-resource）：
+                [sub_resource type="AtlasTexture" id="AT_0"]
+                atlas = ExtResource("tex_id")
+                region = Rect2(0, 0, 132, 126)
+                
+                "frames": [{"texture": SubResource("AT_0"), "duration": 1.0}]
+             ✅ load_steps 公式：2（ext_resource: Script+Texture）+ frameCount（AtlasTextures）+ 1（SpriteFrames）
+             ✅ 建立 VFX 場景後在 Godot 編輯器確認 Animation Frames 面板顯示個別幀（非整條 sheet）
                       後續 -replace 或 Substring(1) 移除 BOM 時會意外消耗第一個 '[' 字元。
 
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：

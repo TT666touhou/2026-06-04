@@ -452,3 +452,59 @@
 | 2026-06-13 | After any automated .tscn write | Immediately verify: =[IO.File]::ReadAllBytes(); if([char][0] -ne '[') { "ERR-023 DETECTED" } |
 | 2026-06-13 | load_steps update pattern | Use  = .Replace('[gd_scene load_steps=OLD', '[gd_scene load_steps=NEW') not -replace to avoid regex ambiguity with '[' |
 | 2026-06-13 | Sensor scan 6/6 | Run .\scripts\sensor-scan.ps1 before any commit involving .tscn files |
+
+---
+
+## ERR-024 VFX SpriteFrames 使用 texture+region 而非 AtlasTexture 導致整個 Sheet 顯示為一幀（2026-06-13）
+
+- **Severity**: High（每次攻擊/受傷/死亡特效顯示整個 spritesheet 條帶，而非個別幀）
+- **症狀**: 特效播放時顯示一條完整的橫向 spritesheet，而非切割後的動畫
+- **Error Type**: SpriteFrames 幀定義格式錯誤（Godot 4 API 誤用）
+- **受影響文件**: MeleeSlash.tscn, RangedMuzzle.tscn, EnemyHit.tscn, EnemyDeath.tscn
+
+### 根本原因
+Godot 4 SpriteFrames 資源的 frame dict 格式**不支援** 	exture + region 組合：
+`
+# ❌ WRONG - Godot 4 忽略 'region' 欄位，顯示整個紋理
+"frames": [{
+    "texture": ExtResource("2_tex"),
+    "region": Rect2(0, 0, 132, 126)
+}]
+`
+
+egion 鍵在 frame dict 中是 **Godot 4 的廢棄格式**，不會實際裁剪紋理。  
+Godot 4 正確方法是使用 AtlasTexture sub-resource：
+`
+# ✅ CORRECT - 每幀一個 AtlasTexture sub-resource
+[sub_resource type="AtlasTexture" id="AT_0"]
+atlas = ExtResource("2_tex")
+region = Rect2(0, 0, 132, 126)
+
+"frames": [{"texture": SubResource("AT_0"), "duration": 1.0}]
+`
+
+### 修復
+- 所有 4 個 VFX .tscn 文件重寫，每幀使用獨立的 AtlasTexture sub-resource
+- load_steps = 2 (ext_resources) + N (AtlasTextures) + 1 (SpriteFrames) = N+3
+
+### 幀規格（已驗證）
+| VFX | PNG | 幀數 | 幀尺寸 | FPS | Scale |
+|-----|-----|------|--------|-----|-------|
+| MeleeSlash | slash_01.png 1456×96 | 16 | 91×96 | 24 | 0.35 |
+| RangedMuzzle | spark_01.png 2096×127 | 16 | 131×127 | 24 | 0.15 |
+| EnemyHit | impact_01.png 2192×98 | 16 | 137×98 | 24 | 0.20 |
+| EnemyDeath | death_01.png 3168×126 | 24 | 132×126 | 20 | 0.30 |
+
+### 防範措施
+- 任何新 VFX .tscn 必須使用 AtlasTexture sub-resource 格式
+- sensor-scan.ps1 新增 Check 6+（後續）：驗證 SpriteFrames frame 沒有 region 直接欄位
+
+---
+
+## New Pattern（Session 9 - ERR-024）
+
+| Date | Context | Best Practice |
+|------|---------|--------------|
+| 2026-06-13 | Godot 4 SpriteFrames | 每幀 MUST 使用 AtlasTexture sub-resource (atlas=tex, region=Rect2); 直接在 frame dict 寫 region 會被忽略 |
+| 2026-06-13 | VFX spritesheet load_steps | load_steps = 2 + frameCount + 1（2 ext_resource + N AtlasTexture + 1 SpriteFrames） |
+| 2026-06-13 | VFX 驗證 | 建立 VFX 場景後在 Godot 編輯器打開確認 Animation Frames 面板顯示的是個別幀（非整條 sheet） |
