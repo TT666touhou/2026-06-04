@@ -3,8 +3,7 @@ extends CharacterBody2D
 ## ⚠️ 此檔案之前不存在，導致 boss.tscn 和 boss_room.tscn 載入失敗（ERR-006）
 ## 根本原因：Developer 創建 boss.tscn 時沒有一併創建對應的 boss.gd
 ## 修復日期：2026-06-12
-
-add_to_group("Enemies")  ## Debug 整合必要群組
+## 修復紀錄2：2026-06-12 移除 class body 直接呼叫 add_to_group（ERR-009）
 
 enum State { PATROL, CHARGE, COOLDOWN, DEAD }
 

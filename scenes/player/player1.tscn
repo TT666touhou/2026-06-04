@@ -1,9 +1,9 @@
-[gd_scene format=3 uid="uid://b0yuquq5kh52u"]
+[gd_scene format=3 uid="uid://5a9xc40drmggk"]
 
-[ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
-[ext_resource type="Script" uid="uid://cgxc5o3rdglr5" path="res://scripts/player/player.gd" id="2_script"]
-[ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
-[ext_resource type="PackedScene" uid="uid://c031iasmaeovd" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
+[ext_resource type="TileSet" uid="uid://5a9xc40drmggk" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
+[ext_resource type="Script" uid="uid://5a9xc40drmggk" path="res://scripts/player/player.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://5a9xc40drmggk" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
+[ext_resource type="PackedScene" uid="uid://5a9xc40drmggk" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_hud.tscn" id="5_hud"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]

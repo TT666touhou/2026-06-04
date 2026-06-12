@@ -87,6 +87,19 @@
             $defs = [regex]::Matches($content,'\[sub_resource[^\]]+id="([^"]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
             $missing = $refs | Where-Object { $_ -notin $defs }
             if ($missing) { Write-Host "❌ 缺少 sub_resource 聲明: $($missing -join ', ')" } else { Write-Host "✅ 所有 SubResource 引用都有對應聲明" }
+         l. 【ERR-009 後】禁止在 GDScript class body 直接呼叫函式（Parse Error: Unexpected identifier）：
+            ❌ 危險：class 頂層寫 `add_to_group("Enemies")` → 立即 Parse Error
+            ✅ 正確：所有語句必須在 func 內（_ready(), _physics_process() 等）
+            掃描：Get-Content "xxx.gd" | Where-Object { $_ -match "^\w+\(" -and $_ -notmatch "^(func|var|@|extends|class|enum|signal|const|static)" }
+         m. 【ERR-010 後】複製 .tscn 文件後必須立即更新 UID（UID duplicate warning）：
+            ❌ 危險：直接複製 player.tscn → player2.tscn，player2.tscn UID 與 player.tscn 完全相同
+            ✅ 正確：複製後立刻執行：
+               function New-GodotUID { $c="abcdefghijklmnopqrstuvwxyz0123456789"; "uid://" + (-join (1..13|%{$c[(Get-Random -Max $c.Length)]})) }
+               (Get-Content "new.tscn" -Raw) -replace 'uid="uid://[a-z0-9]+"',"uid=`"$(New-GodotUID)`"" | Set-Content "new.tscn" -NoNewline
+            或直接移除 uid 字段（Godot 會自動重新分配）
+         n. 【ERR-011 後】確認所有 .gd 文件無 UTF-16 BOM（Unicode parsing error ff/fe）：
+            掃描：Get-ChildItem "D:\2026-06-04" -Recurse -Include "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 2 -and $b[0]-eq 0xFF -and $b[1]-eq 0xFE } | ForEach-Object { "❌ $($_.Name)" }
+            修復：$b=[IO.File]::ReadAllBytes($p); $t=[Text.Encoding]::Unicode.GetString($b,2,$b.Length-2); [IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding($false)))
        ★ 掃描腳本（可直接執行）：
          Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
            Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |
