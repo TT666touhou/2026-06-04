@@ -419,4 +419,8 @@ git push origin feature/[任務名稱]
 - ✅ 大型檔案走 LFS
 - ✅ 無硬編碼機密
 - ✅ Commit 訊息格式：`[DEV] feat/fix: 描述`
-
+         s. 【Sprite Flip 規則】TileMapLayer 無 flip_h 屬性，須用 VisualPivot.scale.x = _facing
+            翻轉時 Sway 旋轉需乘以 _facing：_visual_pivot.rotation = _sway_y * _facing
+         t. 【8方向射擊】射擊時用 _get_aim_direction() 讀取 WASD，返回 normalized Vector2
+            WASD 垂直需在 input map 定義 p{N}_move_up/p{N}_move_down；W=jump 不衝突（只在按下 ranged 時採樣）
+            VFX 方向用 _spawn_vfx_aimed()，旋轉 vfx.rotation = aim_dir.angle()
