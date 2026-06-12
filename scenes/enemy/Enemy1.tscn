@@ -1,4 +1,4 @@
-gd_scene load_steps=7 format=3 uid="uid://qp735yrnv0g0"]
+[gd_scene load_steps=7 format=3 uid="uid://qp735yrnv0g0"]
 
 [ext_resource type="TileSet" uid="uid://d2qfp8a4t5xh2" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_dqbur"]
 [ext_resource type="Script" path="res://scripts/enemy/enemy1.gd" id="1_script"]

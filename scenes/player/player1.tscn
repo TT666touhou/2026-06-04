@@ -1,4 +1,4 @@
-gd_scene load_steps=11 format=3 uid="uid://5a9xc40drmggk"]
+[gd_scene load_steps=11 format=3 uid="uid://5a9xc40drmggk"]
 
 [ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
 [ext_resource type="Script" uid="uid://13bvchhfcwce" path="res://scripts/player/player.gd" id="2_script"]
