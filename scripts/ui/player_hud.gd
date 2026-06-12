@@ -79,8 +79,9 @@ func update_hearts(current_hp: int) -> void:
 		max_hp = int(_player.get("max_health"))
 
 	## 移除多餘的心心節點（max_hp 減少時）
+	## ERR-HUD-003 修復：Array.back() 回傳 Variant，必須明確標注型別避免 Variant 推斷錯誤
 	while children.size() > max_hp:
-		var last := children.back()
+		var last: Node = children.back()
 		heart_container.remove_child(last)
 		last.queue_free()
 		children = heart_container.get_children()
