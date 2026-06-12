@@ -27,7 +27,7 @@ const BULLET_SCENE := preload("res://scenes/player/player_bullet.tscn")
 var _local_player_index: int = 1  ## 本機玩家編號（1=Server, 2-4=Client）
 
 ## Rogue-lite 房間生成器
-@onready var _dungeon: DungeonGenerator = $DungeonGenerator
+@onready var _dungeon: Node = $DungeonGenerator
 
 ## 目前房間容器（存放當前已載入的房間場景）
 var _current_room_node: Node = null
@@ -92,7 +92,7 @@ func _start_solo() -> void:
 	## 單機測試：直接生成1個玩家，不需要網路
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "SoloPlayer"
-	player.player_prefix = ""  # 使用預設輸入
+	player.player_prefix = "p1_"  ## 單機用 p1_ 前綴（Input Map 有定義 p1_attack/move 等）
 	player.bullet_scene = BULLET_SCENE  ## 注入子彈場景
 	_players_root.add_child(player)
 	player.global_position = Vector2(100, -50)
@@ -102,7 +102,7 @@ func _start_solo() -> void:
 	## 啟動 Rogue-lite 生成
 	if _dungeon:
 		_dungeon.generate_run()
-		var first_room := _dungeon.advance_room()
+		var first_room: String = _dungeon.advance_room()
 		if not first_room.is_empty():
 			_load_room_scene(first_room)
 			print("[GameWorld] 載入第一間房")
@@ -168,7 +168,7 @@ func load_next_room() -> void:
 		push_warning("[GameWorld] load_next_room: DungeonGenerator 不存在")
 		return
 
-	var next_path := _dungeon.advance_room()
+	var next_path: String = _dungeon.advance_room()
 	if next_path.is_empty():
 		## Run 完成，回到主選單或顯示結算畫面
 		print("[GameWorld] 所有房間已通過！Run 完成")
@@ -200,10 +200,10 @@ func _load_room_scene(scene_path: String) -> void:
 	move_child(_current_room_node, 0)
 
 	## 套用房間難度
-	if _dungeon:
-		var room_def := _dungeon.get_current_room()
-		if room_def:
-			_apply_room_difficulty(room_def.difficulty_bonus)
+	if _dungeon and _dungeon.has_method("get_current_room"):
+		var room_def: Variant = _dungeon.get_current_room()
+		if room_def and room_def.get("difficulty_bonus") != null:
+			_apply_room_difficulty(int(room_def.get("difficulty_bonus")))
 
 	print("[GameWorld] 房間已載入：", scene_path)
 

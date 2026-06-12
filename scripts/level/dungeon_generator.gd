@@ -90,7 +90,9 @@ func generate_run() -> Array[RoomDef]:
 	print("[DungeonGenerator] 生成 ", n_combat, " 間戰鬥房")
 
 	## 2. 生成戰鬥房序列（隨機決定是否為精英）
-	var combat_pool := COMBAT_ROOMS.duplicate()
+	var combat_pool: Array[String] = []
+	for p: String in COMBAT_ROOMS:
+		combat_pool.append(p)
 	combat_pool.shuffle()
 
 	var difficulty := 0
@@ -99,11 +101,11 @@ func generate_run() -> Array[RoomDef]:
 		## 是否升級為精英房
 		var is_elite := rng.randf() < elite_room_chance and i > 0
 		if is_elite:
-			var elite_path := _pick_random(ELITE_ROOMS, rng)
+			var elite_path: String = _pick_random(ELITE_ROOMS, rng)
 			current_run.append(RoomDef.new(RoomType.ELITE, elite_path, difficulty))
 			print("[DungeonGenerator] 房間 ", i + 1, ": 精英房 (", elite_path, ")")
 		else:
-			var combat_path := combat_pool[i % combat_pool.size()]
+			var combat_path: String = combat_pool[i % combat_pool.size()]
 			current_run.append(RoomDef.new(RoomType.COMBAT, combat_path, difficulty))
 			print("[DungeonGenerator] 房間 ", i + 1, ": 普通房 (", combat_path, ")")
 
@@ -113,7 +115,7 @@ func generate_run() -> Array[RoomDef]:
 		print("[DungeonGenerator] 加入休息房")
 
 	## 4. Boss 房（固定在最後）
-	var boss_path := BOSS_ROOM if ResourceLoader.exists(BOSS_ROOM) else COMBAT_ROOMS[0]
+	var boss_path: String = BOSS_ROOM if ResourceLoader.exists(BOSS_ROOM) else COMBAT_ROOMS[0]
 	current_run.append(RoomDef.new(RoomType.BOSS, boss_path, difficulty + 2))
 	print("[DungeonGenerator] Boss 房：", boss_path)
 

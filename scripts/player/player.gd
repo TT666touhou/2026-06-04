@@ -88,6 +88,25 @@ extends CharacterBody2D
 ## 最大傾斜角度（度）
 @export var sway_max_angle: float = 25.0
 
+# ── 戰鬥系統 ────────────────────────────────────────────────────
+@export_group("Combat")
+## 近戰傷害
+@export var melee_damage: int = 1
+## 近戰攻擊範圍（向前）px
+@export var melee_range: float = 28.0
+## 近戰攻擊張數（秒）
+@export_range(0.1, 1.0, 0.05) var melee_duration: float = 0.25
+## 近戰冷卻時間（秒）
+@export_range(0.1, 2.0, 0.05) var melee_cooldown: float = 0.45
+## 遠程子彈傷害
+@export var bullet_damage: int = 1
+## 遠程子彈速度（px/s）
+@export var bullet_speed: float = 280.0
+## 遠程冷卻時間（秒）
+@export_range(0.1, 2.0, 0.05) var ranged_cooldown: float = 0.6
+## 遠程子彈場景（由 GameWorld 動態注入）
+@export var bullet_scene: PackedScene
+
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
@@ -726,32 +745,42 @@ func _handle_invincibility(delta: float) -> void:
 # ═══════════════════════════════════════════════════════════════
 # 戰鬥系統（攻擊輸入處理）
 # ═══════════════════════════════════════════════════════════════
-func _handle_attack(_delta: float) -> void:
+func _handle_attack(delta: float) -> void:
 	## 翻滾中禁止攻擊
 	if _is_rolling:
+		_attack_hold_timer = 0.0
 		return
 
-	var attack_pressed := Input.is_action_just_pressed(player_prefix + "attack")
-	var attack_held    := Input.is_action_pressed(player_prefix + "attack")
+	## 防禦：若 action 不存在則靜默跳過（避免 player_prefix 設定錯誤時崩潰）
+	var action_name := player_prefix + "attack"
+	if not InputMap.has_action(action_name):
+		return
 
-	## 遠程攻擊：長按 > 0.25s 則發射子彈（冷卻獨立）
-	if attack_held and _ranged_cooldown_timer <= 0.0 and not _is_attacking:
-		if Input.get_action_strength(player_prefix + "attack") > 0.0:
-			# 簡易判斷：如果已按著超過一幀（held），選擇遠程
+	var attack_just_off := Input.is_action_just_released(action_name)
+	var attack_held     := Input.is_action_pressed(action_name)
+
+	## 按住計時
+	if attack_held and not _is_attacking:
+		_attack_hold_timer += delta
+		## 長按超過 0.3s → 遠程攻擊
+		if _attack_hold_timer >= 0.3 and _ranged_cooldown_timer <= 0.0:
 			_fire_bullet()
 			_ranged_cooldown_timer = ranged_cooldown
 			attack_state = "RANGED"
-			return
+			_attack_hold_timer = 0.0
+	elif attack_just_off:
+		## 短按釋放（< 0.3s）→ 近戰
+		if _attack_hold_timer < 0.3 and _attack_hold_timer > 0.0 and _melee_cooldown_timer <= 0.0 and not _is_attacking:
+			_perform_melee_attack()
+			_is_attacking = true
+			_melee_timer = melee_duration
+			_melee_cooldown_timer = melee_cooldown
+			attack_state = "MELEE"
+		_attack_hold_timer = 0.0
+	elif not attack_held:
+		_attack_hold_timer = 0.0
 
-	## 近戰攻擊：單次按鍵
-	if attack_pressed and _melee_cooldown_timer <= 0.0 and not _is_attacking:
-		_perform_melee_attack()
-		_is_attacking = true
-		_melee_timer = melee_duration
-		_melee_cooldown_timer = melee_cooldown
-		attack_state = "MELEE"
-
-	## 攻擊結束重置
+	## 攻擊張數結束重置
 	if _is_attacking and _melee_timer <= 0.0:
 		_is_attacking = false
 		attack_state = "IDLE"

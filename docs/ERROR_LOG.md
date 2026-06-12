@@ -41,4 +41,17 @@
 | 2026-06-12 | `multiplayer` 初始化 | 始終先 `has_multiplayer_peer()` 再呼叫 peer 相關 API；單機流程不需要 `ENetMultiplayerPeer` |
 | 2026-06-12 | 玩家 group 追蹤 | `add_to_group("Players")` 在 `_ready()` 中執行；DebugBridge 和 MultiplayerCamera 都通過 `get_tree().get_nodes_in_group("Players")` 取得玩家 |
 | 2026-06-12 | 相機 Limit Marker | CamLimit Marker2D 放在 MultiplayerCamera 的**子節點**下，NodePath 用相對路徑 `CamLimitTop` |
-| 2026-06-12 | 多玩家輸入 | `player_prefix` 變數在 `@export_group("Multiplayer")` 下宣告；input action 格式為 `{prefix}move_left`，prefix 為 `""/"p1_"/"p2_"` 等 |
+| 2026-06-12 | 多玩家輸入 | `player_prefix` 變數在 `@export_group("Multiplayer")` 下宣告；input action 格式為 `{prefix}move_left`，prefix 為 `""/"p1_/"p2_"` 等 |
+| 2026-06-12 | 攻擊系統設計 | 短按 < 0.3s = 近戰 (`_perform_melee_attack`)；長按 >= 0.3s = 遠程 (`_fire_bullet`)；用 `_attack_hold_timer` 計時；翻滾時禁止攻擊 |
+| 2026-06-12 | Rogue-lite 房間生成 | `DungeonGenerator` 用 `class_name DungeonGenerator`；GameWorld 的 `@onready var _dungeon: Node`（不能用 DungeonGenerator 型別因前向引用問題）；`advance_room()` 回傳 `String`，明確宣告 `var x: String = _dungeon.advance_room()` |
+
+---
+
+## Phase 1.5+3 新錯誤記錄（2026-06-12）
+
+| 日期 | 錯誤類型 | 錯誤訊息摘要 | 根本原因 | 修復方法 |
+|------|---------|------------|---------|---------| 
+| 2026-06-12 | GDScript 型別推斷 | `Cannot infer the type of "X" variable` | `Array.duplicate()` 回傳 `Array`（非 `Array[String]`），`_dungeon.advance_room()` 回傳 `Variant`（因 _dungeon 是 Node 型別）；三元運算式 `A if cond else B` 若兩邊型別不同也無法推斷 | 明確標注型別：`var x: String = ...`；對 Array 用 `for p: String in CONST: arr.append(p)` 填入 `Array[String]` |
+| 2026-06-12 | `class_name` 前向引用 | `Could not find type "DungeonGenerator" in the current scope` 在 game_world.gd | Godot `--check-only` 處理 `class_name` 跨腳本引用時有順序問題 | 在 GameWorld 中用 `Node` 而非 `DungeonGenerator` 型別，用 `.has_method()` 確認再呼叫 |
+| 2026-06-12 | multi_replace 插入失敗 | Export 群組未被插入 | `multi_replace_file_content` 的 chunk 對應的行範圍太大或 TargetContent 有多處匹配時，靜默失敗 | 修複方案：改用 `replace_file_content`，或將插入 chunk 縮小到精確的 2-3 行範圍；插入後立即用 `view_file` 確認 |
+| 2026-06-12 | InputMap action 不存在 | `The InputMap action "attack" doesn't exist. Did you mean "p1_attack"?` — 每幀爆錯 | 單機 `_start_solo()` 設定 `player_prefix = ""`，導致 `"" + "attack" = "attack"` 不在 Input Map（只有 `p1_attack`, `p2_attack` 等）| **雙重修復**：1) `_start_solo()` 改為 `player_prefix = "p1_"`；2) `_handle_attack()` 加入 `if not InputMap.has_action(action_name): return` 守衛，防禦性設計 |
