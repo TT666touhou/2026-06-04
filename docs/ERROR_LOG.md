@@ -27,6 +27,7 @@
 | 2026-06-12 | `multiplayer` 空指標 | `Invalid call. Nonexistent function 'is_server' on null` | 在 `_ready()` 中直接調用 `multiplayer.is_server()` 但 `MultiplayerAPI` 尚未設定 peer | 先用 `multiplayer.has_multiplayer_peer()` 確認有 peer 再調用其他方法 |
 | 2026-06-12 | Godot `--check-only` 無法偵測 .tscn 錯誤 | `gw_err.log` 顯示腳本錯誤但 check 指令顯示通過 | `--check-only` 只驗證 GDScript，不完整載入場景 | 需要實際執行（不帶 `--check-only`）或用 `--headless --path <project>` 完整啟動才能發現 .tscn 問題 |
 | 2026-06-12 | `AnimatableBody2D` 沒有碰撞 | 天花板/物理邊界沒有實際碰撞效果 | `AnimatableBody2D` 需要通過程式碼或動畫移動才會觸發碰撞，靜止時不阻擋 | 靜止的邊界牆/天花板改用 `StaticBody2D`；只有需要動態移動的平台才用 `AnimatableBody2D` |
+| 2026-06-13 | [ERR-HUD-003] GDScript Variant 推斷錯誤（Array.back()） | `The variable type is being inferred from a Variant value, so it will be typed as Variant. (Warning treated as error.)` line 83 `player_hud.gd` | `Array.back()` 在 GDScript 4 回傳 `Variant`（非型別化），用 `:=` 推斷時觸發 Variant warning→error | 用明確型別標注：`var last: Node = children.back()` 而非 `var last := children.back()`。原因：Developer 在上一輪修復 HUD 時未做靜態型別全面檢查，Sensor 沒有跑 `--check-only`（v3 缺少此步），未被攔截 |
 
 ---
 
@@ -34,6 +35,7 @@
 
 | 日期 | 場景 | 正確做法 |
 |------|------|---------|
+| 2026-06-13 | [PATTERN-ARR] Array.back() 型別標注 | ar last: Node = children.back() — 明確標注型別，不用 := | Array.back()/.front()/.pop_back() 等方法回傳 Variant，嚴格模式下 := 會觸發 Variant 推斷 warning→error。永遠使用 ar x: ActualType = arr.back() |
 | 2026-06-12 | 寫入 Godot 文件（.gd/.tscn/.tres）| 使用 `[System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding $false))` 確保無 BOM |
 | 2026-06-12 | 手動建立 `.tscn` | `[gd_scene format=4]`（不加 uid）+ `[ext_resource]` 只引用已存在的 UID；SubResource 定義必須在引用之前 |
 | 2026-06-12 | 主場景設定 | `project.godot` 中用路徑 `res://scenes/level/game_world.tscn` 而非 UID，Godot 啟動後自動更新為 UID |
