@@ -153,7 +153,12 @@ var _atlas_cache: Dictionary = {}
 
 var _skin_index: int = 0
 
+## 多人模式：本機玩家的輸入前綴（"" / "p1_" / "p2_" / "p3_" / "p4_"）
+## 由 GameWorld._spawn_player 設定
+var player_prefix: String = ""
+
 @onready var appearance: TileMapLayer = $VisualPivot/Appearance
+@onready var _visual_pivot: Node2D = $VisualPivot
 
 # ═══════════════════════════════════════════════════════════════
 # Multiplayer Authority
@@ -175,6 +180,10 @@ func _is_authority() -> bool:
 func _ready() -> void:
 	_cached_floor_ramp = _fallback_ramp()
 	_stamina = max_stamina
+	
+	## Debug 整合：加入 Players group，讓 DebugBridge 自動追蹤
+	add_to_group("Players")
+	print("[Player] 初始化完成 — name:", name, " prefix:'", player_prefix, "'")
 	
 	# Multiplayer Synchronizer 設定（在 _enter_tree 之後執行，authority 已設定）
 	var sync := MultiplayerSynchronizer.new()

@@ -18,7 +18,8 @@ const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 
 @onready var _spawner: MultiplayerSpawner = $MultiplayerSpawner
 @onready var _players_root: Node2D = $Players
-## MultiplayerCamera 由場景節點持有，此處不需要對應的 onready
+# _camera 由 MultiplayerCamera 場景節點自行 make_current()
+# 此處不需持有參照
 
 var _local_player_index: int = 1  ## 本機玩家編號（1=Server, 2-4=Client）
 
@@ -61,22 +62,20 @@ func _ready() -> void:
 		_start_solo()
 
 func _start_as_server() -> void:
-	var nm := get_node_or_null("/root/NetworkManager")
+	var nm: Node = get_node_or_null("/root/NetworkManager")
 	if nm:
-		var err: Error = nm.host_game()
+		var err: int = nm.host_game()
 		if err == OK:
 			print("[GameWorld] Server 啟動成功，等待玩家連線...")
-			# Server 自己也是玩家1，立即生成
 			_spawn_player(multiplayer.get_unique_id(), 0)
 		else:
 			push_error("[GameWorld] Server 啟動失敗：%d" % err)
-	
 	multiplayer.peer_connected.connect(_on_peer_connected_server)
 
 func _start_as_client() -> void:
-	var nm := get_node_or_null("/root/NetworkManager")
+	var nm: Node = get_node_or_null("/root/NetworkManager")
 	if nm:
-		var err: Error = nm.join_game(HOST)
+		var err: int = nm.join_game(HOST)
 		if err != OK:
 			push_error("[GameWorld] Client 連線失敗：%d" % err)
 

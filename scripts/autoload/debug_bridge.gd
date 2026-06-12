@@ -87,10 +87,9 @@ func _collect_state() -> Dictionary:
 			p["is_authority"] = true
 		
 		# 位置與速度
-		var pos: Vector2 = player.global_position
-		var vel: Vector2 = Vector2.ZERO
-		if player.get("velocity") != null:
-			vel = player.velocity
+		var pos: Vector2 = Vector2(player.global_position) if player.get("global_position") != null else Vector2.ZERO
+		var raw_vel: Variant = player.get("velocity")
+		var vel: Vector2 = Vector2(raw_vel) if raw_vel != null else Vector2.ZERO
 		p["position"] = {"x": snappedf(pos.x, 0.1), "y": snappedf(pos.y, 0.1)}
 		p["velocity"] = {"x": snappedf(vel.x, 0.1), "y": snappedf(vel.y, 0.1)}
 		
@@ -132,7 +131,8 @@ func _collect_state() -> Dictionary:
 	state["enemy_count"] = enemies_data.size()
 	
 	# ── 場景資訊 ─────────────────────────────────────────────────
-	var scene := get_tree().current_scene
-	state["current_scene"] = scene.name if scene else "null"
+	var scene: Node = get_tree().current_scene
+	var scene_name: String = scene.name if scene != null else "null"
+	state["current_scene"] = scene_name
 	
 	return state
