@@ -1,0 +1,95 @@
+[gd_scene format=4]
+
+[ext_resource type="Script" uid="uid://ws6fjmxod7s2" path="res://scripts/level/game_world.gd" id="1_gwscr"]
+[ext_resource type="Script" uid="uid://eyrcpe4yncj6" path="res://scripts/camera/multiplayer_camera.gd" id="2_camscr"]
+[ext_resource type="PackedScene" uid="uid://b0yuquq5kh52u" path="res://scenes/player/player.tscn" id="3_plscn"]
+[ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="4_tiles"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(800, 32)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_2"]
+size = Vector2(800, 16)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_3"]
+size = Vector2(16, 400)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4"]
+size = Vector2(16, 400)
+
+[node name="GameWorld" type="Node"]
+script = ExtResource("1_gwscr")
+
+[node name="Players" type="Node2D" parent="."]
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Players")
+spawn_limit = 4
+_spawnable_scenes = PackedStringArray("res://scenes/player/player.tscn")
+
+[node name="MultiplayerCamera" type="Camera2D" parent="."]
+script = ExtResource("2_camscr")
+max_zoom = 4.0
+min_zoom = 1.5
+zoom_margin = 80.0
+follow_speed = 5.0
+zoom_speed = 3.0
+vertical_offset = -20.0
+limit_top_path = NodePath("CamLimitTop")
+limit_bottom_path = NodePath("CamLimitBottom")
+limit_left_path = NodePath("CamLimitLeft")
+limit_right_path = NodePath("CamLimitRight")
+
+[node name="CamLimitTop" type="Marker2D" parent="MultiplayerCamera"]
+position = Vector2(0, -300)
+
+[node name="CamLimitBottom" type="Marker2D" parent="MultiplayerCamera"]
+position = Vector2(0, 80)
+
+[node name="CamLimitLeft" type="Marker2D" parent="MultiplayerCamera"]
+position = Vector2(-400, 0)
+
+[node name="CamLimitRight" type="Marker2D" parent="MultiplayerCamera"]
+position = Vector2(400, 0)
+
+[node name="Ground" type="StaticBody2D" parent="."]
+collision_layer = 1
+collision_mask = 0
+
+[node name="FloorShape" type="CollisionShape2D" parent="Ground"]
+position = Vector2(0, 16)
+shape = SubResource("RectangleShape2D_1")
+
+[node name="WorldLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("4_tiles")
+texture_filter = 1
+texture_repeat = 2
+tile_map_data = PackedByteArray("AADn/wAAAgAKABUACADo/wAAAgAKABUABQDp/wAAAgAKABUAAgDq/wAAAgAMABUABADr/wAAAgANABUABQDs/wAAAgAMABUABwDt/wAAAgANABUABgDu/wAAAgALABUABwDv/wAAAgANABUABADw/wAAAgANABUABgDx/wAAAgAKABUABQDy/wAAAgAKABUABADz/wAAAgAKABUABQAAAA==")
+
+[node name="BackGroundLayer" type="TileMapLayer" parent="."]
+tile_set = ExtResource("4_tiles")
+
+[node name="Ceiling" type="AnimatableBody2D" parent="."]
+position = Vector2(0, -300)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CeilShape" type="CollisionShape2D" parent="Ceiling"]
+position = Vector2(0, 8)
+shape = SubResource("RectangleShape2D_2")
+
+[node name="WallLeft" type="StaticBody2D" parent="."]
+position = Vector2(-408, -150)
+collision_layer = 1
+collision_mask = 0
+
+[node name="WallLeftShape" type="CollisionShape2D" parent="WallLeft"]
+shape = SubResource("RectangleShape2D_3")
+
+[node name="WallRight" type="StaticBody2D" parent="."]
+position = Vector2(408, -150)
+collision_layer = 1
+collision_mask = 0
+
+[node name="WallRightShape" type="CollisionShape2D" parent="WallRight"]
+shape = SubResource("RectangleShape2D_4")

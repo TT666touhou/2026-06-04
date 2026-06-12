@@ -71,6 +71,33 @@ fi
 echo "   ✅ LFS 檢查通過"
 
 # ——————————————————————————————————————
+# [通用規則 1b] BOM 偵測與自動修復（.tscn / .tres / .gd）
+# ——————————————————————————————————————
+echo "[通用/1b] 偵測並移除 UTF-8 BOM..."
+BOM_FIXED=0
+BOM_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres|godot)$' || true)
+for f in $BOM_FILES; do
+    if [ -f "$f" ]; then
+        # 用 xxd 讀取前3個字節，判斷是否為 EF BB BF (UTF-8 BOM)
+        HEADER=$(head -c 3 "$f" | xxd -p 2>/dev/null || true)
+        if [ "$HEADER" = "efbbbf" ]; then
+            # 用 dd 跳過前3字節重寫文件
+            TMP_FILE="${f}.nobom.tmp"
+            dd if="$f" bs=1 skip=3 of="$TMP_FILE" 2>/dev/null
+            mv "$TMP_FILE" "$f"
+            git add "$f"
+            echo "   🔧 已移除 BOM：$f"
+            BOM_FIXED=$((BOM_FIXED + 1))
+        fi
+    fi
+done
+if [ $BOM_FIXED -gt 0 ]; then
+    echo "   ⚠️  已自動移除 $BOM_FIXED 個文件的 BOM（已重新 stage）"
+else
+    echo "   ✅ 無 BOM 問題"
+fi
+
+# ——————————————————————————————————————
 # [通用規則 2] 機密掃描
 # ——————————————————————————————————————
 echo "[通用/2] 掃描機密資訊洩露..."
