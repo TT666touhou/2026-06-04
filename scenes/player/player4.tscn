@@ -52,6 +52,17 @@ position = Vector2(0, 6)
 shape = SubResource("RectangleShape2D_floor")
 target_position = Vector2(0, 4)
 
+
+[node name="MeleeVFXPivots" type="Node2D" parent="."]
+
+[node name="Hit1Pivot" type="Marker2D" parent="MeleeVFXPivots"]
+position = Vector2(22, -6)
+
+[node name="Hit2Pivot" type="Marker2D" parent="MeleeVFXPivots"]
+position = Vector2(22, -8)
+
+[node name="Hit3Pivot" type="Marker2D" parent="MeleeVFXPivots"]
+position = Vector2(24, -6)
 [node name="PlayerDust" parent="." unique_id=559034821 instance=ExtResource("4_dust")]
 
 [node name="HUDLayer" type="CanvasLayer" parent="." unique_id=314159265]
