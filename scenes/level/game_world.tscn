@@ -64,7 +64,6 @@ shape = SubResource("RectangleShape2D_1")
 tile_set = ExtResource("4_tiles")
 texture_filter = 1
 texture_repeat = 2
-tile_map_data = PackedByteArray("AADn/wAAAgAKABUACADo/wAAAgAKABUABQDp/wAAAgAKABUAAgDq/wAAAgAMABUABADr/wAAAgANABUABQDs/wAAAgAMABUABwDt/wAAAgANABUABgDu/wAAAgALABUABwDv/wAAAgANABUABADw/wAAAgANABUABgDx/wAAAgAKABUABQDy/wAAAgAKABUABADz/wAAAgAKABUABQAAAA==")
 
 [node name="BackGroundLayer" type="TileMapLayer" parent="."]
 tile_set = ExtResource("4_tiles")
