@@ -97,6 +97,9 @@ func _start_solo() -> void:
 	_players_root.add_child(player)
 	player.global_position = Vector2(100, -50)
 	player.apply_player_color(0)
+	## 連接死亡信號
+	if player.has_signal("died"):
+		player.died.connect(_on_player_died.bind(player))
 	print("[GameWorld] 單機玩家生成完成")
 
 	## 啟動 Rogue-lite 生成
@@ -139,6 +142,9 @@ func _spawn_player(peer_id: int, skin_index: int) -> void:
 	_players_root.add_child(player)
 	player.global_position = Vector2(80 + skin_index * 40, -50)  ## 分散生成位置
 	player.apply_player_color(skin_index)
+	## 連接死亡信號
+	if player.has_signal("died"):
+		player.died.connect(_on_player_died.bind(player))
 	
 	print("[GameWorld] 玩家節點已建立：name=%s, skin=%d, auth=%s" % [
 		player.name, skin_index, str(player.is_multiplayer_authority())
@@ -170,12 +176,42 @@ func load_next_room() -> void:
 
 	var next_path: String = _dungeon.advance_room()
 	if next_path.is_empty():
-		## Run 完成，回到主選單或顯示結算畫面
+		## Run 完成，顯示結算畫面
 		print("[GameWorld] 所有房間已通過！Run 完成")
-		## TODO Phase 3.3: 顯示結算畫面
+		get_tree().change_scene_to_file("res://scenes/ui/run_complete.tscn")
 		return
 
 	_load_room_scene(next_path)
+
+## 玩家死亡處理
+func _on_player_died(player: Node) -> void:
+	print("[GameWorld] 玩家 %s 死亡" % player.name)
+	## 檢查是否所有玩家幹亡
+	var alive_count := 0
+	for p: Node in _players_root.get_children():
+		if p.visible and p.is_physics_processing():
+			alive_count += 1
+	if alive_count <= 0:
+		## 全部死亡 → Game Over
+		print("[GameWorld] Game Over - 所有玩家死亡")
+		get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/game_over.tscn")
+	else:
+		## 尚有存活玩家，3秒後重生
+		var t := get_tree().create_timer(3.0)
+		t.timeout.connect(_respawn_player.bind(player))
+
+## 重生玩家
+func _respawn_player(player: Node) -> void:
+	if not is_instance_valid(player):
+		return
+	player.visible = true
+	player.set_physics_process(true)
+	if player.has_method("take_damage"):
+		pass  ## 重生不回血（可撴充）
+	if player.get("current_health") != null:
+		player.current_health = 1  ## 重生為 1 HP
+	player.global_position = Vector2(100, -50)  ## 回到起始點
+	print("[GameWorld] 玩家 %s 重生" % player.name)
 
 ## 實際載入房間場景（加入為子節點而非切換主場景）
 func _load_room_scene(scene_path: String) -> void:
@@ -199,13 +235,44 @@ func _load_room_scene(scene_path: String) -> void:
 	add_child(_current_room_node)
 	move_child(_current_room_node, 0)
 
+	## ─── 清除房間內硬編碼的 Player 和 Camera（避免衝突）───
+	## 某些舊房間場景包含靜態 Player/Camera 節點，這會與
+	## GameWorld 動態生成的玩家和 MultiplayerCamera 衝突
+	_cleanup_room_conflicts(_current_room_node)
+
 	## 套用房間難度
 	if _dungeon and _dungeon.has_method("get_current_room"):
 		var room_def: Variant = _dungeon.get_current_room()
 		if room_def and room_def.get("difficulty_bonus") != null:
 			_apply_room_difficulty(int(room_def.get("difficulty_bonus")))
 
+	## 重設玩家位置到房間起始點
+	_reset_player_positions()
+
 	print("[GameWorld] 房間已載入：", scene_path)
+
+## 清除房間內硬編碼的 Player 和 Camera 節點（避免與動態生成衝突）
+func _cleanup_room_conflicts(room_node: Node) -> void:
+	var nodes_to_remove: Array[Node] = []
+	for child: Node in room_node.get_children():
+		## 移除硬編碼的 Player（群組 "Players" 或 class CharacterBody2D named "Player"）
+		if child.is_in_group("Players"):
+			nodes_to_remove.append(child)
+			print("[GameWorld] 清除房間內硬編碼 Player：", child.name)
+		## 移除房間內的靜態相機（Camera2D 類型）
+		elif child is Camera2D:
+			nodes_to_remove.append(child)
+			print("[GameWorld] 清除房間內硬編碼 Camera：", child.name)
+	for n: Node in nodes_to_remove:
+		n.queue_free()
+
+## 重設所有玩家到生成位置
+func _reset_player_positions() -> void:
+	var spawn_x := 100
+	var players := _players_root.get_children()
+	for i: int in range(players.size()):
+		var p := players[i]
+		p.global_position = Vector2(spawn_x + i * 40, -50)
 
 ## 套用房間難度（影響敵人數量）
 func _apply_room_difficulty(bonus: int) -> void:

@@ -149,6 +149,7 @@ var _facing: float = 1.0   # 1=右, -1=左
 
 # ── 生命與無敵幀 ──────────────────────────────────────────────────
 signal health_changed(new_health: int)
+signal died
 
 @export_group("Health")
 @export var max_health: int = 3
@@ -727,8 +728,18 @@ func take_damage(amount: int) -> void:
 
 func die() -> void:
 	print("[Player] Died!")
-	# 重新載入場景 (使用 call_deferred 避免在物理 callback 中直接銷毀物理節點)
-	get_tree().call_deferred("reload_current_scene")
+	## 發出死亡信號，由 GameWorld 決定重生或 Game Over
+	## 不在這裡直接 reload（避免多人模式衝突）
+	died.emit()
+	## 隱藏玩家但不銷毀（等待 GameWorld 決策）
+	visible = false
+	set_physics_process(false)
+
+## 回復指定 HP（由休息房呼叫）
+func heal(amount: int) -> void:
+	current_health = clampi(current_health + amount, 0, max_health)
+	health_changed.emit(current_health)
+	print("[Player] Healed! HP now: ", current_health)
 
 func _handle_invincibility(delta: float) -> void:
 	if _i_frame_timer > 0.0:

@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://b0yuquq5kh52u" path="res://scenes/player/player.tscn" id="3_plscn"]
 [ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="4_tiles"]
 [ext_resource type="Script" path="res://scripts/level/dungeon_generator.gd" id="5_dungscr"]
+[ext_resource type="PackedScene" path="res://scenes/ui/player_hud.tscn" id="6_hudscn"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(800, 32)
@@ -96,3 +97,14 @@ collision_mask = 0
 
 [node name="WallRightShape" type="CollisionShape2D" parent="WallRight"]
 shape = SubResource("RectangleShape2D_4")
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="PlayerHUD" type="Control" parent="HUDLayer" instance=ExtResource("6_hudscn")]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

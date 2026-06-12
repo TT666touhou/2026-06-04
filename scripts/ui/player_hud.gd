@@ -1,72 +1,96 @@
 extends Control
 class_name PlayerHUD
+## PlayerHUD — 玩家血條 HUD
+## 掛在 game_world.tscn 的 CanvasLayer 下
+## 自動搜尋 Players group 的玩家並顯示血條
 
 @onready var heart_container: HBoxContainer = $HeartContainer
 
 var heart_solid: AtlasTexture
 var heart_empty: AtlasTexture
-var _player: Node2D = null
+var _player: Node = null
+var _search_timer: float = 0.0
 
 func _ready() -> void:
-	# 載入愛心圖案 (番茄紅透明底色 source 26)
-	heart_solid = AtlasTexture.new()
-	heart_solid.atlas = load("res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png")
-	heart_solid.region = Rect2(24, 120, 8, 8) # (3,15)
-	
-	heart_empty = AtlasTexture.new()
-	heart_empty.atlas = load("res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png")
-	heart_empty.region = Rect2(32, 120, 8, 8) # (4,15)
-	
-	_try_connect_player()
+	## 載入愛心圖案
+	var atlas_path := "res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png"
+	if ResourceLoader.exists(atlas_path):
+		var atlas_tex := load(atlas_path)
+		heart_solid = AtlasTexture.new()
+		heart_solid.atlas = atlas_tex
+		heart_solid.region = Rect2(24, 120, 8, 8)
 
-func _process(_delta: float) -> void:
-	if _player == null:
-		_try_connect_player()
+		heart_empty = AtlasTexture.new()
+		heart_empty.atlas = atlas_tex
+		heart_empty.region = Rect2(32, 120, 8, 8)
+
+	## 等一幀讓玩家先生成
+	call_deferred("_try_connect_player")
+
+func _process(delta: float) -> void:
+	## 若尚未連到玩家，每 0.5 秒重試一次
+	if _player == null or not is_instance_valid(_player):
+		_search_timer -= delta
+		if _search_timer <= 0.0:
+			_search_timer = 0.5
+			_try_connect_player()
 
 func _try_connect_player() -> void:
-	# Search up the tree to find the player node
-	var current_node = self
-	var player = null
-	while current_node != null:
-		if current_node.has_method("take_damage"): # A good indicator of player/character
-			player = current_node
+	## 從 Players group 取得本地玩家（p1_前綴）
+	var players := get_tree().get_nodes_in_group("Players")
+	if players.is_empty():
+		return
+
+	## 優先取有 player_prefix 的本地玩家；否則取第一個
+	var target: Node = null
+	for p: Node in players:
+		if p.get("player_prefix") != null and not p.get("player_prefix").is_empty():
+			target = p
 			break
-		current_node = current_node.get_parent()
-		
-	if player:
-		_player = player
-		if not player.health_changed.is_connected(update_hearts):
-			player.health_changed.connect(update_hearts)
-		update_hearts(player.current_health)
+	if target == null:
+		target = players[0]
+
+	if target == _player:
+		return  ## 已連接
+
+	_player = target
+	if target.has_signal("health_changed"):
+		if not target.health_changed.is_connected(update_hearts):
+			target.health_changed.connect(update_hearts)
+	if target.get("current_health") != null:
+		update_hearts(int(target.current_health))
+	print("[PlayerHUD] 連接到玩家：", target.name)
 
 func update_hearts(current_hp: int) -> void:
-	# 獲取 Camera2D zoom 來動態計算顯示尺寸，確保與 Player 大小一致
-	var cam_zoom: float = 3.0
-	var scene = get_tree().current_scene
-	if scene != null:
-		var camera = scene.find_child("SceneCamera", true, false)
-		if camera and "cam_zoom" in camera:
-			cam_zoom = float(camera.cam_zoom)
-		elif camera and camera is Camera2D:
-			cam_zoom = camera.zoom.x
-		
-	# 計算尺寸：Player 是 16x16 像素，縮小/放大後在螢幕上的高度是 16 * cam_zoom
-	# 愛心原始是 8x8，因此在 UI 空間中我們將大小設為 16 * cam_zoom 即可跟 player 尺寸一樣大！
-	var heart_size := 16.0 * cam_zoom
-	
-	# 更新心形節點
-	var children = heart_container.get_children()
-	for i in range(3):
+	## 動態計算 heart 大小（配合 camera zoom）
+	var heart_size := 48.0
+	var cam := get_tree().get_root().find_child("MultiplayerCamera", true, false) as Camera2D
+	if cam:
+		heart_size = 8.0 * cam.zoom.x
+
+	var children := heart_container.get_children()
+	var max_hp := 3
+	if _player and _player.get("max_health") != null:
+		max_hp = int(_player.get("max_health"))
+
+	for i: int in range(max_hp):
 		var rect: TextureRect
 		if i < children.size():
 			rect = children[i] as TextureRect
 		else:
 			rect = TextureRect.new()
-			# 使用 Nearest Filter 保持像素邊緣清晰
 			rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			rect.stretch_mode = TextureRect.STRETCH_SCALE
 			heart_container.add_child(rect)
-			
+
 		rect.custom_minimum_size = Vector2(heart_size, heart_size)
-		rect.texture = heart_solid if i < current_hp else heart_empty
+		if heart_solid and heart_empty:
+			rect.texture = heart_solid if i < current_hp else heart_empty
+		else:
+			## Fallback：沒有材質時用顏色方塊代替
+			var fallback := ColorRect.new()
+			fallback.size = Vector2(heart_size, heart_size)
+			fallback.color = Color(0.9, 0.1, 0.1) if i < current_hp else Color(0.3, 0.3, 0.3)
+			if i >= children.size():
+				heart_container.add_child(fallback)
