@@ -115,17 +115,6 @@ extends CharacterBody2D
 ## 遠程發射火花特效（右鍵攻擊觸發）
 @export var muzzle_flash_scene: PackedScene
 
-## ── 近戰 VFX 位置偏移（朝右時的偏移，朝左自動鏡像）──────────────
-## 可在 Inspector 直接調整；也可在 Player 場景中拖曳 Marker2D gizmo
-@export_group("Melee VFX Offsets")
-## 第1擊 VFX 偏移（相對 Player 原點，X 為朝右方向）
-@export var melee_vfx1_offset: Vector2 = Vector2(22.0, -6.0)
-## 第2擊 VFX 偏移
-@export var melee_vfx2_offset: Vector2 = Vector2(22.0, -8.0)
-## 第3擊 VFX 偏移
-@export var melee_vfx3_offset: Vector2 = Vector2(24.0, -6.0)
-@export_group("")
-
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
@@ -134,10 +123,10 @@ extends CharacterBody2D
 @onready var _floor_cast: ShapeCast2D = $FloorCast
 @onready var _visual_pivot: Node2D    = $VisualPivot
 @onready var appearance: TileMapLayer = $VisualPivot/Appearance
-## 近戰 VFX Marker2D（可選：在 tscn 中拖曳 gizmo 設定位置；不存在時用 @export offset）
-var _melee_hit1_pivot: Marker2D
-var _melee_hit2_pivot: Marker2D
-var _melee_hit3_pivot: Marker2D
+## 近戰 VFX 刻印點（場景中可視化調整，以右為正面方向）
+@onready var _vfx_hit1_marker: Marker2D = _get_marker("MeleeVFXPivots/Hit1Pivot")
+@onready var _vfx_hit2_marker: Marker2D = _get_marker("MeleeVFXPivots/Hit2Pivot")
+@onready var _vfx_hit3_marker: Marker2D = _get_marker("MeleeVFXPivots/Hit3Pivot")
 
 # ═══════════════════════════════════════════════════════════════
 # 內部狀態
@@ -255,13 +244,6 @@ func _ready() -> void:
 	sync.replication_config = rep
 	add_child(sync)
 	# 注意：Camera 由 MultiplayerCamera 場景節點統一管理，不在 player 內建立
-
-	## 近戰 VFX Marker2D 綁定（可選）
-	## 若 player.tscn 中有 MeleeVFXPivots/Hit1Pivot 等節點，以 Gizmo 位置為準
-	## 否則退回使用 @export melee_vfx1/2/3_offset（Inspector 調整）
-	_melee_hit1_pivot = get_node_or_null("MeleeVFXPivots/Hit1Pivot") as Marker2D
-	_melee_hit2_pivot = get_node_or_null("MeleeVFXPivots/Hit2Pivot") as Marker2D
-	_melee_hit3_pivot = get_node_or_null("MeleeVFXPivots/Hit3Pivot") as Marker2D
 
 ## 設定玩家皮膚 tile（基礎外觀切換）
 func set_skin(index: int) -> void:
@@ -904,42 +886,18 @@ func _do_melee_hit() -> void:
 		tw.tween_property(_visual_pivot, "scale", Vector2(1.2, 0.82), 0.06)
 		tw.tween_property(_visual_pivot, "scale", Vector2(1.0, 1.0), 0.09)
 
-	## 每擊對應不同 VFX 場景
-	## 位置優先順序：1) Marker2D gizmo → 2) @export offset → 3) hardcoded fallback
-	## X 軸自動依 _facing 鏡像（朝右=正值，朝左=自動變負）
-	var face_left := _facing < 0.0
+	## 每擊對應不同 VFX，位置由場景中的 Marker2D 決定（可在 Godot Editor 調整）
+	## 釜像規則：x = marker.position.x * _facing；以右為正面方向
 	match _combo_step:
 		1:
-			_spawn_melee_vfx(_get_melee_slash_scene(),
-				_resolve_melee_vfx_pos(_melee_hit1_pivot, melee_vfx1_offset), face_left)
+			## 第1擊：橫斬（slash_01）
+			_spawn_melee_vfx_at_marker(_get_melee_slash_scene(), _vfx_hit1_marker)
 		2:
-			_spawn_melee_vfx(_get_melee_slash2_scene(),
-				_resolve_melee_vfx_pos(_melee_hit2_pivot, melee_vfx2_offset), face_left)
+			## 第2擊：反手斬（slash_02）
+			_spawn_melee_vfx_at_marker(_get_melee_slash2_scene(), _vfx_hit2_marker)
 		3:
-			_spawn_melee_vfx(_get_melee_impact3_scene(),
-				_resolve_melee_vfx_pos(_melee_hit3_pivot, melee_vfx3_offset), face_left)
-
-## VFX 生成位置解析器
-## 優先使用 Marker2D gizmo 位置；否則使用 @export Vector2 offset（X 依 _facing 鏡像）
-## ─────────────────────────────────────────────────────────────────
-## 【如何手動調整特效位置】
-## 方法 A（推薦）：Marker2D Gizmo
-##   1. 在 Godot Editor 開啟 player1.tscn
-##   2. 選取 MeleeVFXPivots/Hit1Pivot（或 Hit2Pivot / Hit3Pivot）
-##   3. 用 2D 視圖直接拖曳黃色 ✕ 標記到想要的位置
-##   ✓ 位置以朝右為基準；朝左時自動鏡像
-## 方法 B：Inspector @export offset
-##   1. 選取 Player 根節點
-##   2. Inspector → "Melee VFX Offsets" → 修改 melee_vfx1/2/3_offset
-##   ✓ X 值為朝右方向；朝左自動取負
-## ─────────────────────────────────────────────────────────────────
-func _resolve_melee_vfx_pos(pivot: Marker2D, fallback_offset: Vector2) -> Vector2:
-	if pivot != null:
-		## Marker2D 存在：使用 Gizmo 的世界座標位置
-		## （Marker2D 的 position.x 已是朝右值，_facing 鏡像由 tscn 的父節點負責）
-		return global_position + Vector2(pivot.position.x * _facing, pivot.position.y)
-	## 無 Marker2D：退回 @export offset，X 依 _facing 鏡像
-	return global_position + Vector2(fallback_offset.x * _facing, fallback_offset.y)
+			## 第3擊：衝擊爆炸（impact_01）
+			_spawn_melee_vfx_at_marker(_get_melee_impact3_scene(), _vfx_hit3_marker)
 
 ## Fallback loader：優先用 @export，否則動態載入
 func _get_melee_slash_scene() -> PackedScene:
@@ -1045,8 +1003,44 @@ func _spawn_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool = false) -> v
 	if parent:
 		parent.call_deferred("add_child", vfx)
 
-## 近戰 VFX（繼承玩家顏色，支援 flip_h）
-## 用於 3 擊 Combo：slash_01 / slash_02 / impact_01
+## ═══════════════════════════════════════════════════════════════
+## 近戰 VFX（Marker2D 定位系統）
+## ═══════════════════════════════════════════════════════════════
+
+## 主要近戰 VFX 生成函式：從 Marker2D 讀取位置，自動鏡像
+## 以右方向（_facing=1）為正面，面左時 x 取負（mirror）
+func _spawn_melee_vfx_at_marker(vfx_scene: PackedScene, marker: Marker2D) -> void:
+	if vfx_scene == null:
+		return
+	if marker == null:
+		push_warning("[Player] Melee VFX marker is null — 請確認場景中有 MeleeVFXPivots/Hit1-3Pivot 子節點")
+		return
+	var vfx := vfx_scene.instantiate() as Node2D
+	if vfx == null:
+		return
+	## 位置 = 玩家世界座標 + 鏡像後的 marker 偏移
+	## marker.position.x 以「右為正」，面左時 _facing=-1 自動取負
+	vfx.global_position = global_position + Vector2(_facing * marker.position.x, marker.position.y)
+	## flip_h：面左時翻轉
+	var spr := vfx.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	if spr:
+		spr.flip_h = (_facing < 0.0)
+	## 繼承玩家顏色（P1=橙, P2=藍, P3=綠, P4=紫）
+	if _visual_pivot:
+		vfx.modulate = _visual_pivot.modulate
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", vfx)
+
+## 安全取得 Marker2D 節點（@onready 輔助函式）
+func _get_marker(node_path: String) -> Marker2D:
+	var node := get_node_or_null(node_path)
+	if node == null:
+		push_warning("[Player] 找不到 Marker2D：%s — 請確認場景結構" % node_path)
+		return null
+	return node as Marker2D
+
+## [舊介面保留 - 遠程砲擊 VFX / _spawn_vfx 使用] 近戰已改用 _spawn_melee_vfx_at_marker
 func _spawn_melee_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool) -> void:
 	if vfx_scene == null:
 		return
@@ -1054,10 +1048,8 @@ func _spawn_melee_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool) -> voi
 	if vfx == null:
 		return
 	vfx.global_position = pos
-	## 繼承玩家顏色（P1=橙, P2=藍, P3=綠, P4=紫）
 	if _visual_pivot:
 		vfx.modulate = _visual_pivot.modulate
-	## flip_h：直接賦值（不用 toggle）；場景內 flip_h 統一為 false
 	var spr := vfx.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
 	if spr:
 		spr.flip_h = flip_h

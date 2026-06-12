@@ -29,6 +29,9 @@ gravity = 480.0
 friction = 960.0
 jump_velocity = -191.0
 player_prefix = "p4_"
+melee_slash_scene = ExtResource("6_melee_vfx")
+melee_slash2_scene = ExtResource("9_melee_vfx2")
+melee_impact3_scene = ExtResource("10_melee_impact3")
 muzzle_flash_scene = ExtResource("7_ranged_vfx")
 bullet_scene = ExtResource("8_bullet")
 
@@ -68,13 +71,4 @@ position = Vector2(24, -6)
 [node name="HUDLayer" type="CanvasLayer" parent="." unique_id=314159265]
 
 [node name="PlayerHUD" parent="HUDLayer" unique_id=271828182 instance=ExtResource("5_hud")]
-
-[node name="MeleeVFX1" parent="." instance=ExtResource("6_melee_vfx")]
-position = Vector2(22, -6)
-
-[node name="MeleeVFX2" parent="." instance=ExtResource("9_melee_vfx2")]
-position = Vector2(22, -8)
-
-[node name="MeleeVFX3" parent="." instance=ExtResource("10_melee_impact3")]
-position = Vector2(24, -6)
 
