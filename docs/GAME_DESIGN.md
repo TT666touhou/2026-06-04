@@ -13,18 +13,19 @@
 ## 📋 章節狀態總覽
 
 | 章節 | 狀態 | 最後更新 |
-|------|------|---------|
+|------|------|---------| 
 | 遊戲核心概念 | [CONFIRMED] | 2026-06-06 |
-| 視覺風格系統 | [CONFIRMED] | 2026-06-06 |
+| 視覺風格系統 | [CONFIRMED] | 2026-06-12 |
 | 角色組成架構 | [CONFIRMED] | 2026-06-06 |
 | 敵人設計 | [CONFIRMED] | 2026-06-06 |
-| 多人系統 | [DRAFT] | 2026-06-06 |
-| 玩家角色設計 | [DRAFT] | 2026-06-06 |
-| 關卡結構 | [DRAFT] | 2026-06-06 |
-| 戰鬥系統 | [DRAFT] | 2026-06-06 |
+| 多人系統 | [CONFIRMED] | 2026-06-12 |
+| 玩家角色設計 | [CONFIRMED] | 2026-06-12 |
+| 關卡結構 | [CONFIRMED] | 2026-06-12 |
+| 戰鬥系統 | [CONFIRMED] | 2026-06-12 |
+| VFX 視覺特效系統 | [CONFIRMED] | 2026-06-12 |
 | 音效/音樂 | [DRAFT] | 2026-06-06 |
-| 技術限制 | [DRAFT] | 2026-06-06 |
-| **VFX 視覺特效系統** | **[CONFIRMED]** | **2026-06-09** |
+| 技術限制 | [CONFIRMED] | 2026-06-12 |
+| 房間連接系統 | [CONFIRMED] | 2026-06-12 |
 
 ---
 
@@ -37,21 +38,19 @@
 
 ### 1.2 遊戲類型 [CONFIRMED]
 - **主類型**：2D 橫向捲軸動作（Castlevania-style）
-- **次類型**：多人動作（Multiplayer Action）
+- **次類型**：本地多人動作（Local Multiplayer Action）
 - **視覺方向**：像素藝術（Pixel Art）＋哥德/恐怖風格
 
 ### 1.3 核心設計支柱 [CONFIRMED]
 1. **Tile 複合角色**：所有可見實體（角色、敵人、Boss）均由 MRMOTEXT tile 拼接組成
 2. **高性能設計**：使用 Godot 4 TileMapLayer 硬體加速，所有角色為高效率物件
 3. **視覺多樣性**：透過 34 色 VfxMix 調色盤對 tile 染色，產生大量視覺變體
-4. **多人體驗**：強調多人同屏互動
+4. **多人體驗**：強調多人同屏互動，支援 2~4 人本地合作
 
-### 1.4 核心循環 [DRAFT]
+### 1.4 核心循環 [CONFIRMED]
 ```
-待確認：
-關卡入口 → [探索/戰鬥] → [擊敗 Boss] → [進入下一區域]
-或
-大廳組隊 → [隨機/固定關卡] → [清關結算]
+大廳組隊（1~4 人）→ 隨機地牢關卡 → 探索/戰鬥 → 擊敗 Boss → 進入下一區域 → 結算
+房間序列：普通戰鬥房 × N → 精英房（30%機率）→ 休息房（可選）→ Boss 房
 ```
 
 ---
@@ -76,14 +75,20 @@
 | 不死系敵人 | `#5DA16E`（綠）/ `#B1D368`（黃綠） | 殭屍、食屍鬼 |
 | 魔法系敵人 | `#6F81B3`（紫藍）/ `#9D5789`（紫） | 巫師、惡魔 |
 | Boss | 自定義多色組合 | 大型多部件 Boss |
-| 玩家 | 待定（由玩家自選） | [DRAFT] |
+| **玩家 P1** | **`#FF8C42`（暖橙）** | **[CONFIRMED]** |
+| **玩家 P2** | **`#4CC9F0`（冷藍）** | **[CONFIRMED]** |
+| **玩家 P3** | **`#5DA16E`（綠）** | **[CONFIRMED]** |
+| **玩家 P4** | **`#9D5789`（紫）** | **[CONFIRMED]** |
 | 環境/背景 | `#363232`（暗黑）/ `#453C3C`（暗褐） | 城堡牆壁、背景 |
 
 ### 2.3 VFX 系統 [CONFIRMED]
 - **粒子特效**：使用 VfxMix `particle/` 素材作為 GPUParticles2D 貼圖
-- **命中特效**：使用 VfxMix `fx/impact_*` 系列
-- **死亡特效**：使用 VfxMix `fx/death_*` 或 `fx/explosion_little_*` 系列
+- **近戰攻擊特效**：`assets/vfxmix/fx/slash_01.png`（6幀，哥德式刀斬特效）
+- **遠程發射特效**：`assets/vfxmix/fx/spark_01.png`（6幀，魔法火花）
+- **命中特效**：`assets/vfxmix/fx/impact_01.png`（6幀，敵人受傷 impact）
+- **死亡特效**：`assets/vfxmix/fx/death_01.png`（6幀，敵人消散爆裂）
 - **形狀層疊**：VfxMix `shape/` 與 MRMOTEXT 風格一致（黑白輪廓），可直接疊用
+- **行動煙塵**：見「PlayerDust — 玩家行動煙塵特效」章節
 
 ---
 
@@ -100,7 +105,7 @@
 ### 3.2 已設計完成的形象（見 char_design.tscn） [CONFIRMED]
 
 | 編號 | 名稱（暫定） | 外觀描述 | 顏色模式 | 尺寸估計 |
-|------|------------|---------|---------|---------|
+|------|------------|---------|---------|---------| 
 | E-01 | 幽靈/靈魂 | 白色流動身形，骷髏頭，飄浮型 | 白色（原色） | 3×4 tiles |
 | E-02 | 蝙蝠/鳥型 | 小型深色，展翅造型 | 深色 | 2×2 tiles |
 | E-03 | 骷髏士兵 A | 簡易人形，甲胄，小型 | 白色 | 3×4 tiles |
@@ -135,115 +140,145 @@
 - 敵人 AI 採用**狀態機（StateMachine）**設計
 - 同屏敵人數量目標：**20~40 隻不卡頓**
 
-### 4.3 Boss 設計方向 [DRAFT]
+### 4.3 敵人已實作系統 [CONFIRMED]
+- **enemy1.gd**：地面巡邏，接觸攻擊，EnemyStats 資源注入
+- **enemy2.gd**：地面巡邏，含射線感知，spawn_disabled 機制
+- **enemy3.gd**：遠程射擊型，發射 bullet_enemy3.tscn
+- **EnemyStats 資源**：`resources/enemy/basic_enemy_stats.tres`（max_health, speed, attack_damage）
+
+### 4.4 敵人 VFX 系統 [CONFIRMED]
+- **受傷特效**：超白閃（modulate.r=8）→ 紅色（0.05s）→ 原色（0.1s）+ 縮放震動（1.3,0.7 → 0.85,1.2 → 1.0,1.0）+ Impact 特效（`fx/impact_01.png`）
+- **死亡特效**：縮放放大（→1.5x）+ 淡出（0.15s）+ 死亡爆裂 VFX（`fx/death_01.png`）
+- **警戒特效**：警戒時紅色閃爍（0.07s 週期）
+
+### 4.5 Boss 設計方向 [DRAFT]
 > 待設計：大型 Boss 由多個獨立部件（子節點）組成，每個部件可被獨立攻擊/摧毀
 
 ---
 
 ## 👥 5. 多人系統
 
-### 5.1 多人模式 [DRAFT]
+### 5.1 多人模式 [CONFIRMED]
 
-> **待確認**：以下需要用戶做出選擇
+**已確認選擇**：本地多人（Local Co-op），2~4 人
 
-| 選項 | 說明 |
-|------|------|
-| **A. 本地多人（Local Co-op）** | 同螢幕、多控制器，2~4 人 |
-| **B. 線上多人（Online Co-op）** | 網路連線，需要 ENet/WebRTC |
-| **C. 混合模式** | 本地＋線上均支援 |
+| 項目 | 確認內容 |
+|------|---------|
+| **模式** | 本地多人，同螢幕 |
+| **玩家人數** | 2~4 人（彈性） |
+| **輸入方式** | 每位玩家對應 p1_/p2_/p3_/p4_ 前綴的 Input Action |
+| **相機** | 單一共用相機（MultiplayerCamera），動態縮放追蹤所有玩家 |
+| **線上多人** | Phase 1 不做，設計上預留擴展空間 |
 
-> 建議：先實作 **A. 本地多人**，驗證玩法後再加入線上功能
+### 5.2 玩家輸入映射 [CONFIRMED]
 
-### 5.2 玩家人數 [DRAFT]
-> 待確認：2人？4人？
+| 玩家 | 移動 | 跳躍 | 翻滾 | **近戰（左鍵）** | **遠程（右鍵）** |
+|------|------|------|------|--------------|--------------|
+| P1 | A/D | W/Space | Shift | **滑鼠左鍵** | **滑鼠右鍵** |
+| P2 | ←/→ | ↑ | Numpad Enter | **滑鼠左鍵** | **滑鼠右鍵** |
+| P3 | 待設計 | 待設計 | 待設計 | **滑鼠左鍵** | **滑鼠右鍵** |
+| P4 | 待設計 | 待設計 | 待設計 | **滑鼠左鍵** | **滑鼠右鍵** |
+
+> **攻擊設計決策 [CONFIRMED 2026-06-12]**：
+> - **左鍵（LMB）= 近戰**：立即觸發，短範圍矩形掃描攻擊
+> - **右鍵（RMB）= 遠程**：立即觸發，發射玩家子彈
+> - 廢棄舊設計（短按/長按同鍵），因左右鍵分離更直覺
 
 ---
 
 ## 🦸 6. 玩家角色設計
 
-### 6.1 玩家外觀 [DRAFT]
-> 待設計：玩家角色也將使用 Tile Composite 系統，
-> 外觀與敵人使用相同的 MRMOTEXT tileset，但顏色方案不同
+### 6.1 玩家外觀 [CONFIRMED]
+- 使用 Tile Composite 系統，與敵人使用相同的 MRMOTEXT tileset
+- 顏色方案：P1=橙(#FF8C42)、P2=藍(#4CC9F0)、P3=綠(#5DA16E)、P4=紫(#9D5789)
+- 動態顏色採樣：`apply_player_color(skin_index)` 方法
 
-### 6.2 玩家行動能力 [DRAFT]
+### 6.2 玩家行動能力 [CONFIRMED]
 
-| 能力 | 狀態 | 備註 |
-|------|------|------|
-| 行走/跑步 | [DRAFT] | |
-| 跳躍 | [DRAFT] | 單/雙段？ |
-| 衝刺 | [DRAFT] | |
-| 攻擊（近戰） | [DRAFT] | |
-| 攻擊（遠程） | [DRAFT] | |
-| 特殊技能 | [DRAFT] | |
+| 能力 | 狀態 | 具體規格 |
+|------|------|---------|
+| 行走/跑步 | [CONFIRMED] | 最大速度 100px/s，加速度 800px/s²，地面摩擦 800px/s² |
+| 空中移動 | [CONFIRMED] | 空中水平摩擦倍率 0.3 |
+| 跳躍 | [CONFIRMED] | 初速 -297px/s，重力 980px/s²；Coyote Time 0.12s；Jump Buffer 0.15s |
+| 二段跳（Apex Jump） | [CONFIRMED] | 上升期按跳躍→到達最高點自動觸發；下降期立即觸發；耐力消耗 |
+| 蹬牆跳 | [CONFIRMED] | 垂直速度 -268.7px/s，水平速度 90px/s，方向鎖定 0.2s |
+| 翻滾 | [CONFIRMED] | 速度 125px/s，持續 0.3s，冷卻 0.4s；翻滾中有 0.12s 無敵幀 |
+| **近戰攻擊** | **[CONFIRMED]** | **左鍵**；PhysicsShapeQuery 矩形掃描 28px；傷害 1；冷卻 0.45s；持續 0.25s |
+| **遠程攻擊** | **[CONFIRMED]** | **右鍵**；發射 player_bullet.tscn；速度 280px/s；傷害 1；冷卻 0.6s |
+| 視覺傾斜（Sway） | [CONFIRMED] | Second Order Dynamics 彈簧系統；頻率 4.0，阻尼 0.35 |
+| 位置像素對齊 | [CONFIRMED] | snap_position_to_pixel=true，避免 zoom 下模糊 |
+
+### 6.3 耐力系統 [CONFIRMED]
+
+| 參數 | 數值 |
+|------|------|
+| 最大耐力格數 | 3 格 |
+| 恢復速度 | 0.8 格/秒 |
+| 消耗：翻滾 | 1 格 |
+| 消耗：蹬牆跳 | 1 格 |
+| 消耗：二段跳 | 1 格 |
+| 耐力為 0 時 | 無法使用耗耐力動作 |
+
+### 6.4 生命系統 [CONFIRMED]
+
+| 參數 | 數值 |
+|------|------|
+| 最大生命值 | 3 |
+| 受傷無敵幀 | 1.5 秒 |
+| 受傷視覺 | Sprite 快速閃爍（0.1s 週期），透明度交替 |
+| 死亡 | 觸發 `died` 信號，場景負責處理重生/GameOver |
 
 ---
 
 ## 🏰 7. 關卡結構
 
-### 7.1 關卡類型 [DRAFT]
+### 7.1 關卡類型 [CONFIRMED]
+**已確認選擇**：Rogue-lite 隨機生成（選項 C）
 
-| 選項 | 說明 |
-|------|------|
-| **A. 線性關卡制** | 類惡魔城 1-2（通關型） |
-| **B. 銀河惡魔城** | 開放式互通地圖，需要能力解鎖 |
-| **C. 隨機生成** | Rogue-lite 關卡 |
+```
+房間序列：戰鬥房（COMBAT）×N → 精英房（ELITE，30%）→ 休息房（REST，可選）→ Boss 房
+實作：DungeonGenerator（scripts/level/dungeon_generator.gd）
+```
 
-### 7.2 場景美術方向 [DRAFT]
+### 7.2 場景美術方向 [CONFIRMED]
 - 城堡內部（石牆、地下水道）
 - 使用 MRMOTEXT tile 做環境拼接
+- 各房間有獨立的地形設計，非程式生成
 
 ---
 
 ## ⚔️ 8. 戰鬥系統
 
-### 8.1 基礎戰鬥參數 [DRAFT]
+### 8.1 攻擊輸入設計 [CONFIRMED]
 
-| 參數 | 目標值 | 狀態 |
-|------|--------|------|
-| 攻擊幀數 | 待定 | [DRAFT] |
-| 無敵幀 | 待定 | [DRAFT] |
-| 基礎跳躍高度 | 待定 tiles | [DRAFT] |
-| 螢幕同時敵人數 | 20~40 | [CONFIRMED] |
+> **核心決策（2026-06-12）**：左鍵=近戰，右鍵=遠程，無長短按判斷
 
----
+| 攻擊類型 | 觸發 | 機制 | 傷害 | 冷卻 |
+|---------|------|------|------|------|
+| 近戰 | 滑鼠左鍵 | PhysicsShapeQueryParameters2D 矩形掃描 28px | 1 | 0.45s |
+| 遠程 | 滑鼠右鍵 | 發射 player_bullet.tscn，速度 280px/s | 1 | 0.6s |
 
-## 🎵 9. 音效/音樂
+### 8.2 基礎戰鬥參數 [CONFIRMED]
 
-### 9.1 音樂風格 [DRAFT]
-> 待確認：哥德管風琴風格？現代電子 + 管弦？
-
----
-
-## 💻 10. 技術限制與平台
-
-### 10.1 目標平台 [DRAFT]
-
-| 平台 | 狀態 |
+| 參數 | 數值 |
 |------|------|
-| PC (Windows) | [CONFIRMED] 主要平台 |
-| Web (HTML5) | [DRAFT] |
-| Console | [DRAFT] |
+| 近戰攻擊持續幀（秒） | 0.25s |
+| 近戰冷卻 | 0.45s |
+| 遠程冷卻 | 0.6s |
+| 遠程子彈速度 | 280px/s |
+| 子彈 collision_layer | 4（Enemies 層） |
+| 子彈 collision_mask | 14（打敵人+地形） |
+| 玩家受傷無敵幀 | 1.5s |
+| 翻滾無敵幀 | 0.12s |
+| 敵人同屏數量目標 | 20~40 隻 |
 
-### 10.2 技術選型 [CONFIRMED]
+### 8.3 近戰 VFX [CONFIRMED]
+- 攻擊判定後，在攻擊方向生成 `MeleeSlash.tscn`（slash_01.png 6幀動畫）
+- VisualPivot 縮放動畫：scale→(1.3×facing, 0.85)，0.08s，回彈 0.12s
 
-| 項目 | 選擇 |
-|------|------|
-| 引擎 | Godot 4 |
-| 渲染模式 | 2D（Forward+ 或 Compatibility） |
-| 角色外觀 | TileMapLayer（Godot 4 新版） |
-| 物理 | CharacterBody2D |
-| 多人方案 | [DRAFT] ENet / Godot Multiplayer API |
-| 版本控制 | Git + LFS |
-
-### 10.3 Asset 資源清單 [CONFIRMED]
-
-| 資源 | 路徑 | 用途 |
-|------|------|------|
-| MRMOTEXT Extended 1.1 | `assets/tilesets/mrmotext/MRMOTEXT_EX.png` | 角色/敵人主要 tileset |
-| MRMOTEXT x3 | `assets/tilesets/mrmotext/MRMOTEXT-x3.png` | 大型元素 tileset |
-| MRMOTEXT 染色版（34色） | `assets/tilesets/mrmotext/colored/` | 顏色變體 |
-| VfxMix | `assets/vfxmix/` | 全套特效資源 |
-| VfxMix 調色盤 | `assets/vfxmix/palette.pal` | 34色標準調色盤 |
+### 8.4 遠程 VFX [CONFIRMED]
+- 發射子彈瞬間，在子彈出生點生成 `RangedMuzzle.tscn`（spark_01.png 6幀動畫）
+- 子彈繼承玩家顏色（modulate 染色）
 
 ---
 
@@ -284,14 +319,30 @@
 - **不需要修改 TileSet**
 - fallback：`Color(0.65, 0.65, 0.65)`
 
+### 攻擊與敵人 VFX [CONFIRMED]
+
+| VFX | 素材 | 幀數 | 觸發條件 |
+|-----|------|------|---------|
+| 近戰砍擊（MeleeSlash） | `fx/slash_01.png` | 6幀 | 近戰攻擊判定時 |
+| 遠程發射（RangedMuzzle） | `fx/spark_01.png` | 6幀 | 發射子彈時 |
+| 敵人受傷（EnemyHit） | `fx/impact_01.png` | 6幀 | 敵人 take_damage 時 |
+| 敵人死亡（EnemyDeath） | `fx/death_01.png` | 6幀 | 敵人 die() 時 |
+
 ---
 
-## 🚪 9. 房間連接系統（Room Portal System）[CONFIRMED]
+## 🎵 9. 音效/音樂
+
+### 9.1 音樂風格 [DRAFT]
+> 待確認：哥德管風琴風格？現代電子 + 管弦？
+
+---
+
+## 🚪 10. 房間連接系統（Room Portal System）[CONFIRMED]
 
 > **設計靈感**：空洞騎士（Hollow Knight）的房間進出體驗
 > **確認日期**：2026-06-12
 
-### 9.1 核心概念 [CONFIRMED]
+### 10.1 核心概念 [CONFIRMED]
 
 房間之間透過「實體化走廊洞口」連接，玩家實際走入走廊觸發場景切換，而非接觸到牆壁邊緣就瞬間切換。
 
@@ -300,100 +351,56 @@
                ↑ 玩家走進來         ↑ 觸發切換                ↑ 玩家從此出現
 ```
 
-### 9.2 過渡方式 [CONFIRMED]
+### 10.2 過渡方式 [CONFIRMED]
 
 | 項目 | 設計決策 |
-|------|---------|
+|------|---------| 
 | **視覺效果** | **漸黑/漸亮（Fade Out → 換場 → Fade In）** |
 | **持續時間** | 可參數化，預設 0.3～0.5 秒 |
 | **實作方式** | 新 CanvasLayer（z最高）+ ColorRect（純黑）+ Tween 拉透明度 |
 | **HUD 提示** | **無**，全靠玩家自行探索發現 |
 
-### 9.3 出口方向 [CONFIRMED]
+### 10.3 出口方向 [CONFIRMED]
 
-支援四個方向：
-- **左** / **右**（主要，橫向卷軸核心）
-- **上** / **下**（垂直探索，高聳房間可向下墜入另一層）
+支援四個方向：左 / 右（主要）、上 / 下（垂直探索）
 
-每個房間由**關卡設計師手動設計**，決定哪個方向有出口。無出口的方向用 tile 封死（全是牆/地板），有出口的方向留走廊。
-
-### 9.4 走廊洞口規格 [CONFIRMED]
-
-空洞騎士風格的**實體化小走廊**：
-
-```
-   ┌─┐  ←── 上方側牆 (TileMapLayer)
-   │ │  ←── 空洞空間（玩家可行走）
-   │ │  ←── RoomTransition Area2D 觸發區在走廊最深處
-   └─┘  ←── 下方地板 (TileMapLayer)
-```
-
-| 規格項目 | 描述 |
-|---------|------|
-| **走廊寬度** | 至少 2 tile（玩家角色可通行）|
-| **走廊長度** | 4～8 tile（足夠的「前進感」距離）|
-| **走廊內容** | TileMapLayer 拼建側牆 + 地板，用 mrmotext 的牆/地板 tile |
-| **觸發位置** | Area2D 在走廊**最深處**（不在入口），玩家走進去才觸發 |
-| **視覺外觀** | 走廊形狀本身即是視覺指引，外型可多樣（非強制統一）|
-
-### 9.5 門配對系統（Paired Door ID）[CONFIRMED]
-
-每個出口 RoomTransition 有一個 `door_id` 字串。
-載入新房間時，玩家從目標房間中**對應 door_id 的入口**位置出現。
-
-```gdscript
-# 例子
-# 房間 A 的右側出口：door_id = "right_exit"
-# 房間 B 的左側入口：door_id = "right_exit"（相同 ID = 配對）
-# 玩家從 B 的 door_id="right_exit" 的 Marker2D 位置出現
-```
-
-| 欄位 | 說明 |
-|------|------|
-| `door_id: String` | 配對識別碼（ex: "left", "right", "top_hole"）|
-| `spawn_point: Marker2D` | 玩家出現的世界坐標（緊鄰洞口內側）|
-| `target_room_path: String` | 目標房間 .tscn 路徑（或交由 DungeonGenerator）|
-| `target_door_id: String` | 目標房間中要銜接的 door_id |
-
-### 9.6 多人觸發規則 [CONFIRMED]
+### 10.4 多人觸發規則 [CONFIRMED]
 
 - **全部玩家都必須進入走廊的 Area2D 觸發區**，才觸發換房間
-- 與現有的 `_players_in_zone` 計數機制一致（不改）
-- 若有玩家還在外面，觸發區顯示已進入的玩家保持等待
+- 與現有的 `_players_in_zone` 計數機制一致
 
-### 9.7 視覺設計（mrmotext 走廊）[CONFIRMED]
+---
 
-走廊使用 mrmotext tileset 中的牆面 tile 拼接：
-- 側牆使用牆壁 tile（與房間主體牆面風格一致）
-- 地板使用地板 tile
-- **外型非固定**，設計師可自由拼接不同造型的走廊（寬窄、長短、有無障礙物）
-- 走廊本身即代表「這裡可以進入」，不需要額外視覺提示
+## 💻 11. 技術限制與平台
 
-### 9.8 技術架構概要 [DRAFT]
+### 11.1 目標平台 [CONFIRMED]
 
-```
-[需要新增/修改的組件]
+| 平台 | 狀態 |
+|------|------|
+| PC (Windows) | [CONFIRMED] 主要平台 |
+| Web (HTML5) | [DRAFT] |
+| Console | [DRAFT] |
 
-新增：
-├── scripts/level/room_portal.gd      ← 新的 RoomPortal 節點（取代或擴充 RoomTransition）
-│     - @export door_id: String
-│     - @export target_room_path: String  
-│     - @export target_door_id: String
-│     - 觸發後發送 Fade 指令，等 Fade 完成後叫 GameWorld 換場
-├── scripts/ui/screen_fader.gd        ← CanvasLayer + ColorRect + Tween
-│     - fade_out(duration) → signal faded_out
-│     - fade_in(duration)
-│     - 作為 Autoload 或 GameWorld 子節點
-└── scenes/level/portal/              ← 走廊場景庫
-      left_portal.tscn               ← 左側出口走廊
-      right_portal.tscn              ← 右側出口走廊
-      top_portal.tscn                ← 上方出口走廊
-      bottom_portal.tscn             ← 下方出口走廊
+### 11.2 技術選型 [CONFIRMED]
 
-修改：
-└── scripts/level/game_world.gd      ← load_room_scene 需接收目標 door_id 傳入
-                                        並在 _finish_room_load 後定位玩家至對應 spawn_point
-```
+| 項目 | 選擇 |
+|------|------|
+| 引擎 | Godot 4.6.2 |
+| 渲染模式 | 2D（Forward+） |
+| 角色外觀 | TileMapLayer（Godot 4 新版） |
+| 物理 | CharacterBody2D |
+| **多人方案** | **Godot Multiplayer API（MultiplayerSpawner + MultiplayerSynchronizer）** |
+| 版本控制 | Git + LFS |
+
+### 11.3 Asset 資源清單 [CONFIRMED]
+
+| 資源 | 路徑 | 用途 |
+|------|------|------|
+| MRMOTEXT Extended 1.1 | `assets/tilesets/mrmotext/MRMOTEXT_EX.png` | 角色/敵人主要 tileset |
+| MRMOTEXT x3 | `assets/tilesets/mrmotext/MRMOTEXT-x3.png` | 大型元素 tileset |
+| MRMOTEXT 染色版（34色） | `assets/tilesets/mrmotext/colored/` | 顏色變體 |
+| VfxMix | `assets/vfxmix/` | 全套特效資源 |
+| VfxMix 調色盤 | `assets/vfxmix/palette.pal` | 34色標準調色盤 |
 
 ---
 
@@ -408,9 +415,11 @@
 | 2026-06-06 | 目標平台 PC Windows | 主要開發目標 | 用戶 |
 | 2026-06-12 | 房間連接採用 Hollow Knight 走廊洞口風格 | 實體化走廊提供空間感 + 探索回饋 | 用戶 |
 | 2026-06-12 | 過渡效果：漸黑漸亮 Fade（0.3~0.5秒） | 最接近空洞騎士體驗，簡單穩定 | 用戶 |
-| 2026-06-12 | 門配對系統：Paired Door ID | 確保不同圖案的兩個房間都能正確銜接 | 用戶 |
-| 2026-06-12 | 無 HUD 提示，全靠玩家探索 | 保持沉浸感 | 用戶 |
-| 2026-06-12 | 支援四方向出口（左右上下） | 垂直探索豐富房間設計可能性 | 用戶 |
+| 2026-06-12 | 本地多人模式，2~4 人 | 先本地後線上的階段性策略 | 用戶 |
+| 2026-06-12 | 玩家顏色：P1橙、P2藍、P3綠、P4紫 | 視覺區分清晰，與 VfxMix 調色盤相容 | Developer |
+| **2026-06-12** | **攻擊輸入：左鍵=近戰，右鍵=遠程** | **比短按/長按更直覺，降低輸入錯誤率** | **用戶** |
+| **2026-06-12** | **VFX：slash/spark/impact/death 四種特效** | **VfxMix 現有素材直接利用，風格統一** | **Designer** |
+| **2026-06-12** | **敵人死亡：縮放+淡出+死亡VFX** | **程式動畫比逐帧動畫更輕量且效果好** | **Developer** |
 
 ---
 
@@ -418,9 +427,8 @@
 
 > 以下問題需要用戶回答才能繼續設計：
 
-1. **多人模式**：本地多人？線上多人？幾個玩家？
-2. **關卡結構**：線性關卡？銀河惡魔城式開放地圖？隨機生成？
-3. **玩家角色**：要幾個不同職業/角色可選？每人各自獨特技能？
-4. **Boss**：目前有設計任何 Boss 概念嗎？
-5. **音樂**：有任何偏好的音樂風格？
-6. **走廊尺寸**：走廊建議寬度和長度範圍有無特殊偏好（目前：寬 2 tile、長 4~8 tile）？
+1. **P3/P4 鍵盤映射**：P3/P4 的移動/跳躍/翻滾鍵位需要確認（目前只設定了 P1/P2）
+2. **Boss**：目前有設計任何 Boss 概念嗎？
+3. **音樂**：有任何偏好的音樂風格？
+4. **走廊尺寸**：走廊建議寬度和長度範圍有無特殊偏好（目前：寬 2 tile、長 4~8 tile）？
+5. **近戰 VFX 方向**：slash VFX 是否需要鏡像翻轉以符合攻擊方向？（建議：是）
