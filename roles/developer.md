@@ -117,6 +117,20 @@
            Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |
            ForEach-Object { Write-Host "$($_.Filename):$($_.LineNumber) → $($_.Line.Trim())" }
        ⚠️ 未做 Sensor 掃描即提交物理/信號相關代碼 → 視為嚴重違規（ERR-001 前車之鑑）
+          q. 【ERR-023 後】.tscn 文件的安全讀寫協議（防止開頭 '[' 被吃掉）：
+             ❌ 絕對禁止：Get-Content "xxx.tscn" -Encoding UTF8 -Raw （會注入 U+FEFF BOM 字符）
+             ❌ 絕對禁止：Set-Content "xxx.tscn" -Value $c -Encoding UTF8 （會加 BOM 前綴）
+             ✅ 唯一安全方法：
+                $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                $c = [System.IO.File]::ReadAllText("xxx.tscn", [System.Text.Encoding]::UTF8)
+                # ... 做修改（用 .Replace() 而非 -replace 修改標頭）...
+                $c = $c.Replace("[gd_scene load_steps=OLD", "[gd_scene load_steps=NEW")
+                [System.IO.File]::WriteAllText("xxx.tscn", $c, $utf8NoBom)
+             ✅ 寫入後立即驗證第一字節（必做！）：
+                $b = [System.IO.File]::ReadAllBytes("xxx.tscn")
+                if ([char]$b[0] -ne '[') { Write-Error "ERR-023: .tscn header broken!" }
+             根本原因：Get-Content -Encoding UTF8 在遇到 BOM 文件時將 U+FEFF 注入字符串，
+                      後續 -replace 或 Substring(1) 移除 BOM 時會意外消耗第一個 '[' 字元。
 
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：
       memory.search_nodes("arch_decision_[功能名稱]")

@@ -59,3 +59,45 @@
 ### 建議
 - 未來 VFX 添加時，建議在 one_shot_vfx.gd 中加入 @tool 標註方便在 Editor 中預覽
 
+---
+
+## Developer 反省記錄（Session 8 — 2026-06-13）
+
+### 觸發的錯誤
+**ERR-023**: 7個 .tscn 文件標頭缺少 [ 字符
+
+### 根本原因分析
+上一個 Session（2026-06-12）的自動化 .tscn 修改腳本混用了：
+- Get-Content "xxx.tscn" -Encoding UTF8 -Raw — 可能將 BOM 字符 U+FEFF 注入到字符串開頭
+- Set-Content "xxx.tscn" -Value  -Encoding UTF8 — 會在文件前加入 UTF-8 BOM 前綴 (EF BB BF)
+
+多次循環讀寫後，BOM 字符被混入文件內容，最終 BOM 移除步驟 Substring(1) 誤判 [ 為 BOM 字符並將其刪除。
+
+### 影響範圍
+- Enemy1.tscn, Enemy2.tscn, Enemy3.tscn
+- player1.tscn, player2.tscn, player3.tscn, player4.tscn
+- 所有這些場景在 Godot 中無法載入，導致 test_level.tscn / test_room_a.tscn / test_room_b.tscn 也失敗
+
+### 修復方法
+`powershell
+# 對每個受影響文件：
+ = [IO.File]::ReadAllBytes()
+# 移除 BOM（如有）
+ = if ([0] -eq 0xEF -and [1] -eq 0xBB) { 3 } else { 0 }
+ = [Text.Encoding]::UTF8.GetString(, , .Length - )
+# 如果第一個字符不是 '['，補上
+if ([0] -ne '[') {  = '[' +  }
+[IO.File]::WriteAllText(, , (New-Object Text.UTF8Encoding(False)))
+`
+
+### 防範措施（已實施）
+1. sensor-scan.ps1 新增 Check 6/6 — 全專案 .tscn 首字節驗證
+2. hooks/pre-commit 新增 Rule 1c — 提交前 .tscn 標頭格式阻斷
+3. oles/developer.md 新增 Rule q — .tscn 安全讀寫協議
+4. workflow.md 新增 Rule 15 — 修改 .tscn 安全寫入強制規則
+5. docs/ERROR_LOG.md 新增 ERR-023 — 完整根本原因、診斷、修復文檔
+
+### Developer 承諾
+- 未來所有 .tscn 修改將只使用 [IO.File]::ReadAllText + [IO.File]::WriteAllText
+- 每次 .tscn 修改後立即執行首字節驗證
+- 使用 .Replace() 而非 -replace 進行標頭修改以避免正則表達式字符歧義

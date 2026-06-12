@@ -409,3 +409,46 @@
 | 2026-06-12 | After .tscn write | Check bytes[0..2] != EF BB BF; then run Godot headless --quit to confirm no Parse Error |
 | 2026-06-12 | PNG size measurement | Use Python struct.unpack('>II', bytes[16:24]) from PNG header; PowerShell byte offset error-prone |
 | 2026-06-12 | load_steps formula | ext_resource count + sub_resource count + 1 |
+
+---
+
+## ERR-023 .tscn Header Missing Opening '[' Bracket (2026-06-13)
+
+- **Severity**: Critical (scene fails to parse entirely - identical symptom to BOM but different cause)
+- **Error Message**: es://scenes/enemy/Enemy1.tscn:1 - Parse Error: Expected '['
+- **Files Affected**: Enemy1.tscn, Enemy2.tscn, Enemy3.tscn, player1.tscn, player2.tscn, player3.tscn, player4.tscn (7 files)
+- **Error Type**: .tscn Header Format Corruption
+- **Root Cause**: In the previous session, a PowerShell script used -replace to update load_steps counts in .tscn headers. The regex pattern was '\[gd_scene load_steps=\d+' which matched [gd_scene load_steps=5. The replacement string should have been '[gd_scene load_steps=7' (including the [). The [ was PRESENT in the replacement string, so it should have worked. However, the files went through multiple write/read cycles using Set-Content -Encoding UTF8 (which adds UTF-8 BOM) followed by [System.IO.File]::ReadAllText(). In PowerShell, when Get-Content -Encoding UTF8 -Raw reads a BOM-prefixed file, it may inject the BOM character U+FEFF into the string at position 0. When this BOM-tainted string was then passed through another regex -replace, and written back with Set-Content, the BOM became embedded in the file content before the [, causing the effective first content character to be U+FEFF rather than [. The BOM-removal script then ran Substring(1) which removed U+FEFF but left the string starting with gd_scene (missing [). The final write preserved this broken state.
+- **Distinction from ERR-022 (BOM)**: ERR-022 is EF BB BF 5B... (BOM bytes + [). ERR-023 is 67 64 5F... (gd_scene...) — no BOM, but [ is genuinely missing from the file content.
+- **Diagnosis Command**:
+  `powershell
+  Get-ChildItem . -Recurse -Filter *.tscn | ForEach-Object {
+       = [IO.File]::ReadAllBytes(.FullName)
+       = if ([0] -eq 0xEF) { 3 } else { 0 }
+      if ([char][] -ne '[') { Write-Host "BROKEN: " }
+  }
+  `
+- **Fix**:
+  `powershell
+  System.Text.UTF8Encoding = New-Object System.Text.UTF8Encoding False
+   = [IO.File]::ReadAllText()
+  if ([0] -ne '[') { [IO.File]::WriteAllText(, '[' + , System.Text.UTF8Encoding) }
+  `
+- **Prevention**:
+  1. NEVER use Get-Content -Encoding UTF8 -Raw on files that may have BOM — use [IO.File]::ReadAllText() instead
+  2. NEVER use Set-Content -Encoding UTF8 — always use [IO.File]::WriteAllText() with UTF8NoBOM
+  3. After ANY automated .tscn modification, run: $b=[IO.File]::ReadAllBytes(); if([char][0] -ne '[') { "BROKEN" }
+  4. Run sensor-scan.ps1 (check 6/6) which now automatically detects this issue
+  5. Pre-commit hook now blocks commits with broken .tscn headers (rule 1c)
+- **Responsibility**: Developer (primary) — must verify .tscn header after any automated modification. Sensor (secondary) — scan 6/6 now added to catch this.
+
+---
+
+## New Pattern (Session 8 - ERR-023)
+
+| Date | Context | Best Practice |
+|------|---------|--------------|
+| 2026-06-13 | Modifying .tscn headers with PowerShell | NEVER mix Get-Content + Set-Content for .tscn; use ONLY [IO.File]::ReadAllText + [IO.File]::WriteAllText(path, content, UTF8NoBOM) |
+| 2026-06-13 | After any automated .tscn write | Immediately verify: =[IO.File]::ReadAllBytes(); if([char][0] -ne '[') { "ERR-023 DETECTED" } |
+| 2026-06-13 | load_steps update pattern | Use  = .Replace('[gd_scene load_steps=OLD', '[gd_scene load_steps=NEW') not -replace to avoid regex ambiguity with '[' |
+| 2026-06-13 | Sensor scan 6/6 | Run .\scripts\sensor-scan.ps1 before any commit involving .tscn files |

@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # 角色：Sensor（代碼感知守衛）v1
 # 觸發機制：看到關鍵字 → 立即啟動自動掃描與修補流程
 # 設定角色：執行 .\scripts\set-role.ps1 sensor
@@ -272,3 +272,27 @@ Write-Host "✅ [Sensor] 掃描完成"
 | var 宣告在函式中且與較早的 var 同名 | GDScript 重複宣告錯誤 | ERR-018 |
 | Engine.get_frames_per_second() 直接賦值給 int var | float→int narrowing | ERR-020 |
 
+## 📊 Sensor 反省記錄（Session 8 - 2026-06-13）
+
+### 觸發事件
+- **ERR-023**: 7個 .tscn 文件（Enemy1-3, player1-4）第一行缺少 [ 字符
+- **症狀**: Parse Error: Expected '[' at line 1
+- **根本原因**: 上次 Session 的 PowerShell 腳本使用了 Get-Content -Encoding UTF8 混合 Set-Content -Encoding UTF8 處理 .tscn 文件。BOM 字符 U+FEFF 被注入字串，後續的 BOM 移除步驟 Substring(1) 消耗了第一個 [ 字元。
+
+### Sensor 自我學習更新
+
+**新增觸發模式（Level 2）**：
+- 任何對 .tscn 文件使用 Get-Content -Encoding UTF8 或 Set-Content -Encoding UTF8 → 立即提醒使用 [IO.File]::ReadAllText/WriteAllText
+- 任何 .tscn 修改後，首字節不為 [ (0x5B) → ERR-023 緊急修復
+
+**Sensor 掃描腳本 v2 (6/6) 新增項目**：
+- Check 6/6: 所有 .tscn 文件首字節驗證 → 見 scripts/sensor-scan.ps1
+
+**Pre-commit Hook 新增規則**：
+- Rule 1c: .tscn 標頭格式驗證 → 阻斷首字節非 [ 的 .tscn 提交
+
+### Sensor 反省
+1. **ERR-023 盲點分析**: Sensor v2 原有 5 項掃描均未覆蓋「.tscn 首字節完整性」——這是因為前代 Sensor 僅關注 BOM 和 UID，未考慮到文件格式的基礎結構完整性。
+2. **觸發表升級**: Level 2 新增「.tscn 修改後使用 Get-Content/Set-Content」和「.tscn 首字節驗證失敗」兩個模式。
+3. **工具升級**: sensor-scan.ps1 從 5/5 升級到 6/6，pre-commit 從 rule 1b 擴展到 rule 1c。
+4. **給 Architect 的建議**: 應在 developer.md 中明確禁止 Get-Content -Encoding UTF8 用於 .tscn，並提供唯一安全的讀寫模板（已完成）。

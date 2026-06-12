@@ -113,6 +113,43 @@ else
 fi
 
 # ——————————————————————————————————————
+# [通用規則 1c] .tscn 標頭格式驗證（ERR-023）
+# 每個 .tscn 文件第一個有效字節必須是 '[' 
+# PowerShell -replace 操作可能意外剝離開頭的 '[' 字符
+# ——————————————————————————————————————
+echo "[通用/1c] 驗證 .tscn 文件標頭格式（防止 ERR-023）..."
+TSCN_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.tscn$' || true)
+TSCN_HEADER_BROKEN=0
+for f in $TSCN_FILES; do
+    if [ -f "$f" ]; then
+        # 使用 PowerShell 讀取第一個有效字節（跳過 BOM）
+        FIRST_CHAR=$(powershell.exe -NoProfile -Command "
+            \$bytes = [System.IO.File]::ReadAllBytes('$f')
+            \$start = 0
+            if (\$bytes.Length -ge 3 -and \$bytes[0] -eq 0xEF -and \$bytes[1] -eq 0xBB -and \$bytes[2] -eq 0xBF) { \$start = 3 }
+            elseif (\$bytes.Length -ge 2 -and (\$bytes[0] -eq 0xFF -or \$bytes[0] -eq 0xFE)) { \$start = 2 }
+            [char]\$bytes[\$start]
+        " 2>/dev/null || echo "?")
+        if [ "$FIRST_CHAR" != "[" ]; then
+            echo "   ❌ ERR-023: $f 標頭損壞！第一個字符是 '$FIRST_CHAR'，應為 '['"
+            echo "      修復：在文件開頭加入 '[' 字符"
+            echo "      PowerShell: \$c=[IO.File]::ReadAllText('$f'); [IO.File]::WriteAllText('$f','['+\$c,(New-Object Text.UTF8Encoding(\$false)))"
+            TSCN_HEADER_BROKEN=$((TSCN_HEADER_BROKEN + 1))
+        fi
+    fi
+done
+if [ $TSCN_HEADER_BROKEN -gt 0 ]; then
+    echo ""
+    echo "❌ 發現 $TSCN_HEADER_BROKEN 個 .tscn 文件標頭損壞，阻斷 Commit！"
+    echo "   根本原因：PowerShell -replace 操作消耗了 '[' 字符（ERR-023）"
+    echo "   最安全的修復：在 .tscn 文件第一行添加 '[' 前綴"
+    exit 1
+fi
+echo "   ✅ 所有 .tscn 文件標頭格式正確"
+
+
+
+# ——————————————————————————————————————
 # [通用規則 2] 機密掃描
 # ——————————————————————————————————————
 echo "[通用/2] 掃描機密資訊洩露..."
