@@ -18,6 +18,9 @@
 [ext_resource type="Script" path="res://scripts/level/room_portal.gd" id="16_portal"]
 [ext_resource type="PackedScene" path="res://scenes/level/portals/right_portal.tscn" id="17_rp"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(48, 96)
+
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
 [node name="BackGroundLayer" type="TileMapLayer" parent="." unique_id=975764049]
