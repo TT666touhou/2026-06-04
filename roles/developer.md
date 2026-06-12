@@ -68,6 +68,13 @@
             必須設 `texture_filter = TEXTURE_FILTER_NEAREST` + `filter_clip = true`
          h. 【ERR-SPAWN-001 後】玩家生成時序：
             若房間是 deferred 載入，玩家必須先 `visible=false` + `set_physics_process(false)`
+         i. 【ERR-006 後】創建 .tscn 引用 Script 時，立刻確認 .gd 存在：
+            `Test-Path "D:\2026-06-04\scripts\enemy\xxx.gd"` → 必須為 True
+            否則停止提交，先創建 .gd 腳本
+         j. 【ERR-007 後】房間載入需要三層 deferred（不是兩層）：
+            Layer1: body_entered → call_deferred("load_next_room")
+            Layer2: load_next_room() → _load_room_scene() [只做 instantiate()]
+            Layer3: call_deferred("_finish_room_load") [add_child + cleanup + reset]
        ★ 掃描腳本（可直接執行）：
          Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
            Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |

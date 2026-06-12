@@ -178,6 +178,7 @@ func _on_player_disconnected(peer_id: int) -> void:
 # ═══════════════════════════════════════════════════════════════
 
 ## 進入下一間房間（由 RoomTransition 節點觸發，或直接呼叫）
+## ⚠️ 此函式必須由 call_deferred 呼叫（見 room_transition.gd）
 func load_next_room() -> void:
 	if not _dungeon:
 		push_warning("[GameWorld] load_next_room: DungeonGenerator 不存在")
@@ -187,7 +188,8 @@ func load_next_room() -> void:
 	if next_path.is_empty():
 		## Run 完成，顯示結算畫面
 		print("[GameWorld] 所有房間已通過！Run 完成")
-		get_tree().change_scene_to_file("res://scenes/ui/run_complete.tscn")
+		## ⚠️ change_scene_to_file 必須 call_deferred，否則可能在 physics flush 中執行
+		get_tree().call_deferred("change_scene_to_file", "res://scenes/ui/run_complete.tscn")
 		return
 
 	_load_room_scene(next_path)
@@ -219,7 +221,7 @@ func _respawn_player(player: Node) -> void:
 		pass  ## 重生不回血（可撴充）
 	if player.get("current_health") != null:
 		player.current_health = 1  ## 重生為 1 HP
-	player.global_position = Vector2(100, -50)  ## 回到起始點
+	player.global_position = Vector2(100, -80)  ## 回到起始點（Y=-80 在地板上方）
 	print("[GameWorld] 玩家 %s 重生" % player.name)
 
 ## 實際載入房間場景（加入為子節點而非切換主場景）
@@ -251,6 +253,18 @@ func _load_room_scene(scene_path: String) -> void:
 		return
 
 	_current_room_node = scene.instantiate()
+	## ⚠️ ERR-001 修復（二次強化）：
+	## instantiate() 本身是同步的，但加入場景樹後，節點的 _ready() 會立刻執行。
+	## 若 _ready() 中有 Area2D.body_entered.connect() 等物理連結操作，
+	## 而此時 Godot 仍在同一 deferred frame 處理 physics，就會爆出 "Can't change state while flushing"。
+	## 解法：用 call_deferred 把所有後續操作（包含 add_child 之後的 cleanup/reset）延後到下一幀。
+	call_deferred("_finish_room_load", scene_path)
+
+func _finish_room_load(scene_path: String) -> void:
+	## 確認節點仍有效（極少數情況下可能被 queue_free）
+	if not is_instance_valid(_current_room_node):
+		_is_loading_room = false
+		return
 	## 將房間加入場景樹，放在 Players 之前（確保房間層在下方）
 	add_child(_current_room_node)
 	move_child(_current_room_node, 0)
@@ -262,7 +276,7 @@ func _load_room_scene(scene_path: String) -> void:
 	if _dungeon and _dungeon.has_method("get_current_room"):
 		var room_def: Variant = _dungeon.get_current_room()
 		if room_def and room_def.get("difficulty_bonus") != null:
-			_apply_room_difficulty(int(room_def.get("difficulty_bonus")))
+			_apply_room_difficulty(roundi(float(room_def.get("difficulty_bonus"))))
 
 	## 重設玩家位置到房間起始點
 	_reset_player_positions()

@@ -91,11 +91,28 @@ Start-Sleep -Seconds 5
 □ F5 強制寫出 JSON 有輸出
 ```
 
-### 步驟 2.5：【強制動態測試 — ERR-001 教訓】物理 Callback 驗證
+### 步驟 2.5：【強制動態測試 — ERR-001/006/007 教訓】物理 Callback 與資源完整性驗證
 ```
 ⚠️ 這是 2026-06-12 事件後新增的強制步驟。
    靜態 --check-only 無法偵測物理 callback 執行時期錯誤，
    只有親自執行遊戲並觸發相關動作才能發現。
+
+□ 【ERR-006 前置檢查：確認所有被引用的 .gd 腳本存在】
+   執行以下 PowerShell 確認所有 .tscn 引用的 Script 都存在：
+   ```powershell
+   Get-ChildItem "D:\2026-06-04\scenes" -Recurse -Filter "*.tscn" |
+     ForEach-Object {
+       $content = Get-Content $_.FullName -Raw
+       $scripts = [regex]::Matches($content, 'path="(res://scripts/[^"]+\.gd)"')
+       foreach ($m in $scripts) {
+         $rel = $m.Groups[1].Value.Replace("res://", "D:\2026-06-04\")
+         if (-not (Test-Path $rel)) {
+           Write-Host "❌ 缺失: $($m.Groups[1].Value) (引用於: $($_.Name))" -ForegroundColor Red
+         }
+       }
+     }
+   ```
+   → 必須 0 個缺失，否則立即退回 Developer 補建腳本
 
 □ 觸發房間轉換：
    1. 操控玩家走到地圖邊緣的 RoomTransition 區域
@@ -103,9 +120,18 @@ Start-Sleep -Seconds 5
    3. 觀察 Godot Console：
       ✅ 正常：看到 "[GameWorld] 房間已載入：" 訊息
       ❌ 異常：看到 "Can't change this state while flushing queries"
-              → 立即退回 Developer（ERR-001 回歸）
+              → 立即退回 Developer（ERR-001/007 回歸）
    4. 確認切換後新房間正確載入，玩家位置重設
    5. 確認 Console 中 "[GameWorld] 房間已載入" 只出現一次（防重入有效）
+
+□ 【ERR-006 新增：Boss 房間載入測試】
+   玩家必須至少完成一個完整 run，使 boss_room 被載入：
+   1. 進行遊戲，觸發多次房間切換直到進入 boss_room
+   2. 觀察 Console：
+      ✅ 正常：無 "File not found: boss.gd"，無 "Parse Error"
+      ❌ 異常：看到 "boss.gd" 相關錯誤 → ERR-006 回歸，退回 Developer
+   3. 確認 Boss 出現並有 AI 行為（巡邏、衝刺）
+   4. 確認 Boss 可被攻擊且 HP 正確減少
 
 □ 觸發玩家受傷/死亡：
    1. 讓玩家受到傷害

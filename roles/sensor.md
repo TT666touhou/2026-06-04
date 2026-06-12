@@ -19,20 +19,23 @@
 ### 🔴 Level 1：立即停止，執行緊急掃描
 
 | 觸發關鍵字 / 模式 | 危險原因 | 對應 ERR |
-|------------|--------|---------| 
+|------------|--------|---------|
 | `_on_body_entered` 函式體內有 `add_child`、`queue_free`、`load_next_room`、`change_scene_to_file` | 物理 callback 禁止修改場景樹 | ERR-001 |
 | `_on_area_entered` 函式體內有上述關鍵字 | 同上 | ERR-001 |
 | `body_entered.connect` 連接到的函式體內有場景樹修改 | 同上，追蹤呼叫鏈 | ERR-001 |
 | 新函式可能被物理 callback 呼叫，且無 `call_deferred` 保護 | 隱性呼叫鏈危險 | ERR-001 |
+| `_load_room_scene()` 或任何 deferred 函式中直接 `add_child()` 而未再次 `call_deferred` | 房間 Area2D._ready() 仍在 physics flush 中 | ERR-007 |
+| 新建 `.tscn` 且 `[ext_resource type="Script"` 引用了尚未存在的 `.gd` 路徑 | 資源載入失敗，導致整個房間崩潰 | ERR-006 |
 
 ### 🟡 Level 2：本函式完成後立即掃描
 
 | 觸發關鍵字 / 模式 | 危險原因 | 對應 ERR |
-|------------|--------|---------| 
+|------------|--------|---------|
 | `int(` 出現在賦值語句中 | 可能的 float→int narrowing | ERR-002 |
 | 三元運算符 `A if cond else B` | 兩分支型別可能不一致 | ERR-003 |
 | 沒有 `_is_xxx` 守衛的高頻觸發函式 | 可能重複觸發，造成多次錯誤 | ERR-001 |
 | `add_child(` / `queue_free(` 在非 `_ready` 或非 `_process` 的函式中 | 確認調用上下文是否安全 | ERR-001 |
+| 新增 `.tscn` 場景但未同時創建對應 `.gd` | 資源引用損壞 | ERR-006 |
 
 ---
 
@@ -157,3 +160,11 @@ Sensor 完成後的交接：
 - **設計決策**：Sensor 採用「關鍵字觸發」模式，而非「主動巡邏」模式，以避免打斷正常開發流程
 - **已知限制**：Sensor 仍無法自動偵測動態建立的信號連接（如 `signal.connect(lambda)`）；需要人工追蹤
 - **下一步強化**：考慮在 pre-commit hook 中加入 Sensor 掃描腳本自動執行
+
+### 2026-06-12（第二批）— Sensor 的自我批評（ERR-006/007）
+- **失職 ERR-006**：`boss.tscn` 和 `boss_room.tscn` 引用了不存在的 `boss.gd`，但 Sensor 的 Level 1 觸發表中沒有「.tscn 引用 Script 不存在」這個模式，導致此問題被完全漏過。
+  - 修復：Level 1 表新增「新建 `.tscn` 且引用不存在 `.gd`」觸發條件
+- **失職 ERR-007**：第一次修復 ERR-001 後，Sensor 沒有考慮「外層 call_deferred 不夠」的情況。`_load_room_scene()` 在 deferred 回呼中執行 `add_child()`，但 boss_room 的 Area2D 在 `_ready()` 連結物理信號時，physics 仍在 flush，再次崩潰。
+  - 修復：Level 1 表新增「deferred 函式中直接 add_child() 而未再次 call_deferred」觸發條件
+  - 架構規則：三層 deferred 模式（Layer1→Layer2→Layer3，每層都 deferred）
+- **根本問題反思**：Sensor 的觸發表只覆蓋「直接」的危險模式，未考慮「間接危險模式」（通過 deferred 鏈的二次觸發）。未來需要更全面的「呼叫鏈追蹤」能力。

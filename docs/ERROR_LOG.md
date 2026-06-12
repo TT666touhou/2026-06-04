@@ -156,3 +156,39 @@
 | 2026-06-12 | .tscn 中的 Shape 定義 | `CollisionShape2D.shape` 必須引用 `[sub_resource type="RectangleShape2D" id="xxx"]`，格式為 `shape = SubResource("xxx")`；禁止 `shape = RectangleShape2D new()` |
 | 2026-06-12 | HUD 設計 | HUD 放在 `CanvasLayer` 下時，大小不需跟隨相機縮放；固定像素大小 + `TEXTURE_FILTER_NEAREST` + `filter_clip = true` |
 | 2026-06-12 | 玩家生成時序 | 若房間載入是 deferred，玩家必須先 `visible=false` + `set_physics_process(false)` 建立，在 `_reset_player_positions()` 中才 `visible=true` + `set_physics_process(true)` |
+
+---
+
+## 🔴 2026-06-12 第三批 Console 錯誤（截圖：29 Errors）
+
+### ERR-006 | boss.gd 不存在（Developer 創建場景時未創建腳本）
+- **錯誤訊息**：
+  - `game_world.gd:247 @ _load_room_scene(): Attempt to open script 'res://scripts/enemy/boss.gd' resulted in error 'File not found'`
+  - `game_world.gd:247 @ _load_room_scene(): Failed loading resource: res://scripts/enemy/boss.gd`
+  - `res://scenes/enemy/boss.tscn:11 - Parse Error: [ext_resource] referenced non-existent resource at: res://scripts/enemy/boss.gd`
+  - `res://scenes/level/boss_room.tscn:118 - Parse Error: [ext_resource] referenced non-existent resource at: res://scripts/enemy/boss.gd`
+- **根本原因**：`boss.tscn` 和 `boss_room.tscn` 均引用 `res://scripts/enemy/boss.gd`，但此檔案**從未被創建**。Developer 在實作 boss 場景時只創建了 `.tscn`，沒有配套的 `.gd` 腳本。
+- **修復**：創建 `scripts/enemy/boss.gd`，實作巡邏→衝刺→冷卻三狀態 Boss AI，HP=30，攻擊力=2
+- **責任 ROLE**：Developer（主責）— 創建引用 Script 的 .tscn 後，**必須**確認對應的 .gd 存在；QA（次責）— 未在房間載入測試中發現 boss_room 載入失敗
+
+### ERR-007 | ERR-001 再次出現（`_load_room_scene` add_child 仍在 physics flush）
+- **錯誤訊息**：`game_world.gd:255 @ _load_room_scene(): Can't change this state while flushing queries. Use call_deferred() or set_deferred() to change monitoring state instead.` × 多次
+- **根本原因**：
+  - 第一次修復（ERR-001）：在 `room_transition.gd` 用 `call_deferred("load_next_room")` 跳出 `_on_body_entered`，這是正確的。
+  - 但 `boss_room.tscn` 中有 Area2D 節點，當 `_load_room_scene()` 被 `load_next_room()` 的 deferred 呼叫後，`add_child(_current_room_node)` 使 Area2D 的 `_ready()` 立刻執行，其中有物理信號連結操作（`body_entered.connect()`），此時 Godot 的 **physics server 仍在同一 deferred frame 中 flushing**，導致再次崩潰。
+  - 根本根本原因：`_load_room_scene()` 雖然是 deferred 呼叫的，但 `instantiate() + add_child()` 仍在**同一個 deferred callback** 內 — 這個 callback 本身執行時 physics 仍然 flushing。
+- **修復**：
+  1. 在 `_load_room_scene()` 中，`instantiate()` 後**不**立刻 `add_child()`
+  2. 改用 `call_deferred("_finish_room_load", scene_path)` 再把 `add_child + cleanup + reset` 全部放到新的 `_finish_room_load()` 函式中
+  3. 這樣 `add_child()` 的執行在**下下幀**，確保完全遠離 physics flush
+- **責任 ROLE**：Architect（主責）— 第一次設計 ERR-001 修復時，對 deferred 呼叫鏈的理解不夠深入，以為「外層 call_deferred 就夠了」，沒有考慮到 boss_room 的 Area2D `_ready()` 時序問題；Developer（次責）— 應深入測試 boss_room 的載入
+
+---
+
+## 🟢 新增 PATTERN（2026-06-12 第三批）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-12 | 創建引用 Script 的 .tscn 時 | 必須同時創建對應的 .gd 腳本；建立 .tscn 後，立刻確認 `Get-ChildItem scripts -Recurse \| Where-Object Name -eq "xxx.gd"` 存在 |
+| 2026-06-12 | ERR-001 深層修復（Area2D _ready 時序） | 「呼叫端 call_deferred」不夠；`add_child()` 後的整個處理鏈也必須放到**另一個** call_deferred 中（`_finish_room_load` 模式），確保 physics flush 已完全結束 |
+| 2026-06-12 | 房間載入最佳架構 | 1→`load_next_room()`（call_deferred 呼叫）→ 2→`_load_room_scene()`（instantiate only）→ 3→`_finish_room_load()`（add_child + cleanup + reset，call_deferred 呼叫） |

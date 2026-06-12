@@ -86,11 +86,17 @@
     架構師必須在 implementation_plan.md 中明確標注：
     "此操作必須透過 call_deferred 執行，不可在物理 callback 中直接呼叫"
 
-□ 房間切換架構（RoomTransition → GameWorld）：
-    觸發鏈必須設計為：
-    _on_body_entered → call_deferred("load_next_room") → [deferred] _load_room_scene
-    而非：
-    _on_body_entered → load_next_room() → _load_room_scene → add_child [危險！]
+□ 房間切換架構（ERR-001 + ERR-007 二次強化）：
+    ⚠️ 「外層 call_deferred」不夠！若場景包含 Area2D，
+    add_child() 會觸發 Area2D._ready() → body_entered.connect() → physics flush
+    正確的三層架構：
+    [Layer 1] room_transition._on_body_entered
+        → call_deferred("load_next_room")
+    [Layer 2] game_world.load_next_room()
+        → _load_room_scene(path)  ← instantiate() 只做這一步
+    [Layer 3] call_deferred("_finish_room_load", path)
+        → _finish_room_load()  ← add_child + cleanup + reset 全在這裡
+    這樣 add_child 在第三幀，完全遠離 physics flush。
 
 □ 高頻觸發設計：
     任何可能被同一幀多次觸發的函式（如物理 callback 觸發的操作），
@@ -101,6 +107,21 @@
     Camera2D.limit_* 等屬性是 int。
     涉及 Vector2/position 計算並賦值給 int 屬性的設計，
     必須在計畫中標注：使用 roundi() 而非 int()
+```
+
+### 【新增 ERR-006 後】場景腳本配套完整性約束
+```
+⚠️ 2026-06-12 ERR-006：boss.tscn 引用 boss.gd，但 boss.gd 不存在，
+    導致 boss_room 載入失敗，連帶所有房間崩潰。
+
+□ 設計任何新的 .tscn 場景時，若該場景需要 Script：
+    架構計畫必須明確列出「需要同時創建的 .gd 腳本清單」
+    Developer 在完成 .tscn 前，必須確認對應 .gd 已存在：
+    Test-Path "D:\2026-06-04\scripts\enemy\xxx.gd"
+
+□ 設計 Boss 或特殊敵人時：
+    必須在 implementation_plan.md 中同時規劃 Scene (.tscn) 和 Script (.gd)，
+    不允許先做場景後做腳本的「半成品」狀態存在。
 ```
 
 ---
