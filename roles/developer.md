@@ -60,9 +60,15 @@
          e. 【ERR-004 後】修復 narrowing/ternary 後全局掃描同類問題：
             Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
               Select-String "\bint\(" | ForEach-Object { "$($_.Filename):$($_.LineNumber)" }
-         f. 【ERR-005 後】手寫 .tscn 時確認 shape 使用 SubResource：
-            禁止 `shape = RectangleShape2D new()`
-            正確：先定義 `[sub_resource type="RectangleShape2D" id="xxx"]`，再用 `shape = SubResource("xxx")`
+         f. 【ERR-005/008 後】手寫 .tscn 時確認 SubResource 聲明完整：
+            ❌ 禁止：只寫 `shape = SubResource("RectangleShape2D_1")` 而沒有對應聲明
+            ✅ 正確流程：
+              Step1 在 ext_resource 區段結尾、第一個 [node] 之前加入：
+                [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+                size = Vector2(48, 96)
+              Step2 再在 [node] 中引用：shape = SubResource("RectangleShape2D_1")
+            ⚠️ 此錯誤 --check-only 無法偵測！只有 runtime 才會爆炸（ERR_INVALID_PARAMETER）
+            ⚠️ 驗證方法：用 Select-String "SubResource" xxx.tscn 確認每個引用都有對應定義
          g. 【ERR-HUD-001 後】HUD 在 CanvasLayer 下：
             禁止用 `cam.zoom` 縮放 HUD 元素大小
             必須設 `texture_filter = TEXTURE_FILTER_NEAREST` + `filter_clip = true`
@@ -75,6 +81,12 @@
             Layer1: body_entered → call_deferred("load_next_room")
             Layer2: load_next_room() → _load_room_scene() [只做 instantiate()]
             Layer3: call_deferred("_finish_room_load") [add_child + cleanup + reset]
+         k. 【ERR-008 後】.tscn SubResource 完整性驗證腳本（每次手寫 .tscn 後必跑）：
+            $tscn = "D:\2026-06-04\scenes\xxx.tscn"; $content = Get-Content $tscn -Raw
+            $refs = [regex]::Matches($content,'SubResource\("([^"]+)"\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+            $defs = [regex]::Matches($content,'\[sub_resource[^\]]+id="([^"]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+            $missing = $refs | Where-Object { $_ -notin $defs }
+            if ($missing) { Write-Host "❌ 缺少 sub_resource 聲明: $($missing -join ', ')" } else { Write-Host "✅ 所有 SubResource 引用都有對應聲明" }
        ★ 掃描腳本（可直接執行）：
          Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
            Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |

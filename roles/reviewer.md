@@ -124,6 +124,38 @@
    無守衛 → 封鎖審查通過（如 ERR-001 的 28 次重複）
 ```
 
+### 【新增 ERR-008 後】.tscn SubResource 完整性驗證（強制 — --check-only 無法偵測！）
+```
+⚠️ ERR-008 教訓：--check-only 不會偵測 SubResource 引用與聲明不匹配！
+   此錯誤只在 runtime 出現，且會導致場景完全無法載入。
+
+□ 對 PR 中每個被修改的 .tscn 檔案，執行 SubResource 完整性驗證：
+
+  $tscn = "D:\2026-06-04\scenes\xxx.tscn"
+  $content = Get-Content $tscn -Raw
+  $refs = [regex]::Matches($content,'SubResource\("([^"]+)"\)') | 
+          ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+  $defs = [regex]::Matches($content,'\[sub_resource[^\]]+id="([^"]+)"') | 
+          ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+  $missing = $refs | Where-Object { $_ -notin $defs }
+  if ($missing) { 
+      Write-Host "❌ 缺少 sub_resource 聲明: $($missing -join ', ')" 
+      # 封鎖審查通過！
+  } else { 
+      Write-Host "✅ 所有 SubResource 引用都有對應聲明" 
+  }
+
+□ 確認 [sub_resource] 區塊位置正確：
+   ✅ 必須在所有 [ext_resource] 之後、第一個 [node] 之前
+   ❌ 不能放在 [node] 之後（Godot 解析器不接受）
+
+□ 以 ERR-008 事件為教訓（2026-06-12）：
+   Developer 在 test_room_a/b.tscn 加入 CollisionShape2D 時，
+   只寫了 `shape = SubResource("RectangleShape2D_1")` 但沒有在文件中定義該 SubResource，
+   --check-only 通過但 runtime 爆發 Parse Error，Reviewer 未執行 .tscn 格式驗證而錯放。
+```
+
+
 ---
 
 ## 🚨 遇到技術疑問時的解決路徑（禁止使用瀏覽器）
