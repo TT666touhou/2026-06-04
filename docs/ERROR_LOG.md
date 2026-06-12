@@ -508,3 +508,30 @@ region = Rect2(0, 0, 132, 126)
 | 2026-06-13 | Godot 4 SpriteFrames | 每幀 MUST 使用 AtlasTexture sub-resource (atlas=tex, region=Rect2); 直接在 frame dict 寫 region 會被忽略 |
 | 2026-06-13 | VFX spritesheet load_steps | load_steps = 2 + frameCount + 1（2 ext_resource + N AtlasTexture + 1 SpriteFrames） |
 | 2026-06-13 | VFX 驗證 | 建立 VFX 場景後在 Godot 編輯器打開確認 Animation Frames 面板顯示的是個別幀（非整條 sheet） |
+---
+
+## ERR-025 sensor-scan.ps1 Self-Defects (2026-06-13)
+
+### Bug A: IDE Syntax Error (Line 190 area)
+- Symptom: VS Code PS Language Server reports unexpected { } tokens in Where-Object
+- Root Cause: Multi-line pipeline with Where-Object { } caused IDE parser misparse
+- Fix: Use .Contains() instead of -notmatch regex inside multi-line pipelines
+
+### Bug B: ERR-014 False Positives (CRITICAL)
+- Symptom: @export var and @onready var (valid Godot 4 syntax) flagged as deprecated Godot 3
+- Root Cause: Pattern '^export var' with TrimStart('^') left 'export var', matched anywhere in trimmed line including '@export var'
+- Fix: Use .StartsWith('export var ') for exact prefix match (correctly excludes @export var)
+
+### Bug C: Check 2/7 scope inconsistency
+- Symptom: Check 2 only scanned scenes/ dir, checks 6 and 7 scanned all Root
+- Fix: Unified all checks to use same tscnFiles list from Root
+
+### v3 Fix Summary
+- File lists collected once at top, reused across all 7 checks
+- Where-Object with .Contains() -- no more multi-line brace confusion
+- ERR-014 uses .StartsWith() -- precise prefix matching
+- ERR-024 uses .Contains() -- no regex escape issues
+
+### Prevention
+- Any change to sensor-scan.ps1 must be followed by PS AST syntax check
+- Use .Contains()/.StartsWith() over -match for deterministic string checks

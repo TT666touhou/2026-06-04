@@ -317,3 +317,22 @@ Write-Host "✅ [Sensor] 掃描完成"
 2. 此問題的視覺表現（整條 spritesheet 顯示）與代碼層面的檢測點（JSON 格式中特定 key 的存在）有很大距離，需要 Sensor 具備 Godot 4 API 知識才能正確識別。
 3. 觸發表新增「SpriteFrames frame dict 包含 egion 直接欄位」模式，並建立 sensor-scan.ps1 Check 7/7 自動偵測。
 4. 給 Architect 的建議：所有新 VFX 場景應有標準模板文件（含 AtlasTexture 格式），避免開發者從頭寫 SpriteFrames。
+
+## Sensor Reflection - Session 10 (2026-06-13 ERR-025 Self-Defect)
+
+### Critical Finding
+sensor-scan.ps1 had 3 bugs that undermined its own reliability:
+1. IDE syntax errors from multi-line Where-Object braces
+2. ERR-014 false positives: ALL @export var / @onready var flagged as deprecated
+3. Check 2 scanned only scenes/, while checks 6+7 scanned all Root
+
+### Root Cause (Bug B - most severe)
+Pattern '^export var' + TrimStart('^') => 'export var' => -match 'export var' hits '@export var' as substring.
+Every valid Godot 4 @export was a false positive. Sensor had zero credibility for ERR-014.
+
+### Commitments Going Forward
+1. Test sensor-scan.ps1 with known-good and known-bad files before committing
+2. Use .StartsWith()/.Contains() -- never -match for deterministic checks
+3. Never split Where-Object { } across lines in pipelines (IDE parser issue)
+4. PSParser validation after every sensor-scan.ps1 edit:
+   [Automation.Language.Parser]::ParseFile(path, [ref]null, [ref]err)
