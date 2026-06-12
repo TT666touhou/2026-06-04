@@ -106,28 +106,16 @@ extends CharacterBody2D
 @export_range(0.1, 2.0, 0.05) var ranged_cooldown: float = 0.6
 ## 遠程子彈場景（由 GameWorld 動態注入）
 @export var bullet_scene: PackedScene
-## 近戰第1擊特效（slash_01.png，橫斬）
-@export var melee_slash_scene: PackedScene
-## 近戰第2擊特效（slash_02.png，反向斬）
-@export var melee_slash2_scene: PackedScene
-## 近戰第3擊特效（impact_01.png，衝擊爆炸）
-@export var melee_impact3_scene: PackedScene
 ## 遠程發射火花特效（右鍵攻擊觸發）
 @export var muzzle_flash_scene: PackedScene
-
-# ── 近戰 VFX 位置微調（Inspector 可視化調整）─────────────────────
-@export_group("Melee VFX Offsets")
-## 第1擊 VFX 偏移（x=正值=朝右，負值=朝左；會自動根據面向鏡像）
-## 在 Godot Inspector 中直接拖動數字即可調整位置
-@export var melee_vfx1_offset: Vector2 = Vector2(22.0, -6.0)
-## 第2擊 VFX 偏移（反手斬，可設不同 y 值製造不對稱感）
-@export var melee_vfx2_offset: Vector2 = Vector2(22.0, -8.0)
-## 第3擊 VFX 偏移（衝擊爆炸，通常比前兩擊略遠）
-@export var melee_vfx3_offset: Vector2 = Vector2(24.0, -6.0)
 
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
 # ═══════════════════════════════════════════════════════════════
+# ── 內嵌近戰 VFX 節點（如果場景中沒有则為 null）──────────────
+@onready var _melee_vfx1: Node2D = $MeleeVFX1
+@onready var _melee_vfx2: Node2D = $MeleeVFX2
+@onready var _melee_vfx3: Node2D = $MeleeVFX3
 @onready var _stamina_ui: Node2D      = $StaminaBar
 @onready var _dust_vfx:   Node2D      = $PlayerDust
 @onready var _floor_cast: ShapeCast2D = $FloorCast
@@ -269,6 +257,10 @@ func apply_player_color(skin_index: int) -> void:
 	var col := PLAYER_COLORS[skin_index % PLAYER_COLORS.size()]
 	if _visual_pivot:
 		_visual_pivot.modulate = col
+	## 同步內嵌 VFX 節點的顏色（貼合玩家的 P1/P2/P3/P4 顏色）
+	for vfx: Node2D in [_melee_vfx1, _melee_vfx2, _melee_vfx3]:
+		if vfx:
+			vfx.modulate = col
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -892,39 +884,21 @@ func _do_melee_hit() -> void:
 		tw.tween_property(_visual_pivot, "scale", Vector2(1.2, 0.82), 0.06)
 		tw.tween_property(_visual_pivot, "scale", Vector2(1.0, 1.0), 0.09)
 
-	## 每擊對應不同 VFX 場景
-	## VFX 偏移：使用 Inspector 可調整的 @export 變數（melee_vfx1/2/3_offset）
-	## x 正值=朝右方，會自動根據 _facing 鏡像；y 負值=往上
-	var face_left := _facing < 0.0
+	## 每擊對應不同內嵌 VFX 節點（直接 activate 而非動態生成）
+	## 節點已配置在 player1/2/3/4.tscn 中，可在 Scene Editor 視覺化調整位置
 	match _combo_step:
 		1:
-			## 第1擊：橫斬（slash_01）— 偏移由 melee_vfx1_offset 控制
-			var p1 := global_position + Vector2(melee_vfx1_offset.x * _facing, melee_vfx1_offset.y)
-			_spawn_melee_vfx(_get_melee_slash_scene(), p1, face_left)
+			## 第1擊：橫斬（slash_01）
+			if _melee_vfx1 and _melee_vfx1.has_method("activate"):
+				_melee_vfx1.activate(_facing)
 		2:
-			## 第2擊：反手斬（slash_02）— 偏移由 melee_vfx2_offset 控制
-			var p2 := global_position + Vector2(melee_vfx2_offset.x * _facing, melee_vfx2_offset.y)
-			_spawn_melee_vfx(_get_melee_slash2_scene(), p2, face_left)
+			## 第2擊：反手斬（slash_02）
+			if _melee_vfx2 and _melee_vfx2.has_method("activate"):
+				_melee_vfx2.activate(_facing)
 		3:
-			## 第3擊：衝擊爆炸（impact_01）— 偏移由 melee_vfx3_offset 控制
-			var p3 := global_position + Vector2(melee_vfx3_offset.x * _facing, melee_vfx3_offset.y)
-			_spawn_melee_vfx(_get_melee_impact3_scene(), p3, face_left)
-
-## Fallback loader：優先用 @export，否則動態載入
-func _get_melee_slash_scene() -> PackedScene:
-	if melee_slash_scene != null:
-		return melee_slash_scene
-	return load("res://scenes/VFX/MeleeSlash.tscn") as PackedScene
-
-func _get_melee_slash2_scene() -> PackedScene:
-	if melee_slash2_scene != null:
-		return melee_slash2_scene
-	return load("res://scenes/VFX/MeleeSlash2.tscn") as PackedScene
-
-func _get_melee_impact3_scene() -> PackedScene:
-	if melee_impact3_scene != null:
-		return melee_impact3_scene
-	return load("res://scenes/VFX/MeleeImpact3.tscn") as PackedScene
+			## 第3擊：衝擊爆炸（impact_01）
+			if _melee_vfx3 and _melee_vfx3.has_method("activate"):
+				_melee_vfx3.activate(_facing)
 
 ## ── 8方向射擊方向計算 ────────────────────────────────────────────
 ## 依據目前按下的 WASD 鍵決定射擊方向（8個方向）
@@ -1010,26 +984,6 @@ func _spawn_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool = false) -> v
 		var spr := vfx.get_node_or_null("AnimatedSprite2D")
 		if spr:
 			spr.flip_h = true
-	var parent := get_parent()
-	if parent:
-		parent.call_deferred("add_child", vfx)
-
-## 近戰 VFX（繼承玩家顏色，支援 flip_h）
-## 用於 3 擊 Combo：slash_01 / slash_02 / impact_01
-func _spawn_melee_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool) -> void:
-	if vfx_scene == null:
-		return
-	var vfx := vfx_scene.instantiate() as Node2D
-	if vfx == null:
-		return
-	vfx.global_position = pos
-	## 繼承玩家顏色（P1=橙, P2=藍, P3=綠, P4=紫）
-	if _visual_pivot:
-		vfx.modulate = _visual_pivot.modulate
-	## flip_h：直接賦值（不用 toggle）；場景內 flip_h 統一為 false
-	var spr := vfx.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
-	if spr:
-		spr.flip_h = flip_h
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", vfx)
