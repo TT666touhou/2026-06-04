@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 func _init():
 	var g = Gradient.new()
 	var c = PackedColorArray([Color.RED])

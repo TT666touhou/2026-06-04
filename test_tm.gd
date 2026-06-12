@@ -1,4 +1,4 @@
-﻿extends SceneTree
+extends SceneTree
 func _init():
 	var t = TileMapLayer.new()
 	var ts = TileSet.new()

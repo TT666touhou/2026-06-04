@@ -1,9 +1,9 @@
 extends CharacterBody2D
-## Boss 敵人腳本
-## ⚠️ 此檔案之前不存在，導致 boss.tscn 和 boss_room.tscn 載入失敗（ERR-006）
-## 根本原因：Developer 創建 boss.tscn 時沒有一併創建對應的 boss.gd
-## 修復日期：2026-06-12
-## 修復紀錄2：2026-06-12 移除 class body 直接呼叫 add_to_group（ERR-009）
+## Boss Enemy Script
+## History:
+## 2026-06-12 ERR-006 fix: created boss.gd (was missing, boss.tscn failed to load)
+## 2026-06-12 ERR-009 fix: moved add_to_group into _ready() (was in class body)
+## 2026-06-12 ERR-ENC fix: re-saved as UTF-8 without BOM (was in non-UTF-8 encoding)
 
 enum State { PATROL, CHARGE, COOLDOWN, DEAD }
 
@@ -25,6 +25,7 @@ var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
 
 func _ready() -> void:
 	add_to_group("Enemies")
+	print("[Boss] Initialized")
 	if stats:
 		current_health = stats.max_health if stats.get("max_health") != null else max_health
 	if spawn_disabled:
@@ -42,7 +43,7 @@ func _physics_process(delta: float) -> void:
 	if current_state == State.DEAD:
 		return
 
-	## 重力
+	## Gravity
 	if not is_on_floor():
 		velocity.y += gravity * delta
 
@@ -61,11 +62,11 @@ func _physics_process(delta: float) -> void:
 func _process_patrol() -> void:
 	velocity.x = direction * move_speed
 
-	## 撞牆轉向
+	## Turn around on wall hit
 	if is_on_wall():
 		direction *= -1.0
 
-	## 偵測玩家 → 切換為衝刺狀態
+	## Detect player -> switch to charge state
 	var players := get_tree().get_nodes_in_group("Players")
 	if players.size() > 0:
 		var player: Node = players[0]
@@ -77,7 +78,7 @@ func _process_patrol() -> void:
 func _process_charge() -> void:
 	velocity.x = _charge_dir * charge_speed
 
-	## 撞牆或計時結束 → 冷卻
+	## Hit wall or timer expired -> cooldown
 	if is_on_wall() or state_timer <= 0.0:
 		_change_state(State.COOLDOWN)
 
@@ -100,8 +101,8 @@ func take_damage(damage: int) -> void:
 	if current_state == State.DEAD:
 		return
 	current_health -= damage
-	print("[Boss] 受到 %d 傷害，剩餘 HP: %d" % [damage, current_health])
-	## 閃爍效果
+	print("[Boss] Took %d damage, HP remaining: %d" % [damage, current_health])
+	## Flash effect
 	var tween := create_tween()
 	modulate = Color(10, 10, 10, 1)
 	tween.tween_property(self, "modulate", Color.WHITE, 0.15)
@@ -110,8 +111,8 @@ func take_damage(damage: int) -> void:
 
 func die() -> void:
 	current_state = State.DEAD
-	print("[Boss] Boss 已擊敗！")
-	## 通知 GameWorld（若有）
+	print("[Boss] Boss defeated!")
+	## Notify GameWorld (if exists)
 	var gw := get_node_or_null("/root/GameWorld")
 	if gw and gw.has_signal("boss_defeated"):
 		gw.emit_signal("boss_defeated")
