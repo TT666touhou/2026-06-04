@@ -69,3 +69,37 @@
 - **Spritesheet 量測**：必須用 System.Drawing 量測後計算，不允許目測估算
 - **VFX 比例**：以玩家碰撞體大小為設計基準
 
+---
+
+### 2026-06-13 VFX 嵌入式架構重構
+
+- **設計了什麼**：將近戰 VFX 從「runtime 動態生成」改為「Player 場景內嵌入式靜態節點」
+- **觸發原因**：用戶需要在 Godot Scene Editor 中視覺化調整每次攻擊特效的位置
+- **技術選型理由**：
+  - **嵌入 vs 動態生成**：嵌入節點可在 Scene Editor 中直接選擇、拖動，無需修改任何代碼
+  - **EmbeddedMeleeVFX 腳本**：新腳本 `embedded_melee_vfx.gd` 實現 `activate(facing)` API，hide-on-finish 而非 queue_free
+  - **position 鏡像策略**：scene 中設正值 x（朝右）；`activate()` 用 `_base_x * facing` 計算實際 x，兼顧左右朝向
+  - **modulate 同步**：`apply_player_color()` 同時更新 VisualPivot 和 3 個 VFX 節點的 modulate，無需在 activate() 再查
+- **新架構圖**：
+  ```
+  Player (CharacterBody2D)
+  ├── VisualPivot/Appearance  ← 角色外觀
+  ├── MeleeVFX1 (EmbeddedMeleeVFX) ← 第1擊，可拖動
+  ├── MeleeVFX2 (EmbeddedMeleeVFX) ← 第2擊，可拖動
+  ├── MeleeVFX3 (EmbeddedMeleeVFX) ← 第3擊，可拖動
+  └── ...其他節點
+  ```
+- **棄用的模式**：
+  - ❌ `@export var melee_slash_scene: PackedScene` + `_spawn_melee_vfx()`
+  - ❌ `@export_group("Melee VFX Offsets")` with Vector2 properties
+  - ❌ Fallback loader functions `_get_melee_*_scene()`
+- **新的強制規範**：
+  - 近戰 VFX 必須是 EmbeddedMeleeVFX 實例，在 player1-4.tscn 中以 scene instance 加入
+  - VFX 場景文件（MeleeSlash.tscn 等）必須使用 `embedded_melee_vfx.gd` 而非 `one_shot_vfx.gd`
+  - 遠程 VFX（RangedMuzzle, EnemyHit, EnemyDeath）仍使用 one_shot_vfx.gd 動態生成
+- **DoD**：
+  - [x] EmbeddedMeleeVFX.gd 建立
+  - [x] player1-4.tscn 加入 MeleeVFX1/2/3 scene instance
+  - [x] player.gd 移除舊 @export 和 _spawn_melee_vfx()
+  - [x] VFX tscn 換用 embedded_melee_vfx.gd
+  - [x] Sensor 8/8 PASS
