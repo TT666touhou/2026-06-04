@@ -36,6 +36,10 @@
 | 沒有 `_is_xxx` 守衛的高頻觸發函式 | 可能重複觸發，造成多次錯誤 | ERR-001 |
 | `add_child(` / `queue_free(` 在非 `_ready` 或非 `_process` 的函式中 | 確認調用上下文是否安全 | ERR-001 |
 | 新增 `.tscn` 場景但未同時創建對應 `.gd` | 資源引用損壞 | ERR-006 |
+| 複製 `.tscn` 文件 | ext_resource UID 可能指向自身 UID（自引用問題） | ERR-013 |
+| `.gd` 文件包含中文字元 | 可能以非 UTF-8 儲存，Godot 無法解析 | ERR-012 |
+| `TextureRect.STRETCH_` | Godot 3 廢棄 API，在 Godot 4 中無效 | ERR-014 |
+| `Set-Content` / `Out-File` 寫入 `.gd` | PowerShell 可能寫入 UTF-8 BOM | ERR-015 |
 
 ---
 
@@ -168,3 +172,49 @@ Sensor 完成後的交接：
   - 修復：Level 1 表新增「deferred 函式中直接 add_child() 而未再次 call_deferred」觸發條件
   - 架構規則：三層 deferred 模式（Layer1→Layer2→Layer3，每層都 deferred）
 - **根本問題反思**：Sensor 的觸發表只覆蓋「直接」的危險模式，未考慮「間接危險模式」（通過 deferred 鏈的二次觸發）。未來需要更全面的「呼叫鏈追蹤」能力。
+
+### 2026-06-12（第三批）— Sensor 的自我批評（ERR-012/013/014/015）
+- **失職 ERR-012**：`boss.gd` 以非 UTF-8 編碼儲存（含中文的高位元組字元），Sensor 的觸發表中沒有「.gd 文件含中文字元時，必須確認 UTF-8 編碼」的項目。這是靜態關鍵字掃描的盲點——觸發條件本身就是無法被純文字工具可靠掃描的問題（因為問題文件就是 garbled text）。
+  - 修復：Level 2 表新增「`.gd` 文件包含中文字元 → 觸發編碼驗證」觸發條件
+  - 根本反思：Sensor 自身的掃描腳本必須能偵測編碼問題（`Get-ChildItem -Recurse | %{ test if bytes are valid UTF-8 }`），不能只做 grep 關鍵字
+- **失職 ERR-013**：複製 player.tscn 建立 player1-4.tscn 後，ext_resource 的 UID 被設為場景自身的 UID。Sensor 的觸發表在「複製 .tscn 文件」這個操作上沒有觸發條件——因為 Sensor 是「代碼關鍵字觸發」而非「文件系統操作觸發」。這是 Sensor 架構的根本限制。
+  - 修復：Level 2 表新增「複製 `.tscn` 文件 → 立即執行 UID 自引用驗證」
+  - 補充工具：提供快速驗證腳本（見 ERR-013 的 ERROR_LOG 條目）
+- **失職 ERR-014**：`TextureRect.STRETCH_KEEP_ASPECT_CENTERED` 是 Godot 3 廢棄 API，Sensor 觸發表沒有涵蓋 Godot 3 → Godot 4 API 遷移模式。
+  - 修復：Level 2 表新增「`TextureRect.STRETCH_` 廢棄常數」觸發條件
+- **失職 ERR-015**：多個 test_*.gd 文件有 UTF-8 BOM，但此問題早在 ERR-011 條目中就已記錄。Sensor 的根本失敗是**即使觸發表已有對應條目，也沒有被執行**。
+  - 根本反思：Sensor 的「關鍵字觸發」模式依賴人工讀到觸發詞才啟動，對於「寫入操作」這類在代碼中不可見的動作，完全無效。
+  - **下一步必要改進**：Sensor 掃描腳本應作為 pre-commit hook 的一部分自動執行，而不是等人工讀到關鍵字才觸發。見下方新增的自動掃描腳本 v2。
+
+### Sensor 自動掃描腳本 v2（新增編碼驗證）
+
+```powershell
+## Sensor 自動掃描腳本 v2 — 新增編碼驗證
+## 在 pre-commit hook 中自動執行此腳本
+
+# 1. 掃描 UTF-8 BOM 和非 UTF-8 編碼的 .gd 文件
+Write-Host "=== [Sensor] 編碼掃描 ===" -ForegroundColor Cyan
+$gd_files = Get-ChildItem "D:\2026-06-04" -Recurse -Filter "*.gd"
+foreach ($f in $gd_files) {
+    $b = [System.IO.File]::ReadAllBytes($f.FullName)
+    if ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF) {
+        Write-Host "❌ UTF-8 BOM: $($f.FullName)" -ForegroundColor Red
+    } elseif ($b.Length -ge 2 -and $b[0] -eq 0xFF -and $b[1] -eq 0xFE) {
+        Write-Host "❌ UTF-16 LE BOM: $($f.FullName)" -ForegroundColor Red
+    }
+}
+
+# 2. 掃描 ext_resource UID 自引用問題
+Write-Host "`n=== [Sensor] .tscn UID 自引用掃描 ===" -ForegroundColor Cyan
+Get-ChildItem "D:\2026-06-04\scenes" -Recurse -Filter "*.tscn" | ForEach-Object {
+    $content = Get-Content $_.FullName -Raw
+    $sceneUID = [regex]::Match($content, 'gd_scene.*uid="([^"]+)"').Groups[1].Value
+    if ($sceneUID) {
+        $extUIDs = [regex]::Matches($content, 'ext_resource.*uid="([^"]+)"') | ForEach-Object { $_.Groups[1].Value }
+        $bad = $extUIDs | Where-Object { $_ -eq $sceneUID }
+        if ($bad) { Write-Host "❌ UID 自引用: $($_.Name)" -ForegroundColor Red }
+    }
+}
+Write-Host "✅ [Sensor] 掃描完成"
+```
+

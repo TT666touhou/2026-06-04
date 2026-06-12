@@ -24,3 +24,27 @@
   1. player.gd 的 MultiplayerSynchronizer 改為場景文件靜態設定（更穩定）
   2. 建立 game_world.tscn 場景，包含 MultiplayerSpawner 和 MultiplayerCamera 節點
 - **Memory 已更新**：❌（待更新）
+
+---
+
+### 2026-06-12 第四批錯誤 — Architect 反省（ERR-012 ~ ERR-015）
+
+- **問題摘要**：本批次 4 個錯誤（boss.gd 非 UTF-8 編碼、player1-4.tscn UID 自引用、test_stretch.gd 廢棄 API、test_*.gd UTF-8 BOM）均在一次 Godot 啟動後被發現，說明這些問題在之前的所有靜態驗證（--check-only）中均未被攔截。
+
+- **架構責任分析**：
+  1. **ERR-012 (boss.gd 編碼)**：Architect 設計 boss 功能時，架構計畫要求「創建 boss.gd」（ERR-006 修復後），但未要求「確認 boss.gd 的文件編碼」。這個隱性假設（AI 工具總會寫出正確編碼）是架構設計的失誤。
+  2. **ERR-013 (UID 自引用)**：Architect 在場景複製工作流的設計中，沒有要求執行「ext_resource UID 驗證」這個步驟。這應該作為「Developer 複製 .tscn 後的強制驗收標準」加入 implementation_plan 的 DoD。
+  3. **ERR-014/015（測試腳本問題）**：架構設計只關注 `scripts/` 目錄下的遊戲腳本，忽略了根目錄下的測試腳本。但 Godot 在啟動時會掃描所有腳本文件（包括根目錄）。應在架構設計中明確「根目錄不允許存在 Godot 腳本文件，或若存在則需符合相同的編碼標準」。
+
+- **架構層面的系統性解決方案**（以下條目已加入後續設計約束）：
+  1. **編碼驗證進入 pre-commit hook**：所有 .gd 文件在 commit 前必須通過 BOM 和 UTF-8 有效性驗證（Sensor v2 自動掃描腳本）
+  2. **ext_resource UID 驗證進入開發 DoD**：「確認場景的所有 ext_resource UID 不等於場景 UID」加入每個涉及場景複製的實作計畫的完成定義
+  3. **根目錄腳本禁令或標準化**：在 pre-commit hook 中加入警告：根目錄下存在 .gd 文件時提醒確認編碼
+
+- **給 Developer 的新技術約束**：
+  - 所有 .gd 文件必須以英文撰寫（或以 UTF-8 無 BOM 儲存並驗證）
+  - 複製 .tscn 後必須執行 UID 自引用驗證腳本再提交
+  - 測試腳本若放在根目錄，必須符合與 scripts/ 相同的編碼標準
+
+- **Memory 更新**：待更新（架構約束已加入各 ROLE 文件）
+

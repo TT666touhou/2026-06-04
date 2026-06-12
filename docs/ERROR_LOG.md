@@ -204,3 +204,59 @@
 | 2026-06-12 | Paired Door ID 房間配對 | 每個 RoomPortal 有 `door_id` 和 `target_door_id`。A房間的 `door_id="right"` 連到 B房間的 `target_door_id="right"`，B房間的 `door_id="right"` 有一個 `SpawnMarker` 子節點作為玩家出現位置 |
 | 2026-06-12 | ScreenFader CanvasLayer 層級 | ScreenFader 的 `layer = 128` 確保在所有遊戲 UI 之上（HUD layer=10）。`mouse_filter = 2` 讓輸入穿透，不阻擋玩家操作 |
 | 2026-06-12 | class_name 全域可用性 | GDScript 4 的 `class_name RoomPortal` 在整個專案中全域可用，其他腳本可直接用 `child is RoomPortal` 做型別檢查，不需 preload |
+
+---
+
+## 🔴 2026-06-12 第四批 Console 錯誤（本次會話修復）
+
+### ERR-012 | boss.gd 非 UTF-8 編碼（文件儲存編碼錯誤）
+- **錯誤訊息**：`Unicode parsing error, Invalid UTF-8 leading byte (ff/fe)` + `Script 'res://scripts/enemy/boss.gd' contains invalid unicode (UTF-8), so it was not loaded.`
+- **根本原因**：`boss.gd` 文件由 AI 生成後，以 Windows 預設的非 UTF-8 編碼（可能是 CP950/Big5 或 ANSI）儲存，中文註解中包含高位元組字元，Godot 4 解析器無法處理。雖然第一行是純 ASCII（`extends CharacterBody2D`），但後續的中文註解行含有 0x80+ 位元組。
+- **根本區別於 ERR-011（UTF-16 BOM）**：ERR-011 是 UTF-16 的 BOM 問題（FF FE 開頭），ERR-012 是整個文件編碼錯誤（Big5/CP950/ANSI），字串中任意位置出現不合法的 UTF-8 位元組序列。
+- **修復**：重新撰寫 `boss.gd`，所有中文註解改為英文，確保文件為純 ASCII 內容（ASCII 是 UTF-8 的子集，永遠相容）；用工具寫出時指定 `UTF8Encoding(false)` 無 BOM。
+- **責任 ROLE**：Developer（主責）— 在非 UTF-8 環境中撰寫中文註解的 .gd 文件，應確認儲存編碼；Sensor（次責）— 應在 Level 2 觸發表中加入「含中文的 .gd 文件必須確認 UTF-8 儲存」的掃描項目
+- **防範措施**：
+  1. 所有 .gd 文件的中文內容應先確認編輯器設定 UTF-8
+  2. 或統一改用英文撰寫（最安全，無編碼風險）
+  3. Pre-commit hook 應加入 UTF-8 驗證
+
+### ERR-013 | 玩家場景 ext_resource UID 指向場景自身（UID 自引用）
+- **錯誤訊息**：`ext_resource, invalid UID: uid://cgxc5o3rdglr5 - using text path instead` × 多個場景；`UID duplicate detected between res://scenes/player/player2.tscn and res://scenes/player/player1.tscn` × 3 對
+- **根本原因**：複製 player.tscn 建立 player1-4.tscn 時，每個場景的 `[ext_resource]` 的 uid 屬性被設為與場景頭的 `uid=` 完全相同的值（即場景自身的 UID 而非資源的 UID）。這導致：
+  1. 四個場景中所有同類 ext_resource 都指向不同的 UID → Godot 找不到對應資源
+  2. 四個場景的 UID 互相重複（每個場景 UID 被同名資源的 UID 覆蓋）
+- **正確做法**：`[ext_resource]` 的 `uid=` 必須是**被引用資源**的 UID（可從 `.uid` 副檔名文件或資源文件的 `[gd_scene format=3 uid="xxx"]` 行讀取），絕對不能是當前場景的 UID
+- **修復**：查詢各資源的真實 UID，更新 player1-4.tscn 的所有 ext_resource 引用；同時新增 `player_prefix` 屬性讓各場景對應正確的輸入組
+- **責任 ROLE**：Developer（主責）— 複製場景後沒有驗證 ext_resource UID 的正確性；Reviewer（次責）— 審查 .tscn 時應核對 ext_resource UID 與 .uid 文件是否一致
+- **快速驗證腳本**：
+  ```powershell
+  # 確認場景的 ext_resource UID 不等於場景本身 UID
+  $tscn = Get-Content "D:\2026-06-04\scenes\player\player1.tscn" -Raw
+  $sceneUID = [regex]::Match($tscn, 'gd_scene.*uid="([^"]+)"').Groups[1].Value
+  $extUIDs = [regex]::Matches($tscn, 'ext_resource.*uid="([^"]+)"') | ForEach-Object { $_.Groups[1].Value }
+  $bad = $extUIDs | Where-Object { $_ -eq $sceneUID }
+  if ($bad) { Write-Host "❌ ext_resource UID 與場景 UID 相同！" } else { Write-Host "✅ 無 UID 自引用問題" }
+  ```
+
+### ERR-014 | test_stretch.gd 使用 Godot 3 廢棄 API
+- **錯誤訊息**：`Script 'res://test_stretch.gd' contains invalid unicode (UTF-8), so it was not loaded.`（間接）+ `ERROR: res://test_stretch.gd:1 - Parse Error: Invalid character` 
+- **實際問題**：`TextureRect.STRETCH_KEEP_ASPECT_CENTERED` 是 Godot 3 的常數，在 Godot 4 中已廢棄（移至 `TextureRect.StretchMode` 枚舉，常數名稱改變）。此外，腳本格式也有問題（單行格式在 Godot 4 headless 中可能有相容性問題）。
+- **修復**：重寫為多行格式，使用 Godot 4 的 `TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL` 常數
+- **責任 ROLE**：Developer（主責）— 使用了 Godot 3 API 而非 Godot 4 API；Sensor（次責）— 應在 Level 2 觸發表中加入「TextureRect.STRETCH_*」等已廢棄常數的掃描項目
+
+### ERR-015 | test_*.gd 文件 UTF-8 BOM 問題（AI 工具寫入問題）
+- **錯誤訊息**：`Unicode parsing error, Invalid UTF-8 leading byte (ff)` / `Invalid UTF-8 leading byte (fe)` 對應 test_grad.gd, test_img.gd, test_source.gd, test_src.gd, test_tm.gd, test_tm2.gd
+- **根本原因**：test_*.gd 文件（根目錄下的測試腳本）以 UTF-8 BOM（EF BB BF）儲存。Godot 4 的腳本解析器不接受任何形式的 BOM（包括 UTF-8 BOM）。PowerShell 的 `Set-Content` 和 `Out-File` 在某些版本中預設寫入 UTF-8 BOM。
+- **修復**：用 `[System.IO.File]::WriteAllText(path, content, New-Object System.Text.UTF8Encoding($false))` 重新儲存所有 test_*.gd 文件
+- **責任 ROLE**：Developer（主責）— 使用了會產生 BOM 的工具寫入 .gd 文件；Sensor 觸發表的 ERR-011 條目已涵蓋此類問題，但未被執行
+
+---
+
+## 🟢 新增 PATTERN（2026-06-12 第四批）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-12 | 含中文的 .gd 文件 | 統一使用英文撰寫所有 .gd 文件的代碼和註解（最安全）；若必須中文，確保編輯器設為 UTF-8 無 BOM 儲存，並在寫入後用 `[IO.File]::ReadAllBytes` 驗證頭部無 0xFF/0xFE/0xEF |
+| 2026-06-12 | 複製 .tscn 後 ext_resource UID 驗證 | 複製場景後立即執行 UID 自引用檢查腳本，確認每個 ext_resource 的 UID 來自被引用資源的 .uid 文件，而非場景自身的 UID |
+| 2026-06-12 | Godot 3 → Godot 4 API 遷移 | `TextureRect.STRETCH_*` → 使用 `TextureRect.StretchMode` 枚舉；任何涉及 Godot 3 常數的腳本在 Godot 4 中必須使用 Godot 4 對應的 API |
+| 2026-06-12 | 工具腳本的 UTF-8 BOM 預防 | 在 pre-commit hook 或 CI 中加入掃描：`$b=[IO.File]::ReadAllBytes($path); if ($b[0] -eq 0xEF -and $b[1] -eq 0xBB) { "UTF-8 BOM 錯誤" }` |

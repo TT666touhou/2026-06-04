@@ -100,6 +100,18 @@
          n. 【ERR-011 後】確認所有 .gd 文件無 UTF-16 BOM（Unicode parsing error ff/fe）：
             掃描：Get-ChildItem "D:\2026-06-04" -Recurse -Include "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 2 -and $b[0]-eq 0xFF -and $b[1]-eq 0xFE } | ForEach-Object { "❌ $($_.Name)" }
             修復：$b=[IO.File]::ReadAllBytes($p); $t=[Text.Encoding]::Unicode.GetString($b,2,$b.Length-2); [IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding($false)))
+         o. 【ERR-012 後】含中文或多位元組字元的 .gd 文件必須確認 UTF-8 編碼（Unicode parsing error）：
+            ❌ 危險：在非 UTF-8 環境中撰寫含中文的 .gd 文件 → 0x80+ 位元組觸發 Godot parse 失敗
+            ✅ 最安全：統一以英文撰寫所有 .gd 代碼和注解
+            掃描 UTF-8 BOM：Get-ChildItem "D:\2026-06-04" -Recurse -Filter "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 3 -and $b[0]-eq 0xEF -and $b[1]-eq 0xBB -and $b[2]-eq 0xBF } | ForEach-Object { "❌ UTF-8 BOM: $($_.Name)" }
+         p. 【ERR-013 後】複製 .tscn 後必須驗證 ext_resource UID 不等於場景 UID（UID 自引用）：
+            ❌ 危險：複製 player.tscn 建立 player1.tscn 後，替換場景 UID 時也誤將 ext_resource 的 uid 改為新場景 UID → 全部指向自身
+            ✅ 正確：ext_resource 的 uid 必須是被引用資源本身的 UID（查 .uid 文件或資源頭）
+            驗證腳本（每次複製 .tscn 後必跑）：
+               $tscn = Get-Content "scenes\player\player1.tscn" -Raw
+               $sUID = [regex]::Match($tscn,'gd_scene.*uid="([^"]+)"').Groups[1].Value
+               $bad = [regex]::Matches($tscn,'ext_resource.*uid="([^"]+)"') | Where-Object { $_.Groups[1].Value -eq $sUID }
+               if ($bad) { "❌ UID 自引用！" } else { "✅ 無 UID 自引用" }
        ★ 掃描腳本（可直接執行）：
          Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
            Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |

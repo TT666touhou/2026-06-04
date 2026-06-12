@@ -185,6 +185,11 @@
 8. **【新增 ERR-002/003 後】narrowing conversion 或 ternary 型別不相容**：
    `int(float_value)` → 必須改為 `roundi()`
    三元運算符兩分支型別不同 → 必須展開為 if/else 區塊
+9. **【新增 ERR-013 後】.tscn ext_resource UID 自引用**：
+   複製的場景中 `ext_resource` 的 `uid=` 等於場景頭的 `uid=`（自引用）→ 立即封鎖，退回 Developer
+   驗證命令：`$content = Get-Content xxx.tscn -Raw; $sUID = [regex]::Match($content,'gd_scene.*uid="([^"]+)"').Groups[1].Value; [regex]::Matches($content,'ext_resource.*uid="([^"]+)"') | Where-Object { $_.Groups[1].Value -eq $sUID }`
+10. **【新增 ERR-012/015 後】任何 .gd 文件有 UTF-8 BOM 或非 UTF-8 編碼**：
+    審查前必須執行 BOM 掃描；`EF BB BF` 或 `FF FE` 開頭的文件 → 立即封鎖，退回 Developer
 
 
 ### 🟡 要求改善（可在下次提交修復）
