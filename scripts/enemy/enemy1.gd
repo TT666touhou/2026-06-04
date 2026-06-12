@@ -126,6 +126,12 @@ func take_damage(damage: int) -> void:
 	if current_health <= 0:
 		die()
 
+## 玩家近戰 Combo Knockback（純水平，多人遊戲安全）
+func apply_knockback(impulse: Vector2) -> void:
+	if _is_dying:
+		return
+	velocity += impulse
+
 func die() -> void:
 	if _is_dying:
 		return

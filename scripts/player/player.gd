@@ -106,8 +106,12 @@ extends CharacterBody2D
 @export_range(0.1, 2.0, 0.05) var ranged_cooldown: float = 0.6
 ## 遠程子彈場景（由 GameWorld 動態注入）
 @export var bullet_scene: PackedScene
-## 近戰片斬特效（左鍵攻擊觸發）
+## 近戰第1擊特效（slash_01.png，橫斬）
 @export var melee_slash_scene: PackedScene
+## 近戰第2擊特效（slash_02.png，反向斬）
+@export var melee_slash2_scene: PackedScene
+## 近戰第3擊特效（impact_01.png，衝擊爆炸）
+@export var melee_impact3_scene: PackedScene
 ## 遠程發射火花特效（右鍵攻擊觸發）
 @export var muzzle_flash_scene: PackedScene
 
@@ -179,11 +183,16 @@ var _atlas_cache: Dictionary = {}
 var _skin_index: int = 0
 
 # ── 戰鬥狀態 ────────────────────────────────────────────────
-var _melee_timer: float = 0.0      # > 0 表示攻擊張數中
-var _melee_cooldown_timer: float = 0.0
+## Combo 狀態機：0=IDLE, 1=第一擊, 2=第二擊, 3=第三擊
+var _combo_step: int = 0
+## 攻擊動畫鎖定計時（鎖定期間禁止移動）
+var _attack_lock_timer: float = 0.0
+## Combo 連擊緩衝窗口計時（0.3s 內再按可接下一擊）
+var _combo_buffer_timer: float = 0.0
+## 玩家在 buffer 窗口內是否已按下攻擊鍵
+var _combo_queued: bool = false
+## 遠程冷卻計時
 var _ranged_cooldown_timer: float = 0.0
-var _is_attacking: bool = false    # 近戰攻擊張數中
-var _attack_hold_timer: float = 0.0 # 按住攻擊鍵的時間
 ## 供 DebugBridge/Overlay 讀取
 var attack_state: String = "IDLE"  # "IDLE" | "MELEE" | "RANGED"
 
@@ -294,13 +303,24 @@ func _physics_process(delta: float) -> void:
 	# 8.5. 無敵幀與閃爍
 	_handle_invincibility(delta)
 
-	# 9. 攻擊冷卻計時
-	_melee_timer = maxf(0.0, _melee_timer - delta)
-	_melee_cooldown_timer = maxf(0.0, _melee_cooldown_timer - delta)
+	# 9. 攻擊計時更新（Combo 狀態機）
 	_ranged_cooldown_timer = maxf(0.0, _ranged_cooldown_timer - delta)
-	if _is_attacking and _melee_timer <= 0.0:
-		_is_attacking = false
-		attack_state = "IDLE"
+	# 攻擊鎖定倒數：鎖定結束時執行 queued 下一擊 或 重置 combo
+	if _attack_lock_timer > 0.0:
+		_attack_lock_timer = maxf(0.0, _attack_lock_timer - delta)
+		if _attack_lock_timer <= 0.0:
+			# 鎖定結束：若有 buffer 且還在窗口內，執行下一擊
+			if _combo_queued and _combo_buffer_timer > 0.0:
+				_combo_queued = false
+				_execute_combo_hit()
+			else:
+				# 無 buffer → 進入等待窗口（buffer 自然倒數到 0 後 reset）
+				pass
+	# Combo buffer 窗口倒數：到 0 則重置
+	if _attack_lock_timer <= 0.0 and _combo_buffer_timer > 0.0:
+		_combo_buffer_timer = maxf(0.0, _combo_buffer_timer - delta)
+		if _combo_buffer_timer <= 0.0:
+			_reset_combo()
 
 	# 10. 戰鬥輸入
 	_handle_attack(delta)
@@ -417,6 +437,11 @@ func _handle_horizontal(delta: float) -> void:
 	# 蹬牆跳後鎖定水平方向一段時間
 	if _wall_lock_timer > 0.0:
 		_wall_lock_timer = max(0.0, _wall_lock_timer - delta)
+		return
+
+	# 攻擊鎖定期間：禁止水平移動（快速減速後返回）
+	if _attack_lock_timer > 0.0:
+		velocity.x = move_toward(velocity.x, 0.0, 800.0 * delta)
 		return
 
 	var dir := Input.get_axis(player_prefix + "move_left", player_prefix + "move_right")
@@ -771,42 +796,65 @@ func _handle_invincibility(delta: float) -> void:
 #   左鍵 (LMB) = 近戰攻擊（即時觸發，短範圍矩形揄描）
 #   右鍵 (RMB) = 遠程攻擊（即時觸發，發射子彈）
 # ═══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════
+# Combo 狀態機輔助函式
+# ═══════════════════════════════════════════════════════════════
+func _reset_combo() -> void:
+	_combo_step = 0
+	_combo_queued = false
+	_combo_buffer_timer = 0.0
+	if attack_state == "MELEE":
+		attack_state = "IDLE"
+
+func _execute_combo_hit() -> void:
+	## 執行當前 _combo_step 對應的一擊
+	_combo_step = mini(_combo_step + 1, 3)
+	attack_state = "MELEE"
+	## 每擊鎖定時間與 buffer 窗口
+	var lock_time := 0.15 if _combo_step < 3 else 0.20
+	_attack_lock_timer = lock_time
+	_combo_buffer_timer = lock_time + 0.3  # 鎖定時間 + buffer 窗口
+	_combo_queued = false
+	_do_melee_hit()
+
+# ═══════════════════════════════════════════════════════════════
+# 攻擊輸入處理（Combo 狀態機）
+# ═══════════════════════════════════════════════════════════════
 func _handle_attack(_delta: float) -> void:
-	## 翻滚中禁止攻擊
+	## 翻滾中禁止攻擊
 	if _is_rolling:
+		_reset_combo()
 		return
 
 	var melee_action  := player_prefix + "melee"
 	var ranged_action := player_prefix + "ranged"
 
-	## 近戰：左鍵 just_pressed（骜防御： action 不存在則跳過）
+	## 近戰：左鍵 just_pressed
 	if InputMap.has_action(melee_action) and Input.is_action_just_pressed(melee_action):
-		if _melee_cooldown_timer <= 0.0 and not _is_attacking:
-			_perform_melee_attack()
-			_is_attacking = true
-			_melee_timer = melee_duration
-			_melee_cooldown_timer = melee_cooldown
-			attack_state = "MELEE"
+		if _combo_step == 0:
+			## IDLE：立即開始第 1 擊
+			_execute_combo_hit()
+		elif _combo_step in [1, 2]:
+			## 進行中：若鎖定期間 → queue；若在 buffer 窗口 → 立即執行
+			if _attack_lock_timer > 0.0:
+				_combo_queued = true
+			elif _combo_buffer_timer > 0.0:
+				_execute_combo_hit()
+		## _combo_step == 3：第三擊期間忽略（等 buffer 結束自然重置）
 
-	## 遠程：右鍵 just_pressed
+	## 遠程：右鍵 just_pressed（不受近戰 combo 影響）
 	if InputMap.has_action(ranged_action) and Input.is_action_just_pressed(ranged_action):
 		if _ranged_cooldown_timer <= 0.0:
 			_fire_bullet()
 			_ranged_cooldown_timer = ranged_cooldown
 			attack_state = "RANGED"
 
-	## 攻擊張數結束重置
-	if _is_attacking and _melee_timer <= 0.0:
-		_is_attacking = false
-		attack_state = "IDLE"
-
-func _perform_melee_attack() -> void:
-	## 用 ShapeCast2D 掃描前方扇形區域（即時查詢，不依賴固定 Hitbox 節點）
+func _do_melee_hit() -> void:
+	## 判定：PhysicsShapeQuery 矩形掃描（只打正前方）
 	var space := get_world_2d().direct_space_state
 	var shape  := RectangleShape2D.new()
 	shape.size = Vector2(melee_range, 24.0)
 
-	## 攻擊方向跟隨 _facing（-1 = 左，1 = 右）
 	var offset := Vector2(_facing * (melee_range * 0.5 + 4.0), 0.0)
 	var hit_transform := global_transform
 	hit_transform.origin += offset
@@ -814,26 +862,56 @@ func _perform_melee_attack() -> void:
 	var query := PhysicsShapeQueryParameters2D.new()
 	query.shape = shape
 	query.transform = hit_transform
-	## 只打中 Layer 4（Enemies）
-	query.collision_mask = 8
+	query.collision_mask = 8  # Layer 4 = Enemies
 
 	var results := space.intersect_shape(query, 8)
 	for r: Dictionary in results:
 		var body: Node = r.get("collider")
 		if body and body != self and body.has_method("take_damage"):
 			body.take_damage(melee_damage)
-			print("[Player] 近戰命中：", body.name, " 傷害：", melee_damage)
+			## Knockback：純水平 80px/s（多人遊戲安全，無 HitStop）
+			if body.has_method("apply_knockback"):
+				body.apply_knockback(Vector2(_facing * 80.0, 0.0))
+			print("[Player] Combo擊", _combo_step, " 命中：", body.name)
 
-	## 視覺回餌：短暫縮放 VisualPivot 模擬攻擊動態
+	## 視覺回饋：VisualPivot 縮放（模擬出拳動感）
 	if _visual_pivot:
 		var tw := create_tween()
-		var scale_dir := Vector2(1.3 * _facing, 0.85)
-		tw.tween_property(_visual_pivot, "scale", scale_dir, 0.08)
-		tw.tween_property(_visual_pivot, "scale", Vector2.ONE, 0.12)
+		var scale_dir := Vector2(1.25 * _facing, 0.85)
+		tw.tween_property(_visual_pivot, "scale", scale_dir, 0.06)
+		tw.tween_property(_visual_pivot, "scale", Vector2(_facing, 1.0), 0.09)
 
-	## 近戰片斬 VFX
-	var vfx_pos := global_position + Vector2(_facing * 12.0, -4.0)
-	_spawn_vfx(melee_slash_scene, vfx_pos, _facing < 0.0)
+	## 每擊對應不同 VFX 場景
+	var vfx_offset: Vector2
+	match _combo_step:
+		1:
+			## 第1擊：橫斬（slash_01）
+			vfx_offset = Vector2(_facing * 14.0, -4.0)
+			_spawn_melee_vfx(_get_melee_slash_scene(), global_position + vfx_offset, _facing < 0.0)
+		2:
+			## 第2擊：反向斬（slash_02，flip_h=true 已在場景中設定）
+			vfx_offset = Vector2(_facing * 14.0, -4.0)
+			_spawn_melee_vfx(_get_melee_slash2_scene(), global_position + vfx_offset, _facing < 0.0)
+		3:
+			## 第3擊：衝擊爆炸（impact_01，scale=0.40 已在場景中設定）
+			vfx_offset = Vector2(_facing * 10.0, -4.0)
+			_spawn_melee_vfx(_get_melee_impact3_scene(), global_position + vfx_offset, false)
+
+## Fallback loader：優先用 @export，否則動態載入
+func _get_melee_slash_scene() -> PackedScene:
+	if melee_slash_scene != null:
+		return melee_slash_scene
+	return load("res://scenes/VFX/MeleeSlash.tscn") as PackedScene
+
+func _get_melee_slash2_scene() -> PackedScene:
+	if melee_slash2_scene != null:
+		return melee_slash2_scene
+	return load("res://scenes/VFX/MeleeSlash2.tscn") as PackedScene
+
+func _get_melee_impact3_scene() -> PackedScene:
+	if melee_impact3_scene != null:
+		return melee_impact3_scene
+	return load("res://scenes/VFX/MeleeImpact3.tscn") as PackedScene
 
 ## ── 8方向射擊方向計算 ────────────────────────────────────────────
 ## 依據目前按下的 WASD 鍵決定射擊方向（8個方向）
@@ -919,6 +997,27 @@ func _spawn_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool = false) -> v
 		var spr := vfx.get_node_or_null("AnimatedSprite2D")
 		if spr:
 			spr.flip_h = true
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", vfx)
+
+## 近戰 VFX（繼承玩家顏色，支援 flip_h）
+## 用於 3 擊 Combo：slash_01 / slash_02 / impact_01
+func _spawn_melee_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool) -> void:
+	if vfx_scene == null:
+		return
+	var vfx := vfx_scene.instantiate() as Node2D
+	if vfx == null:
+		return
+	vfx.global_position = pos
+	## 繼承玩家顏色（P1=橙, P2=藍, P3=綠, P4=紫）
+	if _visual_pivot:
+		vfx.modulate = _visual_pivot.modulate
+	## flip_h 處理（供 slash_01 朝左時翻轉；slash_02 的固定 flip_h 已在場景設定）
+	if flip_h:
+		var spr := vfx.get_node_or_null("AnimatedSprite2D")
+		if spr:
+			spr.flip_h = not spr.flip_h  # 切換（保留場景的預設 flip_h）
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", vfx)

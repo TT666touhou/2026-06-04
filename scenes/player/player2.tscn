@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3 uid="uid://wj8c6qjz2js5i"]
+[gd_scene load_steps=13 format=3 uid="uid://wj8c6qjz2js5i"]
 
 [ext_resource type="TileSet" uid="uid://l6yv83slvrlm" path="res://assets/tilesets/kenney_1-bit-pack/Tilesheet/monochrome-transparent_packed.tres" id="2_33ho1"]
 [ext_resource type="Script" uid="uid://13bvchhfcwce" path="res://scripts/player/player.gd" id="2_script"]
@@ -8,6 +8,8 @@
 [ext_resource type="PackedScene" uid="uid://melee_slash_vfx" path="res://scenes/VFX/MeleeSlash.tscn" id="6_melee_vfx"]
 [ext_resource type="PackedScene" uid="uid://ranged_muzzle_vfx" path="res://scenes/VFX/RangedMuzzle.tscn" id="7_ranged_vfx"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_bullet.tscn" id="8_bullet"]
+[ext_resource type="PackedScene" uid="uid://melee_slash2_vfx" path="res://scenes/VFX/MeleeSlash2.tscn" id="9_melee_vfx2"]
+[ext_resource type="PackedScene" uid="uid://melee_impact3_vfx" path="res://scenes/VFX/MeleeImpact3.tscn" id="10_melee_impact3"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 4.0
@@ -28,6 +30,8 @@ friction = 960.0
 jump_velocity = -191.0
 player_prefix = "p2_"
 melee_slash_scene = ExtResource("6_melee_vfx")
+melee_slash2_scene = ExtResource("9_melee_vfx2")
+melee_impact3_scene = ExtResource("10_melee_impact3")
 muzzle_flash_scene = ExtResource("7_ranged_vfx")
 bullet_scene = ExtResource("8_bullet")
 
