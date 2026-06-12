@@ -95,6 +95,7 @@ extends CharacterBody2D
 @onready var _dust_vfx:   Node2D      = $PlayerDust
 @onready var _floor_cast: ShapeCast2D = $FloorCast
 @onready var _visual_pivot: Node2D    = $VisualPivot
+@onready var appearance: TileMapLayer = $VisualPivot/Appearance
 
 # ═══════════════════════════════════════════════════════════════
 # 內部狀態
@@ -152,13 +153,6 @@ var _floor_color_timer: float = 0.0
 var _atlas_cache: Dictionary = {}
 
 var _skin_index: int = 0
-
-## 多人模式：本機玩家的輸入前綴（"" / "p1_" / "p2_" / "p3_" / "p4_"）
-## 由 GameWorld._spawn_player 設定
-var player_prefix: String = ""
-
-@onready var appearance: TileMapLayer = $VisualPivot/Appearance
-@onready var _visual_pivot: Node2D = $VisualPivot
 
 # ═══════════════════════════════════════════════════════════════
 # Multiplayer Authority
