@@ -14,6 +14,14 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第零步：查詢錯誤知識庫 — 先學已知問題，再測試】
+
+□ 0. 查詢 docs/ERROR_LOG.md（測試前必做）：
+      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+      - 確認所有 🔴 Critical 錯誤已無回歸（重新出現）
+      - 查看 🟢 Pattern 區塊，確認已知最佳做法被遵循
+      ⚠️ 若發現 Critical 錯誤回歸 → 立即退回 Developer，更新 ERROR_LOG.md
+
 【第一步：全面前置驗證 — 任何測試前必做】
 
 □ 1. 靜態語法驗證（第一優先）：
@@ -38,6 +46,10 @@
 □ 4. 確認 GUT 測試環境：
       dir D:\2026-06-04\addons\gut\test.gd
       → 必須存在
+
+【測試完成後 → 更新 docs/ERROR_LOG.md】
+□ 若發現任何新錯誤或回歸問題，立即加入 ERROR_LOG.md 對應區塊
+□ 若確認某個已知錯誤完全修復且無回歸，在 ERROR_LOG.md 中標記 ✅VERIFIED
 
 ⚠️ 靜態驗證失敗 → 立即退回 Developer，不繼續進行任何測試
 ```

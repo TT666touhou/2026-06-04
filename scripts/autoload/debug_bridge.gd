@@ -104,6 +104,7 @@ func _collect_state() -> Dictionary:
 			p["on_wall"] = player.is_on_wall()
 		p["is_invincible"] = player.get("is_invincible") if player.get("is_invincible") != null else false
 		p["is_rolling"] = player.get("_is_rolling") if player.get("_is_rolling") != null else false
+		p["attack_state"] = player.get("attack_state") if player.get("attack_state") != null else "IDLE"
 		
 		# 狀態機
 		var sm := player.get_node_or_null("StateMachine")
@@ -134,5 +135,12 @@ func _collect_state() -> Dictionary:
 	var scene: Node = get_tree().current_scene
 	var scene_name: String = scene.name if scene != null else "null"
 	state["current_scene"] = scene_name
-	
+
+	# ── Rogue-lite 地牡/房間層狀 ──────────────────────────────────
+	var game_world := get_tree().get_root().get_node_or_null("GameWorld")
+	if game_world and game_world.has_method("get_dungeon_debug_info"):
+		state["dungeon"] = game_world.get_dungeon_debug_info()
+	else:
+		state["dungeon"] = {"status": "not_available"}
+
 	return state

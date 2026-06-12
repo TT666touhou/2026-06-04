@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://eyrcpe4yncj6" path="res://scripts/camera/multiplayer_camera.gd" id="2_camscr"]
 [ext_resource type="PackedScene" uid="uid://b0yuquq5kh52u" path="res://scenes/player/player.tscn" id="3_plscn"]
 [ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="4_tiles"]
+[ext_resource type="Script" path="res://scripts/level/dungeon_generator.gd" id="5_dungscr"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(800, 32)
@@ -19,6 +20,9 @@ size = Vector2(16, 400)
 
 [node name="GameWorld" type="Node"]
 script = ExtResource("1_gwscr")
+
+[node name="DungeonGenerator" type="Node" parent="."]
+script = ExtResource("5_dungscr")
 
 [node name="Players" type="Node2D" parent="."]
 

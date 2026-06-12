@@ -16,12 +16,21 @@ const INPUT_PREFIXES := ["", "p1_", "p2_", "p3_", "p4_"]
 ## 玩家場景路徑（由 MultiplayerSpawner 管理）
 const PLAYER_SCENE := preload("res://scenes/player/player.tscn")
 
+## 玩家子彈場景（注入到玩家的 bullet_scene 屬性）
+const BULLET_SCENE := preload("res://scenes/player/player_bullet.tscn")
+
 @onready var _spawner: MultiplayerSpawner = $MultiplayerSpawner
 @onready var _players_root: Node2D = $Players
 # _camera 由 MultiplayerCamera 場景節點自行 make_current()
 # 此處不需持有參照
 
 var _local_player_index: int = 1  ## 本機玩家編號（1=Server, 2-4=Client）
+
+## Rogue-lite 房間生成器
+@onready var _dungeon: DungeonGenerator = $DungeonGenerator
+
+## 目前房間容器（存放當前已載入的房間場景）
+var _current_room_node: Node = null
 
 # ═══════════════════════════════════════════════════════════════
 # 啟動流程
@@ -84,10 +93,21 @@ func _start_solo() -> void:
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "SoloPlayer"
 	player.player_prefix = ""  # 使用預設輸入
+	player.bullet_scene = BULLET_SCENE  ## 注入子彈場景
 	_players_root.add_child(player)
 	player.global_position = Vector2(100, -50)
 	player.apply_player_color(0)
 	print("[GameWorld] 單機玩家生成完成")
+
+	## 啟動 Rogue-lite 生成
+	if _dungeon:
+		_dungeon.generate_run()
+		var first_room := _dungeon.advance_room()
+		if not first_room.is_empty():
+			_load_room_scene(first_room)
+			print("[GameWorld] 載入第一間房")
+	else:
+		push_warning("[GameWorld] DungeonGenerator 節點不存在，跳過房間生成")
 
 # ═══════════════════════════════════════════════════════════════
 # 玩家生成（Server 端）
@@ -137,3 +157,74 @@ func _on_player_disconnected(peer_id: int) -> void:
 	if player_node:
 		player_node.queue_free()
 		print("[GameWorld] 玩家節點已移除：%d" % peer_id)
+
+# ═══════════════════════════════════════════════════════════════
+# Rogue-lite 房間控制
+# ═══════════════════════════════════════════════════════════════
+
+## 進入下一間房間（由 RoomTransition 節點觸發，或直接呼叫）
+func load_next_room() -> void:
+	if not _dungeon:
+		push_warning("[GameWorld] load_next_room: DungeonGenerator 不存在")
+		return
+
+	var next_path := _dungeon.advance_room()
+	if next_path.is_empty():
+		## Run 完成，回到主選單或顯示結算畫面
+		print("[GameWorld] 所有房間已通過！Run 完成")
+		## TODO Phase 3.3: 顯示結算畫面
+		return
+
+	_load_room_scene(next_path)
+
+## 實際載入房間場景（加入為子節點而非切換主場景）
+func _load_room_scene(scene_path: String) -> void:
+	if not ResourceLoader.exists(scene_path):
+		push_warning("[GameWorld] 房間場景不存在：" + scene_path)
+		return
+
+	## 移除舊房間
+	if _current_room_node:
+		_current_room_node.queue_free()
+		_current_room_node = null
+
+	## 載入新房間
+	var scene := load(scene_path) as PackedScene
+	if scene == null:
+		push_error("[GameWorld] 無法載入場景：" + scene_path)
+		return
+
+	_current_room_node = scene.instantiate()
+	## 將房間加入場景樹，放在 Players 之前（確保房間層在下方）
+	add_child(_current_room_node)
+	move_child(_current_room_node, 0)
+
+	## 套用房間難度
+	if _dungeon:
+		var room_def := _dungeon.get_current_room()
+		if room_def:
+			_apply_room_difficulty(room_def.difficulty_bonus)
+
+	print("[GameWorld] 房間已載入：", scene_path)
+
+## 套用房間難度（影響敵人數量）
+func _apply_room_difficulty(bonus: int) -> void:
+	if not _current_room_node:
+		return
+	## 啟用房間內被禁用的敵人（spawn_disabled 設為 false）
+	var enemies := get_tree().get_nodes_in_group("Enemies")
+	var enabled_count := 0
+	for enemy: Node in enemies:
+		if enabled_count < (5 + bonus * 2):  ## 基礎 5 隻 + 難度倍增
+			if enemy.has_method("enable_enemy"):
+				enemy.call_deferred("enable_enemy")
+			enabled_count += 1
+		else:
+			break
+	print("[GameWorld] 難度加成 %d  啟用敵人：%d 隻" % [bonus, enabled_count])
+
+## Debug 資訊（供 DebugBridge 讀取）
+func get_dungeon_debug_info() -> Dictionary:
+	if not _dungeon:
+		return {"status": "no_dungeon"}
+	return _dungeon.get_debug_info()

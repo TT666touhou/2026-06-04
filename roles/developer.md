@@ -14,6 +14,14 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第零步：查詢錯誤知識庫 — 先學，再做】
+
+□ 0. 查詢 docs/ERROR_LOG.md（所有錯誤前必做）：
+      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+      - 查找與當前任務相關的已知錯誤
+      - 遵循對應的「修復方法」或「最佳做法」
+      ⚠️ 已知錯誤不得重蹈，違者視為嚴重失職
+
 【第一步：全面靜態錯誤清除 — 任何新代碼都不能建立在錯誤上】
 
 □ 1. 執行工作區清潔檢查：
@@ -88,6 +96,10 @@ push_warning("[MultiplayerCamera] 沒有找到玩家，等待中...")
 ## 🚨 Bug 修復規程（防止無限循環）
 
 ```
+【修復前必做：查詢 docs/ERROR_LOG.md】
+  Get-Content "D:\2026-06-04\docs\ERROR_LOG.md" | Select-String "關鍵字"
+  若找到相符錯誤 → 直接使用文件記錄的修復方法，跳過試錯
+
 第一次嘗試（直接修復）：
   - 閱讀錯誤訊息，定位問題根源
   - 修改代碼，執行 Godot --check-only 驗證
@@ -106,6 +118,11 @@ push_warning("[MultiplayerCamera] 沒有找到玩家，等待中...")
   1. 在 Memory 記錄「blocked_issue_[日期]」
   2. 切換 .agent-role 為 architect
   3. 向 Architect 提交詳細的問題報告
+
+【修復成功後必做：更新 docs/ERROR_LOG.md】
+  - 在對應類別加入新的錯誤記錄
+  - 格式：| 日期 | 錯誤類型 | 錯誤訊息摘要 | 根本原因 | 修復方法 |
+  - 若是「最佳做法」類型，加到 🟢 Pattern 區塊
 ```
 
 ---

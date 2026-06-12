@@ -14,6 +14,14 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第零步：查詢錯誤知識庫 — 先了解已知問題，再審查】
+
+□ 0. 查詢 docs/ERROR_LOG.md（審查前必做）：
+      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+      - 確認 Developer 所修復的問題有在 Critical/Warning 區塊中有對應記錄
+      - 確認返回修復的方式與 ERROR_LOG.md 中記錄的一致
+      ⚠️ 若 Developer 的修復方式與文件不符 → 定為否分 PR
+
 【第一步：全面審查前置檢查】
 
 □ 1. 執行完整靜態錯誤掃描：
@@ -31,6 +39,9 @@
 □ 4. 讀取 GitHub PR diff，確認所有更改有列表
 
 □ 5. 讀取 debug_state.json（若可取得），確認節點已正確出現
+
+【審查發現新問題 → 更新 docs/ERROR_LOG.md】
+□ 審查中發現的新型態問題或架構偏差，必須加入 ERROR_LOG.md
 
 ⚠️ 若發現靜態錯誤 → 立即退回 Developer，不進行審查
 ```

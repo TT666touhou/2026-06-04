@@ -154,6 +154,15 @@ var _atlas_cache: Dictionary = {}
 
 var _skin_index: int = 0
 
+# ── 戰鬥狀態 ────────────────────────────────────────────────
+var _melee_timer: float = 0.0      # > 0 表示攻擊張數中
+var _melee_cooldown_timer: float = 0.0
+var _ranged_cooldown_timer: float = 0.0
+var _is_attacking: bool = false    # 近戰攻擊張數中
+var _attack_hold_timer: float = 0.0 # 按住攻擊鍵的時間
+## 供 DebugBridge/Overlay 讀取
+var attack_state: String = "IDLE"  # "IDLE" | "MELEE" | "RANGED"
+
 # ═══════════════════════════════════════════════════════════════
 # Multiplayer Authority
 # ═══════════════════════════════════════════════════════════════
@@ -261,7 +270,18 @@ func _physics_process(delta: float) -> void:
 	# 8.5. 無敵幀與閃爍
 	_handle_invincibility(delta)
 
-	# 9. 地面狀態記錄（供下一幀使用）
+	# 9. 攻擊冷卻計時
+	_melee_timer = maxf(0.0, _melee_timer - delta)
+	_melee_cooldown_timer = maxf(0.0, _melee_cooldown_timer - delta)
+	_ranged_cooldown_timer = maxf(0.0, _ranged_cooldown_timer - delta)
+	if _is_attacking and _melee_timer <= 0.0:
+		_is_attacking = false
+		attack_state = "IDLE"
+
+	# 10. 戰鬥輸入
+	_handle_attack(delta)
+
+	# 11. 地面狀態記錄（供下一幀使用）
 	_was_on_floor = is_on_floor()
 
 # ═══════════════════════════════════════════════════════════════
@@ -702,3 +722,106 @@ func _handle_invincibility(delta: float) -> void:
 	else:
 		if _visual_pivot and _visual_pivot.modulate.a != 1.0:
 			_visual_pivot.modulate.a = 1.0
+
+# ═══════════════════════════════════════════════════════════════
+# 戰鬥系統（攻擊輸入處理）
+# ═══════════════════════════════════════════════════════════════
+func _handle_attack(_delta: float) -> void:
+	## 翻滾中禁止攻擊
+	if _is_rolling:
+		return
+
+	var attack_pressed := Input.is_action_just_pressed(player_prefix + "attack")
+	var attack_held    := Input.is_action_pressed(player_prefix + "attack")
+
+	## 遠程攻擊：長按 > 0.25s 則發射子彈（冷卻獨立）
+	if attack_held and _ranged_cooldown_timer <= 0.0 and not _is_attacking:
+		if Input.get_action_strength(player_prefix + "attack") > 0.0:
+			# 簡易判斷：如果已按著超過一幀（held），選擇遠程
+			_fire_bullet()
+			_ranged_cooldown_timer = ranged_cooldown
+			attack_state = "RANGED"
+			return
+
+	## 近戰攻擊：單次按鍵
+	if attack_pressed and _melee_cooldown_timer <= 0.0 and not _is_attacking:
+		_perform_melee_attack()
+		_is_attacking = true
+		_melee_timer = melee_duration
+		_melee_cooldown_timer = melee_cooldown
+		attack_state = "MELEE"
+
+	## 攻擊結束重置
+	if _is_attacking and _melee_timer <= 0.0:
+		_is_attacking = false
+		attack_state = "IDLE"
+
+func _perform_melee_attack() -> void:
+	## 用 ShapeCast2D 掃描前方扇形區域（即時查詢，不依賴固定 Hitbox 節點）
+	var space := get_world_2d().direct_space_state
+	var shape  := RectangleShape2D.new()
+	shape.size = Vector2(melee_range, 24.0)
+
+	## 攻擊方向跟隨 _facing（-1 = 左，1 = 右）
+	var offset := Vector2(_facing * (melee_range * 0.5 + 4.0), 0.0)
+	var hit_transform := global_transform
+	hit_transform.origin += offset
+
+	var query := PhysicsShapeQueryParameters2D.new()
+	query.shape = shape
+	query.transform = hit_transform
+	## 只打中 Layer 4（Enemies）
+	query.collision_mask = 8
+
+	var results := space.intersect_shape(query, 8)
+	for r: Dictionary in results:
+		var body: Node = r.get("collider")
+		if body and body != self and body.has_method("take_damage"):
+			body.take_damage(melee_damage)
+			print("[Player] 近戰命中：", body.name, " 傷害：", melee_damage)
+
+	## 視覺回饋：短暫縮放 VisualPivot 模擬攻擊動態
+	if _visual_pivot:
+		var tw := create_tween()
+		var scale_dir := Vector2(1.3 * _facing, 0.85)
+		tw.tween_property(_visual_pivot, "scale", scale_dir, 0.08)
+		tw.tween_property(_visual_pivot, "scale", Vector2.ONE, 0.12)
+
+func _fire_bullet() -> void:
+	## 從 GameWorld 的 Players 父節點取得子彈場景引用
+	if bullet_scene == null:
+		## 嘗試從 GameWorld 找 bullet_scene
+		var gw := get_node_or_null("/root")
+		if gw == null:
+			push_warning("[Player] bullet_scene 未設定，無法發射")
+			return
+
+	var b_scene := bullet_scene
+	if b_scene == null:
+		## fallback：動態載入
+		b_scene = load("res://scenes/enemy/bullet.tscn") as PackedScene
+		if b_scene == null:
+			push_warning("[Player] 找不到 bullet 場景，無法發射")
+			return
+
+	var bullet: Node2D = b_scene.instantiate()
+	## 繼承玩家顏色（tint）
+	if _visual_pivot:
+		bullet.modulate = _visual_pivot.modulate
+
+	## 設定子彈初始位置、方向、速度、傷害
+	var spawn_pos := global_position + Vector2(_facing * 10.0, -4.0)
+	bullet.global_position = spawn_pos
+
+	if bullet.has_method("setup"):
+		bullet.setup(Vector2(_facing, 0.0), bullet_speed, bullet_damage, "Players")
+	elif bullet.get("direction") != null:
+		bullet.set("direction", Vector2(_facing, 0.0))
+		if bullet.get("speed") != null:
+			bullet.set("speed", bullet_speed)
+
+	## 加入到 Players 的父節點（同一個 World 空間）
+	var parent := get_parent()
+	if parent:
+		parent.add_child(bullet)
+	print("[Player] 發射子彈 方向：", _facing)

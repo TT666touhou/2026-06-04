@@ -13,6 +13,13 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第零步：查詢錯誤知識庫 — 先學，再做】
+□ 0. 查詢 docs/ERROR_LOG.md（所有工作前必做）：
+      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+      - 確認沒有已知架構層面的根本問題尚未解決
+      - 若架構設計需要調整，須在此步驟先記錄
+      ⚠️ 若你的設計決策會觸發已知錯誤 → 必須在計畫中標注並提供迴避方案
+
 【第一步：全面靜態依賴檢查 — 開始任何架構工作前必做】
 □ 1. 執行靜態錯誤掃描（IDE 問題面板 / PowerShell lint 腳本）
 □ 2. 確認 docs/GAME_DESIGN.md 已被 Designer 確認為最新版本
@@ -21,6 +28,9 @@
 □ 5. 確認 addons/gut/ 插件已啟用（project.godot editor_plugins 區塊）
 □ 6. 確認 Autoload 順序（project.godot [autoload] 區塊）
 □ 7. 掃描 scripts/ 目錄，確認現有腳本結構與設計意圖一致
+
+【發現新問題 → 立即更新 docs/ERROR_LOG.md】
+□ 任何在架構設計過程中發現的新型態問題，必須加入 ERROR_LOG.md
 
 ⚠️ 若發現依賴問題 → 立即記錄到 Memory，通知 Developer 修復後才能繼續
 ```

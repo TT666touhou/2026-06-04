@@ -15,6 +15,14 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
+【第零步：查詢錯誤知識庫 — 了解技術限制再做設計】
+
+□ 0. 查詢 docs/ERROR_LOG.md（設計工作前必做）：
+      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+      - 查看 🟡 Warning 和 🟢 Pattern 區塊，了解已知技術限制
+      - 確保你的設計決策不會違反已知的技術約束
+      ⚠️ 若設計需要觸發已知 Critical 錯誤才能實現 → 必須先找到替代方案
+
 【第一步：完整性檢查 — 開始任何設計工作前必做】
 □ 1. 讀取 docs/GAME_DESIGN.md，確認現有設計沒有前後矛盾
 □ 2. 查詢 Memory MCP 確認已鎖定的設計決策（避免覆蓋 LOCKED 內容）
