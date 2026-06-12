@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # 角色：Developer（開發者）v3
 # 強化：靜態錯誤必須先清、Debug整合驗證、反省記錄、交接閘門
 # 設定角色：執行 .\scripts\set-role.ps1 developer
@@ -362,14 +362,35 @@ github.create_pull_request(
       - 在「已完成」區塊加入實作說明和關鍵檔案
       - 更新「尚未開始（TODO）」（若有尚未實作的子項）
       - 在「更新日誌」加入一行記錄
+□ 9. 【新增必要】確認 GAME_DESIGN.md 反映本次實作：
+      - 打開 docs/GAME_DESIGN.md，找到對應功能章節
+      - 若仍標記為 [DRAFT] 但功能已實作 → 通知 Designer 更新
+      - 若 GDD 與實作有差異 → 必須記錄在 ERROR_LOG.md Warning 區段
 
 通過才能執行：
 git push origin feature/[任務名稱]
 # 注：PROJECT_STATUS.md 必須在同一 commit 更新
 ```
 
+---
+
+## 📋 Developer 文件同步 Routine（每次收工必做）
+
+> **Developer 是代碼現況的第一手目擊者。你知道哪些東西做了，GDD 必須反映這點。**
+
+```
+□ DEV-DOC1. 打開 docs/GAME_DESIGN.md，確認本次實作的功能有對應章節
+□ DEV-DOC2. 若章節標記 [DRAFT] 但已實作 → 記錄「待 Designer 更新」列表，附上章節名稱
+□ DEV-DOC3. 更新 docs/PROJECT_STATUS.md 的「快速總覽」Phase 狀態
+□ DEV-DOC4. 若發現新 Bug 或設計衝突 → 立即在 ERROR_LOG.md 新增 Warning 記錄
+□ DEV-DOC5. 確認 docs/ERROR_LOG.md 的「最佳實踐 PATTERN」有涵蓋本次的踩坑點
+```
+
+---
+
 ## Hook 驗證
 - ✅ GDScript 語法正確（--check-only）
 - ✅ 大型檔案走 LFS
 - ✅ 無硬編碼機密
 - ✅ Commit 訊息格式：`[DEV] feat/fix: 描述`
+
