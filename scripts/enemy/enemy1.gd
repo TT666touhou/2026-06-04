@@ -15,6 +15,10 @@ var current_health: int = 1
 var direction: float = -1.0 # 初始往左走
 var is_alert: bool = false
 var flash_timer: float = 0.0
+var _is_dying: bool = false
+
+@export var hit_vfx_scene: PackedScene
+@export var death_vfx_scene: PackedScene
 
 func _ready() -> void:
 	if stats:
@@ -99,17 +103,50 @@ func _update_detectors() -> void:
 	appearance.scale.x = -direction
 
 func take_damage(damage: int) -> void:
+	if _is_dying:
+		return
 	current_health -= damage
 	print("Enemy1 took %d damage! Health remaining: %d" % [damage, current_health])
-	
-	# 簡單受擊視覺回饋 (可選)
-	var tween: Tween = create_tween()
-	appearance.modulate = Color(10, 10, 10, 1) # 閃白
-	tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
-	
+
+	## 受擊視覺回饵：超白閃光 + 縮放震動
+	appearance.modulate = Color(8.0, 8.0, 8.0, 1.0)
+	var tw := create_tween()
+	tw.tween_property(appearance, "modulate", Color(3.0, 0.2, 0.2, 1.0), 0.05)
+	tw.tween_property(appearance, "modulate", Color.WHITE, 0.1)
+
+	## 縮放震動（squash & stretch）
+	var st := create_tween()
+	st.tween_property(self, "scale", Vector2(1.3, 0.7), 0.04)
+	st.tween_property(self, "scale", Vector2(0.85, 1.2), 0.05)
+	st.tween_property(self, "scale", Vector2.ONE, 0.07)
+
+	## 命中特效
+	_spawn_vfx(hit_vfx_scene)
+
 	if current_health <= 0:
 		die()
 
 func die() -> void:
+	if _is_dying:
+		return
+	_is_dying = true
 	print("Enemy1 died!")
-	queue_free()
+	set_physics_process(false)
+	_spawn_vfx(death_vfx_scene)
+
+	## 死亡動畫：放大 + 淡出
+	var tw := create_tween()
+	tw.tween_property(self, "scale", Vector2(1.5, 1.5), 0.08)
+	tw.tween_property(self, "modulate:a", 0.0, 0.15)
+	tw.tween_callback(queue_free)
+
+func _spawn_vfx(vfx_scene: PackedScene) -> void:
+	if vfx_scene == null:
+		return
+	var vfx := vfx_scene.instantiate() as Node2D
+	if vfx == null:
+		return
+	vfx.global_position = global_position + Vector2(0.0, -8.0)
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", vfx)

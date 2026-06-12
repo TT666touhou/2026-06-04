@@ -15,7 +15,10 @@ var current_state: State = State.PATROL
 var state_timer: float = 0.0
 var direction: float = -1.0
 var current_health: int = 10
+var _is_dying: bool = false
 @export var bullet_scene: PackedScene
+@export var hit_vfx_scene: PackedScene
+@export var death_vfx_scene: PackedScene
 
 func _ready() -> void:
 	if stats:
@@ -133,16 +136,44 @@ func _update_detectors() -> void:
 	appearance.scale.x = -direction
 
 func take_damage(damage: int) -> void:
+	if _is_dying:
+		return
 	current_health -= damage
 	print("Enemy3 took %d damage! HP: %d" % [damage, current_health])
-	
-	var tween: Tween = create_tween()
-	appearance.modulate = Color(10, 10, 10, 1) # 閃白
-	tween.tween_property(appearance, "modulate", Color.WHITE, 0.1)
-	
+
+	## 超白閃光 + 縮放震動
+	appearance.modulate = Color(8.0, 8.0, 8.0, 1.0)
+	var tw := create_tween()
+	tw.tween_property(appearance, "modulate", Color(3.0, 0.2, 0.2, 1.0), 0.05)
+	tw.tween_property(appearance, "modulate", Color.WHITE, 0.1)
+	var st := create_tween()
+	st.tween_property(self, "scale", Vector2(1.3, 0.7), 0.04)
+	st.tween_property(self, "scale", Vector2(0.85, 1.2), 0.05)
+	st.tween_property(self, "scale", Vector2.ONE, 0.07)
+	_spawn_vfx(hit_vfx_scene)
+
 	if current_health <= 0:
 		die()
 
 func die() -> void:
+	if _is_dying:
+		return
+	_is_dying = true
 	print("Enemy3 died!")
-	queue_free()
+	set_physics_process(false)
+	_spawn_vfx(death_vfx_scene)
+	var tw := create_tween()
+	tw.tween_property(self, "scale", Vector2(1.5, 1.5), 0.08)
+	tw.tween_property(self, "modulate:a", 0.0, 0.15)
+	tw.tween_callback(queue_free)
+
+func _spawn_vfx(vfx_scene: PackedScene) -> void:
+	if vfx_scene == null:
+		return
+	var vfx := vfx_scene.instantiate() as Node2D
+	if vfx == null:
+		return
+	vfx.global_position = global_position + Vector2(0.0, -8.0)
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", vfx)

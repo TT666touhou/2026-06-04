@@ -106,6 +106,10 @@ extends CharacterBody2D
 @export_range(0.1, 2.0, 0.05) var ranged_cooldown: float = 0.6
 ## 遠程子彈場景（由 GameWorld 動態注入）
 @export var bullet_scene: PackedScene
+## 近戰片斬特效（左鍵攻擊觸發）
+@export var melee_slash_scene: PackedScene
+## 遠程發射火花特效（右鍵攻擊觸發）
+@export var muzzle_flash_scene: PackedScene
 
 # ═══════════════════════════════════════════════════════════════
 # 節點引用（_ready 時取得）
@@ -755,41 +759,33 @@ func _handle_invincibility(delta: float) -> void:
 
 # ═══════════════════════════════════════════════════════════════
 # 戰鬥系統（攻擊輸入處理）
+# 設計決策 [CONFIRMED 2026-06-12]:
+#   左鍵 (LMB) = 近戰攻擊（即時觸發，短範圍矩形揄描）
+#   右鍵 (RMB) = 遠程攻擊（即時觸發，發射子彈）
 # ═══════════════════════════════════════════════════════════════
-func _handle_attack(delta: float) -> void:
-	## 翻滾中禁止攻擊
+func _handle_attack(_delta: float) -> void:
+	## 翻滚中禁止攻擊
 	if _is_rolling:
-		_attack_hold_timer = 0.0
 		return
 
-	## 防禦：若 action 不存在則靜默跳過（避免 player_prefix 設定錯誤時崩潰）
-	var action_name := player_prefix + "attack"
-	if not InputMap.has_action(action_name):
-		return
+	var melee_action  := player_prefix + "melee"
+	var ranged_action := player_prefix + "ranged"
 
-	var attack_just_off := Input.is_action_just_released(action_name)
-	var attack_held     := Input.is_action_pressed(action_name)
-
-	## 按住計時
-	if attack_held and not _is_attacking:
-		_attack_hold_timer += delta
-		## 長按超過 0.3s → 遠程攻擊
-		if _attack_hold_timer >= 0.3 and _ranged_cooldown_timer <= 0.0:
-			_fire_bullet()
-			_ranged_cooldown_timer = ranged_cooldown
-			attack_state = "RANGED"
-			_attack_hold_timer = 0.0
-	elif attack_just_off:
-		## 短按釋放（< 0.3s）→ 近戰
-		if _attack_hold_timer < 0.3 and _attack_hold_timer > 0.0 and _melee_cooldown_timer <= 0.0 and not _is_attacking:
+	## 近戰：左鍵 just_pressed（骜防御： action 不存在則跳過）
+	if InputMap.has_action(melee_action) and Input.is_action_just_pressed(melee_action):
+		if _melee_cooldown_timer <= 0.0 and not _is_attacking:
 			_perform_melee_attack()
 			_is_attacking = true
 			_melee_timer = melee_duration
 			_melee_cooldown_timer = melee_cooldown
 			attack_state = "MELEE"
-		_attack_hold_timer = 0.0
-	elif not attack_held:
-		_attack_hold_timer = 0.0
+
+	## 遠程：右鍵 just_pressed
+	if InputMap.has_action(ranged_action) and Input.is_action_just_pressed(ranged_action):
+		if _ranged_cooldown_timer <= 0.0:
+			_fire_bullet()
+			_ranged_cooldown_timer = ranged_cooldown
+			attack_state = "RANGED"
 
 	## 攻擊張數結束重置
 	if _is_attacking and _melee_timer <= 0.0:
@@ -820,12 +816,16 @@ func _perform_melee_attack() -> void:
 			body.take_damage(melee_damage)
 			print("[Player] 近戰命中：", body.name, " 傷害：", melee_damage)
 
-	## 視覺回饋：短暫縮放 VisualPivot 模擬攻擊動態
+	## 視覺回餌：短暫縮放 VisualPivot 模擬攻擊動態
 	if _visual_pivot:
 		var tw := create_tween()
 		var scale_dir := Vector2(1.3 * _facing, 0.85)
 		tw.tween_property(_visual_pivot, "scale", scale_dir, 0.08)
 		tw.tween_property(_visual_pivot, "scale", Vector2.ONE, 0.12)
+
+	## 近戰片斬 VFX
+	var vfx_pos := global_position + Vector2(_facing * 12.0, -4.0)
+	_spawn_vfx(melee_slash_scene, vfx_pos, _facing < 0.0)
 
 func _fire_bullet() -> void:
 	## 從 GameWorld 的 Players 父節點取得子彈場景引用
@@ -838,10 +838,10 @@ func _fire_bullet() -> void:
 
 	var b_scene := bullet_scene
 	if b_scene == null:
-		## fallback：動態載入
-		b_scene = load("res://scenes/enemy/bullet.tscn") as PackedScene
+		## fallback：動態載入（正確路徑 player_bullet.tscn）
+		b_scene = load("res://scenes/player/player_bullet.tscn") as PackedScene
 		if b_scene == null:
-			push_warning("[Player] 找不到 bullet 場景，無法發射")
+			push_warning("[Player] 找不到 player_bullet.tscn，無法發射")
 			return
 
 	var bullet: Node2D = b_scene.instantiate()
@@ -865,3 +865,26 @@ func _fire_bullet() -> void:
 	if parent:
 		parent.add_child(bullet)
 	print("[Player] 發射子彈 方向：", _facing)
+
+	## 遠程發射 VFX
+	var spawn_pos := global_position + Vector2(_facing * 10.0, -4.0)
+	_spawn_vfx(muzzle_flash_scene, spawn_pos, _facing < 0.0)
+
+
+# ═══════════════════════════════════════════════════════════════
+# VFX 輔助函式
+# ═══════════════════════════════════════════════════════════════
+func _spawn_vfx(vfx_scene: PackedScene, pos: Vector2, flip_h: bool = false) -> void:
+	if vfx_scene == null:
+		return
+	var vfx := vfx_scene.instantiate() as Node2D
+	if vfx == null:
+		return
+	vfx.global_position = pos
+	if flip_h:
+		var spr := vfx.get_node_or_null("AnimatedSprite2D")
+		if spr:
+			spr.flip_h = true
+	var parent := get_parent()
+	if parent:
+		parent.call_deferred("add_child", vfx)
