@@ -49,6 +49,7 @@
 | 2026-06-13 | [PATTERN-VFX-POS] OneShotVFX 偏移 | `vfx_x_offset = _facing * melee_range * 0.8` ← 用攻擊範圍的 80% 作為偏移。固定值（如 14px）會讓所有特效疊在角色中心 |
 | 2026-06-13 | [PATTERN-VFX-SPEED] OneShotVFX 速度 | speed≈(幀數/攻擊鎖定時間)*0.6。16幀/0.15s*0.6≈64 → 設 60fps。預設 24fps（16幀=0.667s）遠超攻擊動作，感覺「拖尾」 |
 | 2026-06-13 | [PATTERN-VFX-FLIP] OneShotVFX 翻轉 | `spr.flip_h = (_facing < 0)` 直接賦值；**scene 內 flip_h 統一保持 false**。❌ 勿用 `not spr.flip_h`（toggle）——若場景有預設 flip_h 會雙重翻轉 |
+| 2026-06-13 | [PATTERN-VFX-ADJUST] VFX 位置手動調整 | 方法A：開啟 tscn → 選 MeleeVFXPivots/HitNPivot → 2D 視圖拖曳。方法B：Inspector → Melee VFX Offsets 群組。X 以朝右為基準，runtime 自動鏡像 |
 
 ---
 
