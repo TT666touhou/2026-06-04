@@ -286,6 +286,117 @@
 
 ---
 
+## 🚪 9. 房間連接系統（Room Portal System）[CONFIRMED]
+
+> **設計靈感**：空洞騎士（Hollow Knight）的房間進出體驗
+> **確認日期**：2026-06-12
+
+### 9.1 核心概念 [CONFIRMED]
+
+房間之間透過「實體化走廊洞口」連接，玩家實際走入走廊觸發場景切換，而非接觸到牆壁邊緣就瞬間切換。
+
+```
+[房間 A] ───── [走廊洞口] ──── Fade Out ──── Fade In ──── [走廊洞口] ───── [房間 B]
+               ↑ 玩家走進來         ↑ 觸發切換                ↑ 玩家從此出現
+```
+
+### 9.2 過渡方式 [CONFIRMED]
+
+| 項目 | 設計決策 |
+|------|---------|
+| **視覺效果** | **漸黑/漸亮（Fade Out → 換場 → Fade In）** |
+| **持續時間** | 可參數化，預設 0.3～0.5 秒 |
+| **實作方式** | 新 CanvasLayer（z最高）+ ColorRect（純黑）+ Tween 拉透明度 |
+| **HUD 提示** | **無**，全靠玩家自行探索發現 |
+
+### 9.3 出口方向 [CONFIRMED]
+
+支援四個方向：
+- **左** / **右**（主要，橫向卷軸核心）
+- **上** / **下**（垂直探索，高聳房間可向下墜入另一層）
+
+每個房間由**關卡設計師手動設計**，決定哪個方向有出口。無出口的方向用 tile 封死（全是牆/地板），有出口的方向留走廊。
+
+### 9.4 走廊洞口規格 [CONFIRMED]
+
+空洞騎士風格的**實體化小走廊**：
+
+```
+   ┌─┐  ←── 上方側牆 (TileMapLayer)
+   │ │  ←── 空洞空間（玩家可行走）
+   │ │  ←── RoomTransition Area2D 觸發區在走廊最深處
+   └─┘  ←── 下方地板 (TileMapLayer)
+```
+
+| 規格項目 | 描述 |
+|---------|------|
+| **走廊寬度** | 至少 2 tile（玩家角色可通行）|
+| **走廊長度** | 4～8 tile（足夠的「前進感」距離）|
+| **走廊內容** | TileMapLayer 拼建側牆 + 地板，用 mrmotext 的牆/地板 tile |
+| **觸發位置** | Area2D 在走廊**最深處**（不在入口），玩家走進去才觸發 |
+| **視覺外觀** | 走廊形狀本身即是視覺指引，外型可多樣（非強制統一）|
+
+### 9.5 門配對系統（Paired Door ID）[CONFIRMED]
+
+每個出口 RoomTransition 有一個 `door_id` 字串。
+載入新房間時，玩家從目標房間中**對應 door_id 的入口**位置出現。
+
+```gdscript
+# 例子
+# 房間 A 的右側出口：door_id = "right_exit"
+# 房間 B 的左側入口：door_id = "right_exit"（相同 ID = 配對）
+# 玩家從 B 的 door_id="right_exit" 的 Marker2D 位置出現
+```
+
+| 欄位 | 說明 |
+|------|------|
+| `door_id: String` | 配對識別碼（ex: "left", "right", "top_hole"）|
+| `spawn_point: Marker2D` | 玩家出現的世界坐標（緊鄰洞口內側）|
+| `target_room_path: String` | 目標房間 .tscn 路徑（或交由 DungeonGenerator）|
+| `target_door_id: String` | 目標房間中要銜接的 door_id |
+
+### 9.6 多人觸發規則 [CONFIRMED]
+
+- **全部玩家都必須進入走廊的 Area2D 觸發區**，才觸發換房間
+- 與現有的 `_players_in_zone` 計數機制一致（不改）
+- 若有玩家還在外面，觸發區顯示已進入的玩家保持等待
+
+### 9.7 視覺設計（mrmotext 走廊）[CONFIRMED]
+
+走廊使用 mrmotext tileset 中的牆面 tile 拼接：
+- 側牆使用牆壁 tile（與房間主體牆面風格一致）
+- 地板使用地板 tile
+- **外型非固定**，設計師可自由拼接不同造型的走廊（寬窄、長短、有無障礙物）
+- 走廊本身即代表「這裡可以進入」，不需要額外視覺提示
+
+### 9.8 技術架構概要 [DRAFT]
+
+```
+[需要新增/修改的組件]
+
+新增：
+├── scripts/level/room_portal.gd      ← 新的 RoomPortal 節點（取代或擴充 RoomTransition）
+│     - @export door_id: String
+│     - @export target_room_path: String  
+│     - @export target_door_id: String
+│     - 觸發後發送 Fade 指令，等 Fade 完成後叫 GameWorld 換場
+├── scripts/ui/screen_fader.gd        ← CanvasLayer + ColorRect + Tween
+│     - fade_out(duration) → signal faded_out
+│     - fade_in(duration)
+│     - 作為 Autoload 或 GameWorld 子節點
+└── scenes/level/portal/              ← 走廊場景庫
+      left_portal.tscn               ← 左側出口走廊
+      right_portal.tscn              ← 右側出口走廊
+      top_portal.tscn                ← 上方出口走廊
+      bottom_portal.tscn             ← 下方出口走廊
+
+修改：
+└── scripts/level/game_world.gd      ← load_room_scene 需接收目標 door_id 傳入
+                                        並在 _finish_room_load 後定位玩家至對應 spawn_point
+```
+
+---
+
 ## 📝 決策記錄（Decision Log）
 
 | 日期 | 決策 | 理由 | 決策者 |
@@ -295,6 +406,11 @@
 | 2026-06-06 | 敵人性能目標 20~40 隻同屏 | 確保多人遊戲戰場密度 | 用戶 |
 | 2026-06-06 | CharacterBody2D 作為物理層 | 更精確的平台動作控制 | Designer |
 | 2026-06-06 | 目標平台 PC Windows | 主要開發目標 | 用戶 |
+| 2026-06-12 | 房間連接採用 Hollow Knight 走廊洞口風格 | 實體化走廊提供空間感 + 探索回饋 | 用戶 |
+| 2026-06-12 | 過渡效果：漸黑漸亮 Fade（0.3~0.5秒） | 最接近空洞騎士體驗，簡單穩定 | 用戶 |
+| 2026-06-12 | 門配對系統：Paired Door ID | 確保不同圖案的兩個房間都能正確銜接 | 用戶 |
+| 2026-06-12 | 無 HUD 提示，全靠玩家探索 | 保持沉浸感 | 用戶 |
+| 2026-06-12 | 支援四方向出口（左右上下） | 垂直探索豐富房間設計可能性 | 用戶 |
 
 ---
 
@@ -307,3 +423,4 @@
 3. **玩家角色**：要幾個不同職業/角色可選？每人各自獨特技能？
 4. **Boss**：目前有設計任何 Boss 概念嗎？
 5. **音樂**：有任何偏好的音樂風格？
+6. **走廊尺寸**：走廊建議寬度和長度範圍有無特殊偏好（目前：寬 2 tile、長 4~8 tile）？
