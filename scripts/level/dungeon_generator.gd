@@ -30,15 +30,18 @@ class RoomDef:
 ## ─────────────────────────────────────────────
 ## 房間場景池（設計師可擴充）
 ## ─────────────────────────────────────────────
-## 普通戰鬥房場景列表
-## Area_0 正式房間（優先）
+## 普通戰鬥房場景列表（設計師可擴充）
+## [GDD §10 決策 2026-06-14]
+## - 正式局為 Area_0 以上的手動搭建房間
+## - test_room_a/b 已從池中移除（設計驗證用屏擤除）
 const COMBAT_ROOMS: Array[String] = [
 	"res://scenes/levels/area_0/area_0_room_01.tscn",
 	"res://scenes/levels/area_0/area_0_room_02.tscn",
-	## Legacy test rooms (compatibility)
-	"res://scenes/test_room_a.tscn",
-	"res://scenes/test_room_b.tscn",
 ]
+
+## 進入點：性第一間房固定為 area_0_room_01（不隨機）
+## [GDD §10 決策 2026-06-14]
+const ENTRY_ROOM: String = "res://scenes/levels/area_0/area_0_room_01.tscn"
 
 ## 精英房場景列表（若不存在則退回普通房）
 const ELITE_ROOMS: Array[String] = [
@@ -89,14 +92,20 @@ func generate_run() -> Array[RoomDef]:
 	current_run.clear()
 	current_room_index = -1
 
-	## 1. 決定普通房數量
-	var n_combat := rng.randi_range(min_combat_rooms, max_combat_rooms)
-	print("[DungeonGenerator] 生成 ", n_combat, " 間戰鬥房")
+	## [GDD §10 2026-06-14] 第一間房固定為 area_0_room_01（不隨機選）
+	current_run.append(RoomDef.new(RoomType.COMBAT, ENTRY_ROOM, 0))
+	print("[DungeonGenerator] 進入點（固定）：", ENTRY_ROOM)
+
+	## 1. 決定普通房數量（追加房間，不包含進入點）
+	var n_combat := rng.randi_range(max(0, min_combat_rooms - 1), max(0, max_combat_rooms - 1))
+	print("[DungeonGenerator] 生成 ", n_combat, " 間追加戰鬥房")
 
 	## 2. 生成戰鬥房序列（隨機決定是否為精英）
+	## 從 COMBAT_ROOMS 中排除已使用的 ENTRY_ROOM
 	var combat_pool: Array[String] = []
 	for p: String in COMBAT_ROOMS:
-		combat_pool.append(p)
+		if p != ENTRY_ROOM:
+			combat_pool.append(p)
 	combat_pool.shuffle()
 
 	var difficulty := 0
@@ -107,11 +116,15 @@ func generate_run() -> Array[RoomDef]:
 		if is_elite:
 			var elite_path: String = _pick_random(ELITE_ROOMS, rng)
 			current_run.append(RoomDef.new(RoomType.ELITE, elite_path, difficulty))
-			print("[DungeonGenerator] 房間 ", i + 1, ": 精英房 (", elite_path, ")")
+			print("[DungeonGenerator] 房間 ", i + 2, ": 精英房 (", elite_path, ")")
 		else:
-			var combat_path: String = combat_pool[i % combat_pool.size()]
-			current_run.append(RoomDef.new(RoomType.COMBAT, combat_path, difficulty))
-			print("[DungeonGenerator] 房間 ", i + 1, ": 普通房 (", combat_path, ")")
+			if combat_pool.is_empty():
+				print("[DungeonGenerator] 房間池已空，跟進入點重式使用")
+				current_run.append(RoomDef.new(RoomType.COMBAT, ENTRY_ROOM, difficulty))
+			else:
+				var combat_path: String = combat_pool[i % combat_pool.size()]
+				current_run.append(RoomDef.new(RoomType.COMBAT, combat_path, difficulty))
+				print("[DungeonGenerator] 房間 ", i + 2, ": 普通房 (", combat_path, ")")
 
 	## 3. 休息房（可選，在 Boss 前一間）
 	if include_rest_room and ResourceLoader.exists(REST_ROOM):
@@ -119,7 +132,7 @@ func generate_run() -> Array[RoomDef]:
 		print("[DungeonGenerator] 加入休息房")
 
 	## 4. Boss 房（固定在最後）
-	var boss_path: String = BOSS_ROOM if ResourceLoader.exists(BOSS_ROOM) else COMBAT_ROOMS[0]
+	var boss_path: String = BOSS_ROOM if ResourceLoader.exists(BOSS_ROOM) else ENTRY_ROOM
 	current_run.append(RoomDef.new(RoomType.BOSS, boss_path, difficulty + 2))
 	print("[DungeonGenerator] Boss 房：", boss_path)
 

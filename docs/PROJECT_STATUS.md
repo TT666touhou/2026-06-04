@@ -49,6 +49,8 @@
 | **5.5** | **VFX Spritesheet 切割修正（ERR-017）+ 自動配置** | **✅ DONE** | 2026-06-12 |
 | **5.6** | **BUG 修復：spawn_pos重複/StringName-String/NARROWING(ERR-018-020)** | **✅ DONE** | 2026-06-12 |
 | **6.1** | **Area_0 房間結構框架（room_base/camera_zone/area_0_room_01/02）** | **✅ DONE** | 2026-06-13 |
+| **6.2** | **Area_0 Room_01/02 地形手動搭建（玩家完成）** | **✅ DONE** | 2026-06-14 |
+| **6.3** | **遊戲進入點修正：Title→area_0_room_01（DungeonGenerator 固定進入點）** | **✅ DONE** | 2026-06-14 |
 
 ---
 
