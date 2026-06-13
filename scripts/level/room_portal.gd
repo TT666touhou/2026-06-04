@@ -13,15 +13,11 @@ class_name RoomPortal
 ## 本洞口的識別 ID（必須與對應房間的 target_door_id 一致）
 @export var door_id: String = "right"
 
-## 目標房間的 .tscn 路徑（空字串 = 交由 DungeonGenerator 決定下一間）
+## 目標房間的 .tscn 路徑（Inspector 可直接用文件對話框選擇；空字串 = 交由 DungeonGenerator 決定下一間）
 @export_file("*.tscn") var target_room_path: String = ""
 
 ## 目標房間中對應的 door_id（玩家從那個洞口出現）
 @export var target_door_id: String = "left"
-
-## 玩家進入新房間後的 Walk-in 方向
-## auto = 由 door_id 自動推導（left→向右, right→向左, top→向下, bottom→向上）
-@export_enum("auto", "right", "left", "up", "down") var enter_direction: String = "auto"
 
 ## Fade 持續時間
 @export var fade_duration: float = 0.4
@@ -82,13 +78,4 @@ func _do_trigger() -> void:
 	if not game_world.has_method("load_next_room_portal"):
 		push_error("[RoomPortal] GameWorld 沒有 load_next_room_portal 方法！")
 		return
-	## 計算最終 enter_direction 字串
-	var final_enter_dir := enter_direction
-	if final_enter_dir == "auto":
-		match door_id:
-			"left":   final_enter_dir = "right"
-			"right":  final_enter_dir = "left"
-			"top":    final_enter_dir = "down"
-			"bottom": final_enter_dir = "up"
-			_:        final_enter_dir = "right"
-	game_world.load_next_room_portal(door_id, target_door_id, target_room_path, fade_duration, final_enter_dir)
+	game_world.load_next_room_portal(door_id, target_door_id, target_room_path, fade_duration)

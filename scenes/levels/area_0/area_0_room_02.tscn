@@ -49,7 +49,6 @@ script = ExtResource("3_portal")
 door_id = "left"
 target_room_path = "res://scenes/levels/area_0/area_0_room_01.tscn"
 target_door_id = "right"
-enter_direction = "right"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Portals/LeftPortal" unique_id=1012253406]
 position = Vector2(0, 24)

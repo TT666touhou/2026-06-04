@@ -353,19 +353,14 @@ func get_dungeon_debug_info() -> Dictionary:
 ## 等待進入的洞口 ID（用來在新房間定位玩家）
 var _pending_entry_door_id: String = ""
 
-## 等待進入的 Walk-in 方向（由 RoomPortal 傳入）
-var _pending_enter_direction: String = "right"
-
 ## 由 RoomPortal._do_trigger() 呼叫（已在 call_deferred 環境）
 ## ⚠️ ERR-001/007 架構：此函式是三層 deferred 的第二層入口
 func load_next_room_portal(
 		from_door_id: String,
 		target_door_id: String,
 		target_path: String,
-		fade_dur: float = 0.4,
-		enter_dir: String = "right") -> void:
+		fade_dur: float = 0.4) -> void:
 	_pending_entry_door_id = target_door_id
-	_pending_enter_direction = enter_dir
 	print("[GameWorld] Portal 觸發：from=%s → to=%s  path=%s" % [
 		from_door_id, target_door_id,
 		target_path if not target_path.is_empty() else "[DungeonGen]"
@@ -465,7 +460,7 @@ func _finish_portal_room_load(scene_path: String) -> void:
 	call_deferred("_unlock_room_loading")
 
 ## 依據 door_id 尋找目標房間的 RoomPortal（遞迴搜尋，支援 Portals 容器）
-## 從其 SpawnMarker 定位玩家，并執行 Walk-in
+## 從其 SpawnMarker 定位玩家
 func _reset_player_at_door(entry_door_id: String) -> void:
 	var spawn_pos := Vector2(80.0, -80.0)  ## 後備預設位置
 
@@ -482,27 +477,31 @@ func _reset_player_at_door(entry_door_id: String) -> void:
 		else:
 			push_warning("[GameWorld] 找不到 door_id='%s' 的 RoomPortal，使用預設位置" % entry_door_id)
 
-	## 計算 Walk-in 方向向量
-	var walk_dir := Vector2.RIGHT  ## 預設向右
-	match _pending_enter_direction:
-		"right":  walk_dir = Vector2.RIGHT
-		"left":   walk_dir = Vector2.LEFT
-		"up":     walk_dir = Vector2.UP
-		"down":   walk_dir = Vector2.DOWN
-
 	## 放置所有玩家
 	var players := _players_root.get_children()
+	## Walk-in 速度：依進入方向給予初始水平速度（空洞騎士風格）
+	## 從左門（left）進入 → 向右行走；從右門（right）進入 → 向左行走
+	var entry_vel_x: float = 0.0
+	match entry_door_id:
+		"left":
+			entry_vel_x = 100.0   ## 從左進 → 向右
+		"right":
+			entry_vel_x = -100.0  ## 從右進 → 向左
+		"bottom":
+			entry_vel_x = 0.0     ## 從底部進 → 無水平速度
 	for i: int in range(players.size()):
 		var p := players[i]
 		p.global_position = spawn_pos + Vector2(float(i) * 40.0, 0.0)
+		## 注入初始速度（walk-in 效果）
+		if p.get("velocity") != null:
+			var v: Vector2 = p.velocity
+			v.x = entry_vel_x
+			p.velocity = v
 		if not p.visible:
 			p.visible = true
 			p.set_physics_process(true)
-			print("[GameWorld] 玩家 %s 從 door_id=%s 出現" % [p.name, entry_door_id])
-		## ⚠️ Walk-in：如果 player 支援 start_room_entry，執行進屋 Walk-in
-		if p.has_method("start_room_entry"):
-			p.start_room_entry(walk_dir, 48.0, 0.35)
-			print("[GameWorld] Walk-in 啟動：方向=%s" % str(walk_dir))
+			print("[GameWorld] 玩家 %s 從 door_id=%s 出現（walk-in vel_x=%.0f）" % [p.name, entry_door_id, entry_vel_x])
+
 
 ## 遞迴搜尋房間內所有節點，找到指定 door_id 的 RoomPortal
 func _find_portal_by_door_id(root: Node, door_id: String) -> RoomPortal:
