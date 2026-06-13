@@ -126,6 +126,23 @@
 □ SceneReplicationConfig 屬性列表是否完整
 ```
 
+### 8. **【新增 ERR-027 後】@export PackedScene 跨場景覆蓋率確認**：
+   任何影響 `@export PackedScene` 配置的修改（新增 VFX、武器、道具場景引用），
+   必須確認**所有引用該腳本的 .tscn**（包含基底場景）都已更新：
+   ```powershell
+   ## 範例：確認 player.gd 的 VFX 配置覆蓋所有引用場景
+   Select-String -Path "D:\2026-06-04\scenes\**\*.tscn" -Pattern "player\.gd|player\.tscn" -Recurse |
+       Select-Object Filename, Line
+   ```
+   ⚠️ ERR-027 案例：Developer 更新了 player1/2/3/4.tscn 的 VFX 配置，
+   但 test_room_a/b 使用的是 **player.tscn（基底場景）**，導致在實際遊戲中 VFX 完全不可見。
+   **Reviewer 必須確認：測試場景中實際使用的 player 場景版本，而非只看帶數字的場景**。
+
+### 9. **【新增 ERR-027 後】測試場景引用鏈追蹤**：
+   審查任何 player/enemy/道具相關改動時，必須追蹤：
+   1. 測試場景（test_room_a/b.tscn）使用的是哪個 player 場景（`player.tscn` vs `player1.tscn`）
+   2. 確認**基底場景**（無數字後綴）也包含對應的配置
+
 ### 【新增 ERR-001 後】物理 Callback 呼叫鏈強制追蹤
 ```
 ⚠️ 這是 Reviewer 必須執行的最重要新增步驟（ERR-001 事件教訓）

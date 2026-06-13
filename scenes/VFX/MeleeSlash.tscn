@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://g563ammffi8r"]
+[gd_scene load_steps=20 format=3 uid="uid://g563ammffi8r"]
 
-[ext_resource type="Script" uid="uid://chf76yxv1t1hk" path="res://scripts/vfx/embedded_melee_vfx.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://chf76yxv1t1hk" path="res://scripts/vfx/one_shot_vfx.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://cv2wds2dg56iy" path="res://assets/vfxmix/fx/slash_01.png" id="2_tex"]
 
 [sub_resource type="AtlasTexture" id="AT_0"]
@@ -126,7 +126,6 @@ animations = [{
 [node name="MeleeSlash" type="Node2D" unique_id=1357618617]
 z_index = 10
 script = ExtResource("1_script")
-visible = false
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1367340313]
 scale = Vector2(0.35, 0.35)

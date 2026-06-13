@@ -261,6 +261,18 @@
 | 2026-06-12 20:30 | Developer | Phase 5.2: 修正 test_room player_prefix 和 bullet fallback 路徑（攻擊系統主要 BUG 修復） |
 | 2026-06-12 20:30 | Developer | Phase 5.3: 建立 4 個 VFX 場景（MeleeSlash/RangedMuzzle/EnemyHit/EnemyDeath）+ 強化 enemy take_damage/die |
 | 2026-06-12 21:00 | Developer/Architect | Phase 5.5: VFX 切割修正、自動配置、比例調整。ERR-017~020 記錄至 ERROR_LOG |
+| 2026-06-13 14:45 | Developer/Reviewer/Sensor | **[ERR-026] 近戰 VFX 不可見修復**：MeleeSlash/Impact3 根節點 visible=false；MeleeSlash2 frame=15預設值；VFX 改為原色（GDD同步）。Sensor v4 8/8 PASS |
+| 2026-06-13 15:00 | QA/Architect/Developer | **[ERR-027] 真正根本原因發現與修復**：ERR-026 修復後仍不可見。QA 實機測試發現 test_room_a/b 使用 player.tscn（基底），而非 player1.tscn。基底場景完全缺少 MeleeVFXPivots 和 @export VFX 賦值。修復：player.tscn 加入完整 VFX 配置。**Workflow 強化**：新增 L 節（跨角色通知協議）、reviewer.md ERR-027 防護規則、qa.md 引用鏈驗證步驟。Sensor v4 8/8 PASS |
+
+---
+
+> **⚠️ 更新規則**：
+> - Phase 狀態從 TODO → PARTIAL → DONE 的變更：當事角色必須在同次 git commit 前更新此文件
+> - 新發現的 Bug 或技術債：立即在「待強化」或「尚未開始」中加入
+> - 設計變更：必須同時更新「已鎖定設計決策」和 `docs/GAME_DESIGN.md`
+> - 每次更新：在「更新日誌」加入一行記錄
+
+
 
 ---
 

@@ -546,3 +546,69 @@ region = Rect2(0, 0, 132, 126)
 ### Prevention
 - Any change to sensor-scan.ps1 must be followed by PS AST syntax check
 - Use .Contains()/.StartsWith() over -match for deterministic string checks
+
+---
+
+## ERR-026 Melee VFX Not Visible — visible=false in Root Node (2026-06-13)
+
+- **Severity**: High（近戰攻擊特效完全不可見）
+- **Error Type**: VFX Visibility Bug
+- **Files Affected**: MeleeSlash.tscn, MeleeSlash2.tscn, MeleeImpact3.tscn
+- **Symptom**: 玩家近戰攻擊時無任何 VFX 顯示，但程式碼邏輯正確，headless 無錯誤
+- **Root Cause A (Critical)**: `MeleeSlash.tscn` 和 `MeleeImpact3.tscn` 的根節點設有 `visible = false`。雖然 `one_shot_vfx.gd` 呼叫了 `_sprite.play("default")`，AnimatedSprite2D 子節點在動畫播放，但根節點不可見 → 整個 VFX 不顯示。
+- **Root Cause B (Warning)**: `MeleeSlash2.tscn` 的 AnimatedSprite2D 設有 `frame = 15, frame_progress = 1.0`（最後一幀），Godot 場景載入時預設最後一幀狀態，若動畫未及時 reset 可能顯示靜止最後一幀後立即觸發 `animation_finished` 並 queue_free。
+- **Root Cause C (Warning)**: `MeleeImpact3.tscn` 的 AnimatedSprite2D 有 `autoplay = ""`，雖然 one_shot_vfx.gd 有自己 play("default")，但留空 autoplay 不夠清晰。
+- **Fix**:
+  1. `MeleeSlash.tscn` — 移除根節點 `visible = false`
+  2. `MeleeSlash2.tscn` — 移除 `frame = 15` 和 `frame_progress = 1.0` 預設值
+  3. `MeleeImpact3.tscn` — 移除根節點 `visible = false`，移除 `autoplay = ""`
+  4. `player.gd` — 移除 `_spawn_melee_vfx_at_marker` 中的 modulate 染色（GDD 更新為原色）
+- **Design Change**: GDD [CONFIRMED 2026-06-13] 近戰 VFX 使用原色，不繼承玩家顏色
+- **Prevention Rule**: **VFX 場景的根節點絕對不能設 `visible = false`**。`one_shot_vfx.gd` 依賴根節點可見才能顯示動畫。若需隱藏測試場景，使用 Godot Editor 的眼睛圖示（不寫入 tscn）。
+- **Responsibility**: Developer（未在建立 VFX 場景後驗證在遊戲中可見性）
+
+---
+
+## 🟢 New Pattern (Session 10 - ERR-026)
+
+| Date | Context | Best Practice |
+|------|---------|----|
+| 2026-06-13 | VFX 根節點可見性 | **VFX 根節點絕對不能有 `visible = false`**；one_shot_vfx.gd 依賴可見性播放動畫 |
+| 2026-06-13 | AnimatedSprite2D frame 預設值 | 不要在 .tscn 中設 `frame = N`（尤其接近末尾），會讓動畫從非第0幀開始播放 |
+| 2026-06-13 | VFX 場景建立後驗證 | 在 Godot Editor 打開場景，直接執行 preview；或 headless 加 debug 輸出確認 instantiate 被呼叫且節點可見 |
+
+---
+
+## ERR-027 player.tscn 缺少 VFX 配置 — 基底場景被遺漏 (2026-06-13)
+
+- **Severity**: Critical（近戰攻擊特效在實際遊戲中完全無效）
+- **Error Type**: Scene Configuration Error / Review Coverage Gap
+- **File Affected**: `scenes/player/player.tscn`（基底玩家場景）
+- **Symptom**: 即使 player1/2/3/4.tscn 已完整配置 VFX，在 test_room_a / test_room_b 中仍然看不到攻擊特效
+- **Root Cause**: test_room_a 和 test_room_b 使用的是 `player.tscn`（基底場景），而非 `player1.tscn`。基底場景缺少：
+  - `MeleeVFXPivots / Hit1Pivot / Hit2Pivot / Hit3Pivot`（Marker2D 節點群組）
+  - `melee_slash_scene` / `melee_slash2_scene` / `melee_impact3_scene` @export 賦值
+  - `muzzle_flash_scene` / `bullet_scene` @export 賦值
+- **Detection Failure**: Developer 和 Reviewer 只驗證了 player1~4.tscn，**沒有追蹤測試場景實際載入的是哪個 player 場景**。QA 沒有執行「實際遊戲流程」的驗證（只做 headless VFX 場景測試，未測試 player scene 配置）。
+- **Fix**: 更新 `player.tscn` 加入完整 VFX 配置，對齊 player1~4.tscn 的結構。
+- **Workflow Failure Pattern**:
+  1. **Developer** 在修復「所有 player 場景」時，未意識到基底場景 player.tscn 也需要更新
+  2. **Reviewer** 審查時只看到「player1~4 有 VFX 配置」，未追蹤 test room 實際使用哪個場景
+  3. **QA** 做 headless 驗證時直接測試 VFX 場景，未模擬完整玩家攻擊流程
+  4. 三個角色都沒有「從使用者視角」追蹤：從主場景 → test_room → player 的完整引用鏈
+- **Prevention Rules (新增)**:
+  - **Rule 1**: 任何 player 場景修改後，必須追蹤所有引用該 player 場景的 .tscn（grep `player.tscn`）
+  - **Rule 2**: QA 驗證 VFX 必須包含「從使用者視角的完整流程」（player instantiate → VFX spawn），不能只驗證孤立的 VFX 場景
+  - **Rule 3**: @export PackedScene 修改後，必須確認**所有**引用該腳本的 .tscn（不只是 numbered 版本）
+  - **Rule 4**: Reviewer 必須在 PR 中追蹤「測試場景使用的實際 player 場景」
+
+---
+
+## 🟢 New Pattern (Session 11 - ERR-027)
+
+| Date | Context | Best Practice |
+|------|---------|----|
+| 2026-06-13 | Player 場景多版本管理 | player.tscn（基底）+ player1/2/3/4.tscn 修改後，必須同步所有版本。用 `grep -r "player.tscn"` 確認所有引用 |
+| 2026-06-13 | QA 驗證覆蓋範圍 | VFX 驗證不能只測試 VFX 場景本身，必須從玩家場景出發（player instantiate → marker → VFX spawn 全流程） |
+| 2026-06-13 | @export 配置覆蓋 | 新增 @export PackedScene 後，必須更新所有引用該腳本的 .tscn，包含基底場景 |
+| 2026-06-13 | 工作流盲點 | AI 修改多版本場景時容易遺漏「主要使用的基底場景」。必須以測試場景（test_room）為起點追蹤引用鏈 |

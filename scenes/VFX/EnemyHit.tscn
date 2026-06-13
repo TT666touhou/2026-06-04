@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=4 uid="uid://enemy_hit_vfx"]
+[gd_scene load_steps=19 format=4 uid="uid://0xen7cv5e5p"]
 
 [ext_resource type="Script" path="res://scripts/vfx/one_shot_vfx.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/vfxmix/fx/impact_01.png" id="2_tex"]

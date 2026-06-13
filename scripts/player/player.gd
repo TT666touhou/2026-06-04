@@ -1025,9 +1025,7 @@ func _spawn_melee_vfx_at_marker(vfx_scene: PackedScene, marker: Marker2D) -> voi
 	var spr := vfx.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
 	if spr:
 		spr.flip_h = (_facing < 0.0)
-	## 繼承玩家顏色（P1=橙, P2=藍, P3=綠, P4=紫）
-	if _visual_pivot:
-		vfx.modulate = _visual_pivot.modulate
+	## GDD [CONFIRMED 2026-06-13]：近戰VFX使用原色（不繼承玩家顏色）
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", vfx)

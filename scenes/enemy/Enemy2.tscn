@@ -3,8 +3,8 @@
 [ext_resource type="TileSet" uid="uid://d2qfp8a4t5xh2" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_n7yhm"]
 [ext_resource type="Script" path="res://scripts/enemy/enemy2.gd" id="2_script"]
 [ext_resource type="Resource" path="res://resources/enemy/basic_enemy_stats.tres" id="3_stats"]
-[ext_resource type="PackedScene" uid="uid://enemy_hit_vfx" path="res://scenes/VFX/EnemyHit.tscn" id="4_hit_vfx"]
-[ext_resource type="PackedScene" uid="uid://enemy_death_vfx" path="res://scenes/VFX/EnemyDeath.tscn" id="5_death_vfx"]
+[ext_resource type="PackedScene" uid="uid://0xen7cv5e5p" path="res://scenes/VFX/EnemyHit.tscn" id="4_hit_vfx"]
+[ext_resource type="PackedScene" uid="uid://iy1ni5julw9" path="res://scenes/VFX/EnemyDeath.tscn" id="5_death_vfx"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dqbur"]
 radius = 7.015744

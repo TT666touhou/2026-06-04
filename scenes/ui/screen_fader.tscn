@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3 uid="uid://screen_fader_001"]
+[gd_scene load_steps=2 format=3 uid="uid://31fgdti3pjp"]
 
 [ext_resource type="Script" path="res://scripts/ui/screen_fader.gd" id="1_sfader"]
 

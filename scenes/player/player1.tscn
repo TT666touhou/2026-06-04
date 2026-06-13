@@ -5,11 +5,11 @@
 [ext_resource type="Script" uid="uid://828qnevl7ltj" path="res://scripts/player/stamina_bar.gd" id="3_stambar"]
 [ext_resource type="PackedScene" uid="uid://c031iasmaeovd" path="res://scenes/VFX/PlayerDust.tscn" id="4_dust"]
 [ext_resource type="PackedScene" uid="uid://b6hudui726ex" path="res://scenes/ui/player_hud.tscn" id="5_hud"]
-[ext_resource type="PackedScene" uid="uid://melee_slash_vfx" path="res://scenes/VFX/MeleeSlash.tscn" id="6_melee_vfx"]
-[ext_resource type="PackedScene" uid="uid://ranged_muzzle_vfx" path="res://scenes/VFX/RangedMuzzle.tscn" id="7_ranged_vfx"]
+[ext_resource type="PackedScene" uid="uid://g563ammffi8r" path="res://scenes/VFX/MeleeSlash.tscn" id="6_melee_vfx"]
+[ext_resource type="PackedScene" uid="uid://scicwcznu2n" path="res://scenes/VFX/RangedMuzzle.tscn" id="7_ranged_vfx"]
 [ext_resource type="PackedScene" path="res://scenes/player/player_bullet.tscn" id="8_bullet"]
-[ext_resource type="PackedScene" uid="uid://melee_slash2_vfx" path="res://scenes/VFX/MeleeSlash2.tscn" id="9_melee_vfx2"]
-[ext_resource type="PackedScene" uid="uid://melee_impact3_vfx" path="res://scenes/VFX/MeleeImpact3.tscn" id="10_melee_impact3"]
+[ext_resource type="PackedScene" uid="uid://c1v3yjhn4sp01" path="res://scenes/VFX/MeleeSlash2.tscn" id="9_melee_vfx2"]
+[ext_resource type="PackedScene" uid="uid://0wo3e1ei78x" path="res://scenes/VFX/MeleeImpact3.tscn" id="10_melee_impact3"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_1"]
 radius = 4.0

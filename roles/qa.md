@@ -148,6 +148,24 @@ Start-Sleep -Seconds 5
    3. 確認 Boss 出現並有 AI 行為（巡邏、衝刺）
    4. 確認 Boss 可被攻擊且 HP 正確減少
 
+
+□ 【ERR-027 新增：VFX 功能驗證 — 從玩家場景出發全流程驗證】
+   ⚠️ ERR-027 教訓：QA 不能只驗證 VFX 場景本身，必須從玩家場景出發驗證完整攻擊流程。
+   
+   1. 使用 headless 測試確認「玩家場景包含完整 VFX 配置」：
+   `powershell
+   # 確認 player.tscn（基底）和 player1/2/3/4.tscn 都有 VFX 配置
+   \ = Get-ChildItem "D:\2026-06-04\scenes\player" -Filter "*.tscn"
+   foreach (\ in \) {
+       \ = [IO.File]::ReadAllText(\.FullName)
+       \ = \ -match "melee_slash_scene"
+       \ = \ -match "MeleeVFXPivots"
+       Write-Host "\: melee_slash=\, MeleeVFXPivots=\"
+   }
+   `
+   2. 確認 test_room_a/b 使用的 player 場景版本（grep ext_resource）
+   3. 確認該 player 場景有完整 VFX 配置（非只驗證 player1.tscn）
+   → 若基底 player.tscn 缺少 VFX 配置 → 立即退回 Developer（ERR-027 觸發）
 □ 觸發玩家受傷/死亡：
    1. 讓玩家受到傷害
    2. 確認 PlayerHUD 血條正確更新

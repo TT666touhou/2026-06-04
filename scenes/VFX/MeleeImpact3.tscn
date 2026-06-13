@@ -1,7 +1,7 @@
-[gd_scene load_steps=19 format=3 uid="uid://melee_impact3_vfx"]
+[gd_scene load_steps=19 format=3 uid="uid://0wo3e1ei78x"]
 
-[ext_resource type="Script" path="res://scripts/vfx/embedded_melee_vfx.gd" id="1_script"]
-[ext_resource type="Texture2D" uid="uid://impact01_tex" path="res://assets/vfxmix/fx/impact_01.png" id="2_tex"]
+[ext_resource type="Script" uid="uid://chf76yxv1t1hk" path="res://scripts/vfx/one_shot_vfx.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/vfxmix/fx/impact_01.png" id="2_tex"]
 
 [sub_resource type="AtlasTexture" id="AT_0"]
 atlas = ExtResource("2_tex")
@@ -93,12 +93,9 @@ animations = [{
 }]
 
 [node name="MeleeImpact3" type="Node2D"]
-script = ExtResource("1_script")
-visible = false
 z_index = 10
+script = ExtResource("1_script")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.40, 0.40)
 sprite_frames = SubResource("SpriteFrames_1")
-autoplay = ""
-centered = true

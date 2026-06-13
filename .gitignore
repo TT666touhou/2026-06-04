@@ -24,3 +24,8 @@ check.log
 bug_fix*.log
 check*.log
 sensor_*.log
+# QA 測試臨時文件
+scripts/qa_vfx_test*.gd
+scripts/qa_vfx_final.gd
+docs/qa_*.txt
+docs/final_check.log
