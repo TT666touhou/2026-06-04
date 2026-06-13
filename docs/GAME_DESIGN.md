@@ -1,4 +1,4 @@
-**GDD 最後同步：2026-06-14 v7** | 維護者：Designer 角色
+**GDD 最後同步：2026-06-14 v8** | 維護者：Designer 角色
 
 # GAME DESIGN DOCUMENT
 # ============================================================
@@ -504,6 +504,7 @@ Player (CharacterBody2D)
 | **2026-06-13** | **Marker2D VFX 定位系統** | **設計師可在 Editor 視覺化調整 VFX 位置，不需改代碼** | **Architect** |
 | **2026-06-13** | **移除 BoundaryWalls（§10.10）** | **TileMapLayer Physics Layer 為唯一碰撞策略；BoundaryWalls collision_mask=0 從未生效** | **Designer+Architect** |
 | **2026-06-14** | **遊戲進入點固定為 area_0_room_01（廢棄 DungeonGenerator 隨機模式）** | **進入正式手動搭建關卡階段；test_room 移出 COMBAT_ROOMS 池；DungeonGenerator 保留但不再隨機選舊 test_room** | **Designer+Developer** |
+| **2026-06-14** | **移除 game_world.tscn 中的預設靜態碰撞牆（Ground/Ceiling/WallLeft/WallRight）** | **這 4 個節點是早期開發用的全局邊界牆，在正式地圖階段由 PlatformLayer TileSet 每房間自行提供碰撞封閉後已屬冗餘** | **Designer+Developer** |
 
 ---
 
