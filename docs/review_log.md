@@ -161,3 +161,29 @@ if ([0] -ne '[') {  = '[' +  }
 
 ### Reviewer 要求
 - 無阻塞問題，**核准此次提交**
+
+---
+
+## Review Session 2026-06-14 — Portal 系統 Phase 6.5
+
+### 審查範圍
+- oom_portal.gd: @export_file 優化
+- game_world.gd: walk-in 轉場速度注入
+- rea_0_room_02.tscn: LeftPortal BUG 修復
+- docs/GAME_DESIGN.md: v9 更新（§10.11、§10.6、§10.5 廢棄）
+
+### 問題發現
+- **BUG-PORTAL-001**: room_02 LeftPortal 的 target_room_path 為空字串（預設值），導致從 room_02 無法正確返回 room_01。根本原因：Developer 在初次建立 room_02.tscn 時未設定回程 Portal 的 target_room_path。
+- **反省**：Reviewer 未在 Phase 6.3 的 PR 審查中發現此缺失，違反了「Portal 對接規則」的驗收項目。
+
+### 根因反省（強化工作流）
+1. **Portal 創建的 Reviewer 驗收清單必須包含**：
+   - ✅ 確認每個 Portal 的 target_room_path 不為空（除非明確意圖使用 DungeonGenerator）
+   - ✅ 確認對接關係是雙向的（A→B 必須同時有 B→A）
+   - ✅ 確認 target_door_id 方向互為逆向（right→left, left→right）
+
+2. **walk-in 需求被早期忽視**：使用者在進入正式地圖後才反映割裂感。應在 Portal 系統設計期（Phase 6.1）就納入 HK 風格轉場設計。
+
+### 本次 Review 結論
+- 所有修改邏輯正確，ERR-001 安全（velocity 注入在 deferred 環境）
+- ✅ 通過
