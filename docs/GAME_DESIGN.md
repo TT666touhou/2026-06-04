@@ -494,20 +494,82 @@ Player (CharacterBody2D)
 | **2026-06-12** | **敵人死亡：縮放+淡出+死亡VFX** | **程式動畫比逐帧動畫更輕量且效果好** | **Developer** |
 | **2026-06-13** | **近戰 3 擊 Combo（左→左反向→衝擊）** | **快速爽快型手感，參考 Hollow Knight；無 combo 冷卻** | **用戶** |
 | **2026-06-13** | **Combo Buffer 0.3s（第一擊後窗口）** | **允許玩家節奏性連擊，不強制高頻點擊** | **用戶** |
-| **2026-06-13** | **近戰方向只有前/後（_facing），不跟 8 方向** | **近戰應直覺跟隨移動方向，避免操作混亂** | **用戶** |
-| **2026-06-13** | **攻擊期間鎖定水平移動** | **提升持守性，防止打怪時溜走** | **用戶** |
-| **2026-06-13** | **Knockback 80px/s 純水平，所有擊相同** | **簡單可靠的打擊反饋，多人遊戲安全** | **用戶** |
-| **2026-06-13** | **駁回 HitStop（MMP-001）** | **多人遊戲所有玩家同步凍結，不可接受** | **用戶** |
-| **2026-06-13** | **駁回相機震動（MMP-002）** | **多人遊戲震動疊加，視覺混亂** | **用戶** |
-| **2026-06-13** | **VFX 繼承玩家顏色（modulate）** | **P1/P2/P3/P4 視覺區分；slash VFX 染色** | **用戶** |
-| **2026-06-13** | **VFX 速度：24fps→60fps（20fps→50fps）** | **16幀@24fps=0.667s 远超攻擊鎖定0.15s；調為60fps=0.267s 匹配手感** | **Developer/經教訓** |
-| **2026-06-13** | **Marker2D VFX 定位系統** | **設計師可在 Editor 視覺化調整 VFX 位置，不需改代碼** | **Architect** |
-| **2026-06-13** | **移除 BoundaryWalls（§10.10）** | **TileMapLayer Physics Layer 為唯一碰撞策略；BoundaryWalls collision_mask=0 從未生效** | **Designer+Architect** |
-| **2026-06-14** | **遊戲進入點固定為 area_0_room_01（廢棄 DungeonGenerator 隨機模式）** | **進入正式手動搭建關卡階段；test_room 移出 COMBAT_ROOMS 池；DungeonGenerator 保留但不再隨機選舊 test_room** | **Designer+Developer** |
+| **2026-06-13** | **近戰方向只有前/後（_facing），不跟 8 方向** | **近戰應直覺跟隨移動方向，避免操作混亂** | **用�### 10.10 設計決策記錄：移除 BoundaryWalls [CONFIRMED — 2026-06-13]
+
+**決策**：移除所有房間場景中的 `BoundaryWalls` 節點（StaticBody2D 邊界牆組合），改由 TileMapLayer 的 Physics Layer 作為**唯一的碰撞策略**。
+
+**討論參與者**：Designer + Architect（2026-06-13 16:14）
+
+**移除原因**：
+1. **BoundaryWalls 從未生效**：所有 StaticBody2D 的 `collision_mask = 0`，不與任何 Physics Layer 碰撞，是廢節點
+2. **重複系統**：TileMapLayer 的 TileSet 已在每個 Solid Tile 上設定 Physics Layer，玩家碰撞完全由此處理
+3. **維護成本高**：每個房間需手動調整 4 個 StaticBody2D 的尺寸與位置，且容易與 TileSet 佈局不同步
+4. **無腳本依賴**：`room_base.gd`、`game_world.gd` 均未引用 BoundaryWalls，不是架構的一部分
+
+**取而代之的設計規範（強制）**：
+> 「每個房間的 `PlatformLayer` 必須在四周繪製封閉的 Solid Tile 牆壁（帶 Physics Layer 碰撞的 Tile）。Portal 開口處的邊緣由 Portal 本身引導過渡。CameraZone 的可視範圍邊緣必須完全被 Tile 覆蓋，不得露出虛空。」
+
+**標準房間節點結構（更新後）**：
+```
+RoomXxx (Node2D + RoomBase.gd)
+├── CameraZone       (Area2D + camera_zone.gd)     ← 鏡頭範圍觸發
+│   └── CollisionShape2D
+├── TileLayers       (Node2D)
+│   ├── BGLayer      (TileMapLayer, z=-10)          ← 背景裝飾，無碰撞
+│   ├── PlatformLayer (TileMapLayer)                 ← 地形 + 碰撞（唯一碰撞來源）
+│   └── FGLayer      (TileMapLayer, z=+10)          ← 前景裝飾，無碰撞
+├── Portals          (Node2D)
+│   └── XxxPortal    (Area2D + room_portal.gd)
+├── SpawnPoint       (Marker2D)
+└── Enemies          (Node2D)
+```
+
+**影響的文件**：
+- `area_0_room_01.tscn`：已移除 BoundaryWalls（2026-06-13）
+- `area_0_room_02.tscn`：已移除 BoundaryWalls（2026-06-13）
+- 所有未來的房間模板不再包含 BoundaryWalls
+
+---
+
+### 10.11 空洞騎士風 Walk-in 轉場設計 [CONFIRMED — 2026-06-14]
+
+**設計品質要求**：
+玩家進入新房間時，應像「房間連接空間，玩家自然走入」，而不是「間視點傳送」。
+
+**主流實作（空洞騎士 / Ori / Celeste 騗致做法）**：
+
+| 階段 | 玩家為中時 | 玩家為未結板時 |
+|------|---------|----------|
+| 1 | 走進 Portal 洞口 | 走到 Portal 邊緣 |
+| 2 | ScreenFader Fade to Black | ScreenFader Fade to Black |
+| 3 | 玩家移動到新房間 SpawnMarker（門口邊緣） | 玩家移動到新房間 SpawnMarker（門口邊緣） |
+| 4 | 玩家獲得小量初始進入方向的速度 | 玩家獲得小量初始進入新房間方向的速度 |
+| 5 | ScreenFader Fade to Visible | ScreenFader Fade to Visible |
+| 6 | 玩家已在行走進入新房間 | 玩家已在行走進入新房間 |
+
+**技術實作細節**：
+- `room_portal.gd`：`target_room_path` 改為 `@export_file("*.tscn")`（Inspector 可直接拖拽選擇）
+- `game_world.gd` 的 `_reset_player_at_door()` ：玩家出現後，依据 entry door_id 警倹初始水平速度
+  - LeftPortal 入口 → 玩家初始 velocity.x = +walk_speed（向右行走）
+  - RightPortal 入口 → 玩家初始 velocity.x = -walk_speed（向左行走）
+- `player.gd`：新增 `apply_entry_velocity(horizontal_speed: float)` 方法
+  - 在 deferred 環境呼叫（ERR-001 安全）
+  - 不乫擾玩家目前的 `_facing` 方向
+
+**SpawnMarker 位置規範**：
+- LeftPortal SpawnMarker：放在 Portal CollisionShape2D 內側右端（玩家從左做左入從右走）
+- RightPortal SpawnMarker：放在 Portal CollisionShape2D 內側左端（玩家從右入從左走）
+- Y 軸不可懸空，必須對齊地板
+
+**能集 Walk-in 的走廈**：
+玩家從逆 Portal 方向出現，帶著向內的速度，矠矠確證 Fade 全黑的瞬間玩家已正確定位。視覺上像「自然走進來」。
+
+---
+est_room** | **Designer+Developer** |
 | **2026-06-14** | **移除 game_world.tscn 中的預設靜態碰撞牆（Ground/Ceiling/WallLeft/WallRight）** | **這 4 個節點是早期開發用的全局邊界牆，在正式地圖階段由 PlatformLayer TileSet 每房間自行提供碰撞封閉後已屬冗餘** | **Designer+Developer** |
-| **2026-06-14** | **房間轉場改為空洞騎士式 Edge Walk-in（移除 SpawnPoint 瞬間傳送）** | **玩家進入新房間時，從門口邊緣自動向內行走 48px / 0.35s，期間鎖定輸入，完成後恢復控制。Walk-in 方向由 door_id 推導：left→向右，right→向左** | **Designer+Architect（用戶需求+總結群企學標準）** |
-| **2026-06-14** | **Portal @export 強化：新增 enter_direction 屬性** | **設計師可在 Inspector 直接配置進入方向（auto/right/left/up/down），支援未來上下方向 Portal** | **Architect** |
-| **2026-06-14** | **修復 area_0_room_02 LeftPortal 缺少 target_room_path 導致回到 test_room 的 BUG** | **room_02.LeftPortal.target_room_path 需設為 res://scenes/levels/area_0/area_0_room_01.tscn** | **Developer（用戶發現）** |
+| **2026-06-14** | **area_0_room_02 LeftPortal 必須雙向連結 area_0_room_01（修正 BUG）** | **LeftPortal 的 target_room_path 為空，導致無法從 room_02 返回 room_01，與 Portal 對接規則矛盾** | **Designer** |
+| **2026-06-14** | **Portal @export 改用 @export_file("*.tscn")** | **Inspector 可直接用文件對話框選擇場景，降低手打路徑錯誤風險** | **Designer** |
+| **2026-06-14** | **採用空洞騎士風 Walk-in 轉場（§10.11）** | **玩家出現在門口邊緣並帶初始方向速度，避免「瞬移割裂感」；SpawnMarker 位置規範同步更新** | **Designer** |
 
 ---
 
@@ -681,54 +743,32 @@ RoomXX (Node2D)                  ← 房間根節點，掛 room_base.gd 腳本
 
 ---
 
-### 10.5 房間邊界牆設計 [CONFIRMED]
+### 10.5 房間邊界牆設計 [❗ 已廢棄 — 見 §10.10]
 
-**決策**：玩家與敵人均不能走出房間，採用不可見邊界牆。
-
-| 邊界 | 節點類型 | CollisionLayer | 說明 |
-|------|---------|--------------|------|
-| 左牆 | StaticBody2D | 1（地形層） | 玩家/敵人均被阻擋 |
-| 右牆 | StaticBody2D | 1 | Portal 洞口位置留出缺口 |
-| 上牆 | StaticBody2D | 1 | 防止跳出天花板 |
-| 下牆 | StaticBody2D | 1 | 防止掉落虛空 |
-
-**Portal 洞口設計**：
-- 邊界牆在 Portal 對應位置**留出缺口**（不放 CollisionShape2D）
-- 玩家通過缺口走入 Portal 觸發區 → 觸發場景切換
-- 缺口高度 = Portal CollisionShape2D 高度（建議 96px = 3 tiles @ zoom×4）
+> 此章節所描述的 BoundaryWalls 已於 2026-06-13 完全移除（見 §10.10）。
+> 所有房間的碰撞封閉由 PlatformLayer TileSet Physics Layer 負責。
+> Portal 開口處由地形設計師手動疫空不畫 Tile。
 
 ---
 
-### 10.6 Portal 設計規範 [CONFIRMED — 2026-06-14 v2]
+### 10.6 Portal 設計規範 [CONFIRMED]
 
-**Area_0 雙向連接**：room_01 ↔ room_02。
+**第一階段（Area_0）**：只配置右方出口（RightPortal）。
 
 | 屬性 | 規格 |
 |------|------|
 | door_id | 方向字串（"right" / "left" / "top" / "bottom"） |
-| target_room_path | 目標 .tscn 路徑（**不可為空字串，手動室必須明確指定**） |
+| target_room_path | 目標 .tscn 路徑（空字串 = 交由 DungeonGenerator 決定） |
 | target_door_id | 對應房間的入口 door_id（右出 → 左入，即 "left"） |
-| enter_direction | 進入方向（auto/right/left/up/down）。auto = 由 door_id 自動推導 |
 | 觸發碰撞 | collision_mask=2（只偵測 Players 層） |
-| SpawnMarker | 玩家從目標房間的 SpawnMarker **門口邊緣**出現 |
+| SpawnMarker | 玩家從目標房間的 SpawnMarker 位置出現 |
 
 **Portal 對接規則**：
 ```
-area_0_room_01 RightPortal (door_id="right", target_room_path=".../area_0_room_02.tscn")
+area_0_room_01 RightPortal (door_id="right")
     ↕
-area_0_room_02 LeftPortal  (door_id="left",  target_room_path=".../area_0_room_01.tscn")
+area_0_room_02 LeftPortal (door_id="left")
 ```
-
-**Walk-in 轉場規格 [CONFIRMED 2026-06-14]** — 參考空洞騎士 (Hollow Knight) 等 Metroidvania 業界標準實作：
-
-| 項目 | 規格 |
-|------|------|
-| Walk-in 距離 | 48px |
-| Walk-in 持續時間 | 0.35秒 |
-| 輸入鎖定 | Walk-in 期間玩家全部輸入**失效** |
-| 重力 | Walk-in 期間重力正常（玩家會自然落地） |
-| 方向推導 | `left` 門 → 玩家向**右**走入 (Vector2(1,0))，`right` 門 → 向**左** (Vector2(-1,0)) |
-| SpawnMarker 位置 | 門口邊緣（稍靠外側，讓 Walk-in 後玩家自然展於房間內） |
 
 ---
 
