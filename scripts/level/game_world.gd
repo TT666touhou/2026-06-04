@@ -477,30 +477,29 @@ func _reset_player_at_door(entry_door_id: String) -> void:
 		else:
 			push_warning("[GameWorld] 找不到 door_id='%s' 的 RoomPortal，使用預設位置" % entry_door_id)
 
-	## 放置所有玩家
-	var players := _players_root.get_children()
-	## Walk-in 速度：依進入方向給予初始水平速度（空洞騎士風格）
-	## 從左門（left）進入 → 向右行走；從右門（right）進入 → 向左行走
-	var entry_vel_x: float = 0.0
+	## Walk-in 方向：依 entry_door_id 決定方向向量（§10.11 規格）
+	var walk_dir := Vector2.ZERO
 	match entry_door_id:
-		"left":
-			entry_vel_x = 100.0   ## 從左進 → 向右
-		"right":
-			entry_vel_x = -100.0  ## 從右進 → 向左
-		"bottom":
-			entry_vel_x = 0.0     ## 從底部進 → 無水平速度
+		"left":   walk_dir = Vector2.RIGHT  ## 從左進 → 向右走
+		"right":  walk_dir = Vector2.LEFT   ## 從右進 → 向左走
+		"top":    walk_dir = Vector2.DOWN   ## 從頂部進 → 向下走
+		"bottom": walk_dir = Vector2.UP     ## 從底部進 → 向上走
+
+	## 放置並啟動所有玩家的 Walk-in 動畫
+	var players := _players_root.get_children()
 	for i: int in range(players.size()):
 		var p := players[i]
 		p.global_position = spawn_pos + Vector2(float(i) * 40.0, 0.0)
-		## 注入初始速度（walk-in 效果）
-		if p.get("velocity") != null:
-			var v: Vector2 = p.velocity
-			v.x = entry_vel_x
-			p.velocity = v
+		## 顯示並啟用物理
 		if not p.visible:
 			p.visible = true
 			p.set_physics_process(true)
-			print("[GameWorld] 玩家 %s 從 door_id=%s 出現（walk-in vel_x=%.0f）" % [p.name, entry_door_id, entry_vel_x])
+		## Walk-in 動畫：呼叫 start_room_entry() 鎖定輸入並強制走入（ERR-SPAWN-001 安全）
+		if walk_dir != Vector2.ZERO and p.has_method("start_room_entry"):
+			p.start_room_entry(walk_dir, 48.0, 0.35)
+			print("[GameWorld] 玩家 %s Walk-in 啟動：door_id=%s dir=%s" % [p.name, entry_door_id, str(walk_dir)])
+		else:
+			print("[GameWorld] 玩家 %s 出現（door_id=%s，無Walk-in）" % [p.name, entry_door_id])
 
 
 ## 遞迴搜尋房間內所有節點，找到指定 door_id 的 RoomPortal
