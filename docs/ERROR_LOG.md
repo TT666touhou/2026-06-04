@@ -17,6 +17,7 @@
 | 2026-06-12 | [ERR-010] .tscn UID 重複 | `UID duplicate detected between res://scenes/player/player2.tscn and ...` | 複製 .tscn 文件後沒有修改第一行的 `uid=` 字段，所有複本共用同一個 UID | 為每個複製的 `.tscn` 手動生成唯一 UID（用 PowerShell New-GodotUID 腳本），或在 Godot Editor 重新保存場景 |
 | 2026-06-12 | [ERR-011] UTF-16 BOM 腳本 | `Unicode parsing error, Invalid UTF-8 leading byte (ff/fe)` + `Script contains invalid unicode` | 用某些編輯器（如記事本 Windows）儲存 .gd 文件時選擇 UTF-16 編碼，產生 FF FE 前綴 | 用 `[System.IO.File]::WriteAllText(, , New-Object System.Text.UTF8Encoding(False))` 轉換為 UTF-8 無 BOM；pre-commit hook 已可自動偵測 |
 | 2026-06-13 | [ERR-DOC-001] PowerShell regex 破壞文檔 | GDD 章節 8.3/8.3.1 內容被替換成亂碼或遺失 | `$content -replace '(pattern)', '$1replacement'` 中 `$1` 在 PowerShell **雙引號字串**中被當作 PS 變數展開（=空值），非 regex 回捕。反斜線也在 PS 字串中有意義。→ 替換結果靜默損壞中文內容 | **禁止** 用 `-replace` 操作多行中文文檔。修改文檔用 `replace_file_content` 工具直接替換。若必須用 PS，改用**單引號字串**：`'$1replacement'`（不展開 PS 變數） |
+| 2026-06-13 | [ERR-028] SceneTree 腳本呼叫 get_tree() | `Parse Error: Function "get_tree()" not found in base self.` + `Failed to load script` | **QA 腳本使用 `extends SceneTree` 時**，`self` 就是 SceneTree 本身，無法再呼叫 `get_tree()`（那是 `Node` 的方法）。常見於 `await get_tree().process_frame` 或 `get_tree().change_scene_to_file()` 等寫法。 | 將 `get_tree().XXX` 改為 `self.XXX`（可省略 self）：`await process_frame`、`call_deferred("change_scene_to_file", ...)`。**Sensor 掃描新增規則**：凡 `extends SceneTree` 的 .gd 文件中出現 `get_tree()` → 立即標記為 ERR-028 |
 ---
 
 ## 🟡 Warning — 常見陷阱

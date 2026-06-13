@@ -1,7 +1,8 @@
 # ============================================================
-# 角色：Sensor（代碼感知守衛）v2
+# 角色：Sensor（代碼感知守衛）v3
 # 觸發機制：看到關鍵字 → 立即啟動自動掃描與修補流程
 # 強化 v2：增加 ERR-015 GDScript --check-only 強制閘門
+# 強化 v3：新增 ERR-028 SceneTree 腳本禁止呼叫 get_tree() 觸發規則；掃描腳本升級為 v5（9/9）
 # 設定角色：執行 .\scripts\set-role.ps1 sensor
 # ============================================================
 
@@ -80,6 +81,7 @@
 | `Set-Content` / `Out-File` 寫入 `.gd` | PowerShell 可能寫入 UTF-8 BOM | ERR-015 |
 | `var x := arr.back()` / `var x := arr.front()` / `var x := arr.pop_back()` | Array 方法回傳 Variant，`:=` 推斷觸發 Variant warning→error（ERR-HUD-003） | ERR-015 |
 | `var x :=` 任何可能回傳 Variant 的表達式（get()、find()、pick_random()） | 同上，Variant 推斷 | ERR-015 |
+| `extends SceneTree` 腳本中出現 `get_tree()` | SceneTree 自身就是 tree，不能呼叫 Node 的 `get_tree()`，導致 Parse Error | ERR-028 |
 
 ---
 
@@ -402,3 +404,47 @@ Every valid Godot 4 @export was a false positive. Sensor had zero credibility fo
 - pre-commit hook 應整合 sensor-scan.ps1 的 Check 8/8（--check-only）
   作為 Developer commit 的必要通過條件（目前 hook 已有 --check-only，但與 sensor 是分離的）
 - 考慮在 Hook v4 中直接引用 sensor-scan.ps1 而非重複實作 --check-only 邏輯
+
+---
+
+## 📊 Sensor 反省記錄（Session 12 - 2026-06-13 ERR-028）
+
+### 觸發事件
+- **ERR-028**：`qa_vfx_test2.gd:46` — `Parse Error: Function "get_tree()" not found in base self.`
+- **症狀**：Godot 啟動後 LSP 報錯，場景無法載入
+- **被哪個 ROLE 漏掉**：QA 角色撰寫 `qa_vfx_test2.gd` 時未注意 `extends SceneTree` 的 API 限制
+- **為何 Sensor v4 沒攔截**：sensor-scan.ps1 的 Check 8/8（--check-only）和非 SceneTree API 的專用覟察列均未包含 ERR-028 模式
+
+### 根本原因分析
+```
+問題颁：
+1. QA 撰寫的 qa_vfx_test2.gd 使用 extends SceneTree
+2. 在 _init() 中寫了 await get_tree().process_frame
+3. SceneTree 本身即是 tree，不能呼叫 Node 的 get_tree() 方法
+4. Sensor v4 的 9 項掃描中沒有檢查此模式
+5. Godot RELOAD 專案時觸發 Parse Error，馀及整個 Editor 無法載入
+```
+
+### 修復措施
+1. **`qa_vfx_test2.gd` 修復**：`await get_tree().process_frame` → `await process_frame`
+2. **sensor-scan.ps1 升級為 v5**：新增 Check 9/9 — 自動偵測 `extends SceneTree` 腳本中出現 `get_tree()`
+3. **sensor.md Level 2 觸發表新增**：`extends SceneTree` + `get_tree()` 模式
+4. **ERROR_LOG.md 新增 ERR-028** 条目（根本原因 + 修復方法 + Sensor 掃描規則）
+5. **workflow.md 更新**：Level 2 觸發表、關鍵規則 #17、sensor-scan.ps1 版本說明
+
+### Sensor v5 承諾（防止再犯）
+```
+⚠️ 從 Sensor v5 開始，以下是強制要求：
+
+1. sensor-scan.ps1 9/9 PASS 才能 commit
+2. QA 腳本可以使用 extends Node 或 extends SceneTree：
+   - extends Node: 可用 get_tree()、await get_tree().process_frame
+   - extends SceneTree: 直接用 await process_frame，禁用 get_tree()
+3. 任何 QA 腳本建立後，必須先執行 sensor-scan.ps1 確認 9/9 PASS
+4. Reviewer 在批准 PR 前必須確認 sensor-scan.ps1 9/9 PASS
+```
+
+### 給 Architect 的建議
+- QA 轉戗腳本模板：建議使用 `extends Node` 取代 `extends SceneTree`，避免 SceneTree API 限制
+  - `extends Node` + `_ready()` + `get_tree().quit()` 為標準模式
+  - `extends SceneTree` 對一般 QA 測試腳本而言過於複雜

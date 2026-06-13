@@ -265,6 +265,7 @@
 | 2026-06-13 14:45 | Developer/Reviewer/Sensor | **[ERR-026] 近戰 VFX 不可見修復**：MeleeSlash/Impact3 根節點 visible=false；MeleeSlash2 frame=15預設值；VFX 改為原色（GDD同步）。Sensor v4 8/8 PASS |
 | 2026-06-13 15:00 | QA/Architect/Developer | **[ERR-027] 真正根本原因發現與修復**：ERR-026 修復後仍不可見。QA 實機測試發現 test_room_a/b 使用 player.tscn（基底），而非 player1.tscn。基底場景完全缺少 MeleeVFXPivots 和 @export VFX 賦值。修復：player.tscn 加入完整 VFX 配置。**Workflow 強化**：新增 L 節（跨角色通知協議）、reviewer.md ERR-027 防護規則、qa.md 引用鏈驗證步驟。Sensor v4 8/8 PASS |
 | 2026-06-13 15:39 | Developer | **Phase 6.1 Area_0 房間結構框架完成**：建立 room_base.gd（SpawnPoint查詢+CameraZone通知）、camera_zone.gd（空洞騎士風格鏡頭邊界）、area_0_room_01/02.tscn（含CameraZone/BoundaryWalls/TileLayers三層/Portal）。MultiplayerCamera 新增 set_limits_from_zone()（Tween 0.3s）。game_world 新增 apply_room_camera_zone + _find_portal_by_door_id（遞迴搜尋）。dungeon_generator COMBAT_ROOMS 加入 area_0 路徑。Sensor v4 8/8 PASS。 |
+| 2026-06-13 15:50 | Developer/Sensor | **[ERR-028] SceneTree 腳本呼叫 get_tree() 修復**：`qa_vfx_test2.gd:46` 的 `await get_tree().process_frame` 改為 `await process_frame`（extends SceneTree 不能呼叫 Node 的 get_tree()）。**Sensor v5 升級**：sensor-scan.ps1 新增 Check 9/9 自動偵測 ERR-028 模式。sensor.md Level 2 觸發表新增。ERROR_LOG.md 新增 ERR-028 條目。workflow.md 關鍵規則 #17 新增。Sensor v5 9/9 PASS。 |
 
 
 ---
