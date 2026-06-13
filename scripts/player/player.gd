@@ -200,6 +200,16 @@ var _ranged_cooldown_timer: float = 0.0
 ## 供 DebugBridge/Overlay 讀取
 var attack_state: String = "IDLE"  # "IDLE" | "MELEE" | "RANGED"
 
+# ── Room Entry Walk-in 狀態 ─────────────────────────────────────────────
+## 進入新房間的 Walk-in 鎖定狀態（鎖定期間忽略玩家輸入）
+var _entry_locked: bool = false
+## Walk-in 當前殘餘距離（px）
+var _entry_remaining: float = 0.0
+## Walk-in 移動速度（px/s，由 start_room_entry 動態計算）
+var _entry_speed: float = 0.0
+## Walk-in 方向向量
+var _entry_direction: Vector2 = Vector2.RIGHT
+
 # ═══════════════════════════════════════════════════════════════
 # Multiplayer Authority
 # ═══════════════════════════════════════════════════════════════
@@ -278,8 +288,20 @@ func _physics_process(delta: float) -> void:
 	if not _is_authority():
 		return
 		
-	# 1. 重力
+	# 1. 重力（Walk-in 期間仍然套用，讓玩家自然落地）
 	_apply_gravity(delta)
+
+	## ⚠️ Room Entry Walk-in：鎖定期間只做重力+強制水平移動，跳過所有輸入
+	if _entry_locked:
+		## 強制水平移動
+		velocity.x = _entry_direction.x * _entry_speed
+		_entry_remaining -= _entry_speed * delta
+		if _entry_remaining <= 0.0:
+			_entry_locked = false
+			velocity.x = 0.0
+			print("[Player] Walk-in 完成，恢復輸入控制")
+		move_and_slide()
+		return
 
 	# 2. 耐力恢復
 	_recover_stamina(delta)
@@ -1068,3 +1090,25 @@ func _spawn_vfx_aimed(vfx_scene: PackedScene, pos: Vector2, aim_dir: Vector2) ->
 	var parent := get_parent()
 	if parent:
 		parent.call_deferred("add_child", vfx)
+
+# ═══════════════════════════════════════════════════════════════
+# Room Entry — 空洞騎士式 Walk-in 進屋效果
+# ═══════════════════════════════════════════════════════════════
+
+## 由 GameWorld._reset_player_at_door() 呼叫
+## 玩家傳送到 SpawnMarker 後，鎖定輸入並自動向 direction 方向走 distance px
+## duration：Walk-in 持續時間（秒）→ 計算移動速度 = distance / duration
+func start_room_entry(direction: Vector2, distance: float = 48.0, duration: float = 0.35) -> void:
+	if duration <= 0.0:
+		return
+	_entry_direction = direction.normalized()
+	_entry_speed = distance / duration
+	_entry_remaining = distance
+	_entry_locked = true
+	## 重置縱向速度，防止殘留動量（Walk-in 期間重力自行計算）
+	velocity.x = 0.0
+	velocity.y = 0.0
+	## 更新 _facing 以符合行走方向（Walk-in 中動畫朝向）
+	if direction.x != 0.0:
+		_facing = sign(direction.x)
+	print("[Player] Walk-in 開始：direction=%s speed=%.1f distance=%.1f" % [str(direction), _entry_speed, distance])
