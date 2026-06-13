@@ -1,4 +1,4 @@
-**GDD 最後同步：2026-06-13 v6** | 維護者：Designer 角色
+**GDD 最後同步：2026-06-14 v7** | 維護者：Designer 角色
 
 # GAME DESIGN DOCUMENT
 # ============================================================
@@ -22,13 +22,13 @@
 | 敵人設計 | [CONFIRMED] | 2026-06-06 |
 | 多人系統 | [CONFIRMED] | 2026-06-12 |
 | 玩家角色設計 | [CONFIRMED] | 2026-06-12 |
-| 關卡結構 | [CONFIRMED] | 2026-06-12 |
+| 關卡結構 | [CONFIRMED] | 2026-06-14 |
 | 戰鬥系統 | [CONFIRMED] | 2026-06-13 |
 | VFX 視覺特效系統 | [CONFIRMED] | 2026-06-13 |
 | 音效/音樂 | [DRAFT] | 2026-06-06 |
 | 技術限制 | [CONFIRMED] | 2026-06-12 |
 | 房間連接系統 | [CONFIRMED] | 2026-06-12 |
-| **地圖房間結構設計規範** | **[CONFIRMED]** | **2026-06-13 v5** |
+| **地圖房間結構設計規範** | **[CONFIRMED]** | **2026-06-14 v7** |
 
 ---
 
@@ -502,6 +502,8 @@ Player (CharacterBody2D)
 | **2026-06-13** | **VFX 繼承玩家顏色（modulate）** | **P1/P2/P3/P4 視覺區分；slash VFX 染色** | **用戶** |
 | **2026-06-13** | **VFX 速度：24fps→60fps（20fps→50fps）** | **16幀@24fps=0.667s 远超攻擊鎖定0.15s；調為60fps=0.267s 匹配手感** | **Developer/經教訓** |
 | **2026-06-13** | **Marker2D VFX 定位系統** | **設計師可在 Editor 視覺化調整 VFX 位置，不需改代碼** | **Architect** |
+| **2026-06-13** | **移除 BoundaryWalls（§10.10）** | **TileMapLayer Physics Layer 為唯一碰撞策略；BoundaryWalls collision_mask=0 從未生效** | **Designer+Architect** |
+| **2026-06-14** | **遊戲進入點固定為 area_0_room_01（廢棄 DungeonGenerator 隨機模式）** | **進入正式手動搭建關卡階段；test_room 移出 COMBAT_ROOMS 池；DungeonGenerator 保留但不再隨機選舊 test_room** | **Designer+Developer** |
 
 ---
 
@@ -623,19 +625,9 @@ RoomXX (Node2D)                  ← 房間根節點，掛 room_base.gd 腳本
 ├── CameraZone (Area2D)          ← 鏡頭邊界定義器（空洞騎士實作法）
 │   └── CollisionShape2D         ← 由設計師手動調整大小 = 鏡頭可見範圍
 │
-├── BoundaryWalls (Node2D)       ← 不可見邊界牆組
-│   ├── WallLeft (StaticBody2D)
-│   │   └── CollisionShape2D
-│   ├── WallRight (StaticBody2D)
-│   │   └── CollisionShape2D
-│   ├── WallTop (StaticBody2D)
-│   │   └── CollisionShape2D
-│   └── WallBottom (StaticBody2D)
-│       └── CollisionShape2D
-│
 ├── TileLayers (Node2D)          ← 所有 TileMapLayer 的容器
 │   ├── BGLayer (TileMapLayer)   ← 背景裝飾，z_index=-10，無碰撞
-│   ├── PlatformLayer (TileMapLayer) ← 地形主層，z_index=0，有碰撞
+│   ├── PlatformLayer (TileMapLayer) ← 地形主層，z_index=0，有碰撞（唯一碰撞來源）
 │   └── FGLayer (TileMapLayer)   ← 前景層（柱子邊緣/薄霧葉等），z_index=10，無碰撞
 │
 ├── Portals (Node2D)             ← 所有 Portal 的容器
@@ -645,8 +637,10 @@ RoomXX (Node2D)                  ← 房間根節點，掛 room_base.gd 腳本
 │
 ├── SpawnPoint (Marker2D)        ← 玩家進入本房間的預設出現點（入口）
 │
-└── Enemies (Node2D)             ← 敵人容器（之後由 DungeonGenerator 或手動配置）
+└── Enemies (Node2D)             ← 敵人容器（由設計師手動在 Editor 中配置）
 ```
+
+> ⚠️ **注意**：`BoundaryWalls` 已於 2026-06-13 移除（見 §10.10）。地形碰撞完全依賴 `PlatformLayer` 的 TileSet Physics Layer。
 
 ---
 
