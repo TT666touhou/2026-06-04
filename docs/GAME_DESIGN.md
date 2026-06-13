@@ -1,4 +1,4 @@
-**GDD 最後同步：2026-06-13 v3** | 維護者：Designer 角色
+**GDD 最後同步：2026-06-13 v4** | 維護者：Designer 角色
 
 # GAME DESIGN DOCUMENT
 # ============================================================
@@ -284,7 +284,7 @@
 | 第 2 擊 | `MeleeSlash2.tscn` | `slash_02.png`（72×105px/幀，flip_h） | 16幀 | **60fps** | 0.35 |
 | 第 3 擊 | `MeleeImpact3.tscn` | `impact_01.png`（137×98px/幀） | 16幀 | **50fps** | 0.40 |
 
-- 所有 VFX 繼承玩家顏色（Modulate from VisualPivot）
+- VFX 使用**原色**（白色，不染玩家顏色） [CONFIRMED 2026-06-13]
 - VisualPivot 縮放：scale→(1.20, 0.82) 0.06s，回彈 0.09s（保持正值避免子節點渲染問題）
 - 攻擊期間 Combo 自動計時
 
@@ -319,7 +319,7 @@ Player (CharacterBody2D)
 - `_get_marker(path) -> Marker2D` — 安全取得，缺失時 push_warning
 - 舊 `_spawn_melee_vfx(scene, pos, flip_h)` 保留供其他用途
 
-**顏色繼承**：VFX instantiate 後繼承 VisualPivot.modulate（P1=橙, P2=藍, P3=綠, P4=紫）
+**顏色**：VFX 使用**原色**（不繼承玩家顏色） [CONFIRMED 2026-06-13]
 
 ### 8.4 遠程 VFX [CONFIRMED]
 - 發射子彈瞬間，在子彈出生點生成 `RangedMuzzle.tscn`（spark_01.png 6幀動畫）
@@ -368,18 +368,18 @@ Player (CharacterBody2D)
 
 | VFX | 素材 | 幀數 | 觸發條件 |
 |-----|------|------|---------|
-| 近戰砍擊（MeleeSlash） | `fx/slash_01.png` | 6幀 | 近戰攻擊判定時 |
-| 遠程發射（RangedMuzzle） | `fx/spark_01.png` | 6幀 | 發射子彈時 |
-| 敵人受傷（EnemyHit） | `fx/impact_01.png` | 6幀 | 敵人 take_damage 時 |
-| 敵人死亡（EnemyDeath） | `fx/death_01.png` | 6幀 | 敵人 die() 時 |
+| 近戰砍擊（MeleeSlash） | `fx/slash_01.png` | **16幀** | 近戰攻擊第1擊時 |
+| 遠程發射（RangedMuzzle） | `fx/spark_01.png` | **16幀** | 發射子彈時 |
+| 敵人受傷（EnemyHit） | `fx/impact_01.png` | **16幀** | 敵人 take_damage 時 |
+| 敵人死亡（EnemyDeath） | `fx/death_01.png` | **24幀** | 敵人 die() 時 |
 
 ### 8.5 近戰 3 擊 Combo 系統 [CONFIRMED 2026-06-13] **[IMPLEMENTED]**
 
 | 擊數 | 持續時間 | VFX 場景 | VFX 素材 | 染色 | Knockback |
 |------|---------|---------|---------|------|----------|
-| 第 1 擊 | 0.15s | `MeleeSlash.tscn` | `slash_01.png`（16幀 91×96px） | 玩家顏色 | 80px/s 水平 |
-| 第 2 擊 | 0.15s | `MeleeSlash2.tscn` | `slash_02.png`（16幀 72×105px，反向） | 玩家顏色 | 80px/s 水平 |
-| 第 3 擊 | 0.20s | `MeleeImpact3.tscn` | `impact_01.png`（16幀 137×98px） | 玩家顏色 | 80px/s 水平 |
+| 第 1 擊 | 0.15s | `MeleeSlash.tscn` | `slash_01.png`（16幀 91×96px） | 原色 | 80px/s 水平 |
+| 第 2 擊 | 0.15s | `MeleeSlash2.tscn` | `slash_02.png`（16幀 72×105px，反向） | 原色 | 80px/s 水平 |
+| 第 3 擊 | 0.20s | `MeleeImpact3.tscn` | `impact_01.png`（16幀 137×98px） | 原色 | 80px/s 水平 |
 
 **Combo Buffer**：第一擊結束後 **0.3s** 內再按左鍵即接第二擊；第三擊後重置
 
