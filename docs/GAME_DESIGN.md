@@ -1,4 +1,4 @@
-**GDD 最後同步：2026-06-13 v4** | 維護者：Designer 角色
+**GDD 最後同步：2026-06-13 v5** | 維護者：Designer 角色
 
 # GAME DESIGN DOCUMENT
 # ============================================================
@@ -28,6 +28,7 @@
 | 音效/音樂 | [DRAFT] | 2026-06-06 |
 | 技術限制 | [CONFIRMED] | 2026-06-12 |
 | 房間連接系統 | [CONFIRMED] | 2026-06-12 |
+| **地圖房間結構設計規範** | **[CONFIRMED]** | **2026-06-13 v5** |
 
 ---
 
@@ -587,3 +588,173 @@ Player (CharacterBody2D)
 |------|------|
 | 心形血量 UI | 24×24px，STRETCH_KEEP_ASPECT_CENTERED，等比放大不變形 |
 | 心形材質 | 8×8px atlas（mrmotext 圖集），AtlasTexture + filter_clip |
+
+---
+
+## 🗺️ 10. 地圖房間結構設計規範 [CONFIRMED 2026-06-13 v5]
+
+> **本章節依據 /grill-me 設計訪談（2026-06-13）確認。**
+> 適用於所有手動搭建的房間場景（scenes/levels/area_X/）。
+
+### 10.1 房間分類與命名規範 [CONFIRMED]
+
+```
+scenes/
+  levels/
+    area_0/          ← 第一區域（地下城入口）
+      area_0_room_01.tscn
+      area_0_room_02.tscn
+      ...
+    area_1/          ← 第二區域（待定）
+    area_2/          ← 第三區域（待定）
+```
+
+**命名規則**：`area_{區域編號}_room_{房間編號}.tscn`
+- 區域編號：0 = 起始區，1 = 中段區，2 = 深部區
+- 房間編號：兩位數（01、02...），從 01 開始，按關卡流程排序
+- **設計師手動繪製 TileMap 地形**，不使用程式化生成地形
+
+---
+
+### 10.2 房間節點標準結構 [CONFIRMED]
+
+```
+RoomXX (Node2D)                  ← 房間根節點，掛 room_base.gd 腳本
+├── CameraZone (Area2D)          ← 鏡頭邊界定義器（空洞騎士實作法）
+│   └── CollisionShape2D         ← 由設計師手動調整大小 = 鏡頭可見範圍
+│
+├── BoundaryWalls (Node2D)       ← 不可見邊界牆組
+│   ├── WallLeft (StaticBody2D)
+│   │   └── CollisionShape2D
+│   ├── WallRight (StaticBody2D)
+│   │   └── CollisionShape2D
+│   ├── WallTop (StaticBody2D)
+│   │   └── CollisionShape2D
+│   └── WallBottom (StaticBody2D)
+│       └── CollisionShape2D
+│
+├── TileLayers (Node2D)          ← 所有 TileMapLayer 的容器
+│   ├── BGLayer (TileMapLayer)   ← 背景裝飾，z_index=-10，無碰撞
+│   ├── PlatformLayer (TileMapLayer) ← 地形主層，z_index=0，有碰撞
+│   └── FGLayer (TileMapLayer)   ← 前景層（柱子邊緣/薄霧葉等），z_index=10，無碰撞
+│
+├── Portals (Node2D)             ← 所有 Portal 的容器
+│   └── RightPortal (Area2D)     ← 右方出口（第一個房間只有右 Portal）
+│       ├── CollisionShape2D     ← 觸發區
+│       └── SpawnMarker (Marker2D) ← 玩家從這裡出現
+│
+├── SpawnPoint (Marker2D)        ← 玩家進入本房間的預設出現點（入口）
+│
+└── Enemies (Node2D)             ← 敵人容器（之後由 DungeonGenerator 或手動配置）
+```
+
+---
+
+### 10.3 TileMapLayer 分層規範 [CONFIRMED]
+
+| 層名 | z_index | 碰撞 | 用途 |
+|------|---------|------|------|
+| BGLayer | -10 | 無 | 背景磚塊（石牆紋理、圖案）、遠景裝飾 |
+| PlatformLayer | 0 | 有（collision_layer=1） | 地板、牆壁、天花板——玩家/敵人站立的主要地形 |
+| FGLayer | 10 | 無 | 前景裝飾（柱子前方邊框、植被、霧氣效果）|
+
+**擴展原則**：
+- 新分層只往此三層補充，不另立新 z_index（保持簡潔）
+- 若未來需要「裝飾牆柱」可在 PlatformLayer 旁加 DecoLayer（z=1，無碰撞）
+
+---
+
+### 10.4 鏡頭邊界系統（CameraZone）[CONFIRMED]
+
+**設計決策**：採用 Area2D（空洞騎士實際做法），不使用 Marker2D 四點限制。
+
+| 項目 | 規格 |
+|------|------|
+| 實作方式 | 每個房間含 **CameraZone（Area2D + CollisionShape2D）** |
+| 調整方式 | 設計師在 Godot Editor 直接拖拉 CollisionShape2D 的大小 |
+| 觸發時機 | 玩家進入 CameraZone 時，MultiplayerCamera 以 **Tween（0.3s）** 平滑更新 Camera2D 的 limit_left/right/top/bottom |
+| 防虛空規則 | CollisionShape2D 大小 ≤ 房間 TileMap 繪製範圍；**設計師必須確認 Camera2D 看不到 TileMap 邊界外的虛空** |
+| 子區域支援 | 同一房間可放多個 CameraZone，過渡銜接不同攝影機邊界 |
+
+**MultiplayerCamera 升級需求**（交 Architect 規劃）：
+- 新增 `set_limits_from_zone(zone: Area2D)` 方法
+- 使用 Tween 平滑插值 limit_* 四個邊界
+- 玩家離開舊 zone 且進入新 zone 時切換（防止邊界閃爍）
+
+---
+
+### 10.5 房間邊界牆設計 [CONFIRMED]
+
+**決策**：玩家與敵人均不能走出房間，採用不可見邊界牆。
+
+| 邊界 | 節點類型 | CollisionLayer | 說明 |
+|------|---------|--------------|------|
+| 左牆 | StaticBody2D | 1（地形層） | 玩家/敵人均被阻擋 |
+| 右牆 | StaticBody2D | 1 | Portal 洞口位置留出缺口 |
+| 上牆 | StaticBody2D | 1 | 防止跳出天花板 |
+| 下牆 | StaticBody2D | 1 | 防止掉落虛空 |
+
+**Portal 洞口設計**：
+- 邊界牆在 Portal 對應位置**留出缺口**（不放 CollisionShape2D）
+- 玩家通過缺口走入 Portal 觸發區 → 觸發場景切換
+- 缺口高度 = Portal CollisionShape2D 高度（建議 96px = 3 tiles @ zoom×4）
+
+---
+
+### 10.6 Portal 設計規範 [CONFIRMED]
+
+**第一階段（Area_0）**：只配置右方出口（RightPortal）。
+
+| 屬性 | 規格 |
+|------|------|
+| door_id | 方向字串（"right" / "left" / "top" / "bottom"） |
+| target_room_path | 目標 .tscn 路徑（空字串 = 交由 DungeonGenerator 決定） |
+| target_door_id | 對應房間的入口 door_id（右出 → 左入，即 "left"） |
+| 觸發碰撞 | collision_mask=2（只偵測 Players 層） |
+| SpawnMarker | 玩家從目標房間的 SpawnMarker 位置出現 |
+
+**Portal 對接規則**：
+```
+area_0_room_01 RightPortal (door_id="right")
+    ↕
+area_0_room_02 LeftPortal (door_id="left")
+```
+
+---
+
+### 10.7 互動物件規劃（MoSCoW）[DRAFT — 未實作]
+
+> 以下為架構層級的預留設計，Area_0 前兩個房間不實作。
+
+| 物件類型 | 技術實作 | 優先級 |
+|---------|---------|-------|
+| 木箱（可推動） | RigidBody2D | Should Have |
+| 寶箱 | StaticBody2D + Area2D | Should Have |
+| 移動平台 | AnimatableBody2D + Path2D | Could Have |
+| 壓力板機關 | StaticBody2D（局部影） | Could Have |
+| 單向跳台（one-way） | TileMapLayer 特殊圖層 | Could Have |
+
+---
+
+### 10.8 設計師工作流程（手動搭建房間）[CONFIRMED]
+
+1. **Architect** 創建空白房間 `.tscn`，包含：BoundaryWalls、CameraZone、TileLayers（BGLayer/PlatformLayer/FGLayer 空白）、Portal（含 SpawnMarker）
+2. **設計師（用戶）** 在 Godot Editor 中：
+   - 在 `PlatformLayer` 繪製地板、牆壁、天花板（有碰撞的地形）
+   - 在 `BGLayer` 繪製背景裝飾
+   - 在 `FGLayer` 繪製前景（可選）
+   - 拖拉 `CameraZone` 的 CollisionShape2D 覆蓋可見地形區域
+   - 調整 `BoundaryWalls` 的邊界牆位置與大小
+   - 在 Portal 的 Inspector 設定 `target_room_path` 和 `target_door_id`
+3. **開發驗證**：確認鏡頭不會露出虛空，Portal 觸發正確
+
+---
+
+### 10.9 技術風險 [CONFIRMED]
+
+| 風險 | 等級 | 緩解措施 |
+|------|------|---------|
+| CameraZone 與 MultiplayerCamera 整合 | 中 | Architect 在 impl_plan 中定義接口；Developer 新增 `set_limits_from_zone()` 方法 |
+| 多個玩家分散在不同 CameraZone | 中 | 優先以 P1 所在的 zone 為基準；或取所有玩家 zone 的聯集 |
+| BoundaryWall 與 Portal 缺口對齊 | 低 | 統一以 SpawnMarker.position 為基準 ± half_gap |
+| 設計師忘記調整 CameraZone 邊界 | 低 | QA 測試清單加入「從每個角落確認無虛空可見」 |
