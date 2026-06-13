@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_tsgd"]
+
+[node name="TitleScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tsgd")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.10, 0.09, 0.12, 1)
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 376.0
+offset_top = 100.0
+offset_right = 776.0
+offset_bottom = 180.0
+theme_override_colors/font_color = Color(0.94902, 0.87, 0.72, 1)
+theme_override_font_sizes/font_size = 48
+text = "DUNGEON CRAWLER"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="."]
+layout_mode = 0
+offset_left = 376.0
+offset_top = 155.0
+offset_right = 776.0
+offset_bottom = 185.0
+theme_override_colors/font_color = Color(0.6, 0.55, 0.65, 1)
+theme_override_font_sizes/font_size = 16
+text = "2-4 Player Co-op Rogue-lite"
+horizontal_alignment = 1
+
+[node name="SoloButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 210.0
+offset_right = 676.0
+offset_bottom = 270.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "SOLO PLAY"
+
+[node name="HostButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 290.0
+offset_right = 676.0
+offset_bottom = 350.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "HOST GAME"
+
+[node name="IPInput" type="LineEdit" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 365.0
+offset_right = 676.0
+offset_bottom = 396.0
+placeholder_text = "IP: 127.0.0.1"
+
+[node name="JoinButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 476.0
+offset_top = 410.0
+offset_right = 676.0
+offset_bottom = 470.0
+theme_override_colors/font_color = Color(0.94902, 0.976471, 0.972549, 1)
+text = "JOIN GAME"

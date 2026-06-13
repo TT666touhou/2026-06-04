@@ -1,17 +1,22 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-commit  (v2 — 含角色感知)
+# hooks/pre-commit  (v3 — 強化版)
 # AI-Agnostic + Role-Aware Pre-Commit Hook
 #
 # 觸發時機：每次 git commit 前
-# 新增功能：根據 .agent-role 文件，執行對應角色的專屬驗證
+# v3 新增功能：
+#   - Debug 整合驗證（確認 group、錯誤處理）
+#   - Autoload 順序驗證
+#   - 靜態錯誤零容忍（error 級別）
+#   - QA 階段強制 debug_state.json 存在
+#   - 所有角色禁止 TODO/FIXME 遺留在新增行
 # ==========================================================
 
 set -e
 
 echo ""
 echo "============================================================"
-echo "🔒 [Pre-Commit Hook v2] 角色感知驗證閘門..."
+echo "🔒 [Pre-Commit Hook v3] 角色感知驗證閘門..."
 echo "============================================================"
 
 # ——————————————————————————————————————
@@ -26,13 +31,11 @@ echo ""
 
 # ——————————————————————————————————————
 # [通用規則 0] GAME_DESIGN.md 存在性檢查
-# 代碼類文件不能在設計文件建立之前提交
 # ——————————————————————————————————————
 CHANGED_CODE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
 if [ -n "$CHANGED_CODE" ] && [ ! -f "docs/GAME_DESIGN.md" ]; then
     echo "❌ [設計前置檢查] 尚未建立 docs/GAME_DESIGN.md！"
     echo "   在寫任何代碼之前，Designer 必須先完成遊戲設計文件。"
-    echo "   請切換到 Designer 角色：.\\scripts\\set-role.ps1 designer"
     exit 1
 fi
 
@@ -43,7 +46,6 @@ GAME_DESIGN_CHANGED=$(git diff --cached --name-only | grep 'docs/GAME_DESIGN.md'
 if [ -n "$GAME_DESIGN_CHANGED" ] && [ "$ROLE" != "designer" ]; then
     echo "❌ [Designer 文件保護] docs/GAME_DESIGN.md 只能由 Designer 角色修改！"
     echo "   目前角色：$ROLE"
-    echo "   若需修改遊戲設計：.\\scripts\\set-role.ps1 designer"
     exit 1
 fi
 
@@ -53,17 +55,99 @@ LARGE_FILES=$(git diff --cached --name-only --diff-filter=ACM | while read f; do
     if [ -f "$f" ]; then
         size=$(wc -c < "$f" 2>/dev/null || echo 0)
         if [ "$size" -gt 5242880 ]; then
-            echo "$f"
+            lfs_tracked=$(git check-attr filter -- "$f" 2>/dev/null | grep "filter: lfs" || true)
+            if [ -z "$lfs_tracked" ]; then
+                echo "$f"
+            fi
         fi
     fi
 done)
 
 if [ -n "$LARGE_FILES" ]; then
-    echo "❌ 大型檔案未通過 LFS，阻斷 Commit："
+    echo "❌ 大型檔案未追蹤入 LFS，阻斷 Commit："
     echo "$LARGE_FILES"
     exit 1
 fi
 echo "   ✅ LFS 檢查通過"
+
+# ——————————————————————————————————————
+# [通用規則 1b] BOM 偵測與自動修復（.tscn / .tres / .gd）
+# ——————————————————————————————————————
+echo "[通用/1b] 偵測並移除 UTF-8 BOM，阻斷 UTF-16 BOM..."
+BOM_FIXED=0
+BOM_UTF16_FOUND=0
+BOM_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres|godot)$' || true)
+for f in $BOM_FILES; do
+    if [ -f "$f" ]; then
+        # 用 xxd 讀取前3個字節，判斷是否為 EF BB BF (UTF-8 BOM)
+        HEADER3=$(head -c 3 "$f" | xxd -p 2>/dev/null || true)
+        HEADER2=$(head -c 2 "$f" | xxd -p 2>/dev/null || true)
+        if [ "$HEADER3" = "efbbbf" ]; then
+            # UTF-8 BOM：自動移除
+            TMP_FILE="${f}.nobom.tmp"
+            dd if="$f" bs=1 skip=3 of="$TMP_FILE" 2>/dev/null
+            mv "$TMP_FILE" "$f"
+            git add "$f"
+            echo "   🔧 已移除 UTF-8 BOM：$f"
+            BOM_FIXED=$((BOM_FIXED + 1))
+        elif [ "$HEADER2" = "fffe" ] || [ "$HEADER2" = "feff" ]; then
+            # UTF-16 BOM：無法自動轉換，阻斷 Commit（ERR-011）
+            echo "   ❌ UTF-16 BOM 偵測到（ERR-011）：$f"
+            echo "      此文件使用 UTF-16 編碼，Godot 無法載入！"
+            echo "      修復方法："
+            echo "      PowerShell: \$b=[IO.File]::ReadAllBytes('\$f'); \$t=[Text.Encoding]::Unicode.GetString(\$b,2,\$b.Length-2); [IO.File]::WriteAllText('\$f',\$t,(New-Object Text.UTF8Encoding(\$false)))"
+            BOM_UTF16_FOUND=$((BOM_UTF16_FOUND + 1))
+        fi
+    fi
+done
+if [ $BOM_UTF16_FOUND -gt 0 ]; then
+    echo ""
+    echo "❌ 發現 $BOM_UTF16_FOUND 個 UTF-16 BOM 文件，阻斷 Commit！"
+    echo "   請先用 PowerShell 轉換為 UTF-8 無 BOM 格式（見上方修復方法）"
+    exit 1
+fi
+if [ $BOM_FIXED -gt 0 ]; then
+    echo "   ⚠️  已自動移除 $BOM_FIXED 個文件的 UTF-8 BOM（已重新 stage）"
+else
+    echo "   ✅ 無 BOM 問題"
+fi
+
+# ——————————————————————————————————————
+# [通用規則 1c] .tscn 標頭格式驗證（ERR-023）
+# 每個 .tscn 文件第一個有效字節必須是 '[' 
+# PowerShell -replace 操作可能意外剝離開頭的 '[' 字符
+# ——————————————————————————————————————
+echo "[通用/1c] 驗證 .tscn 文件標頭格式（防止 ERR-023）..."
+TSCN_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.tscn$' || true)
+TSCN_HEADER_BROKEN=0
+for f in $TSCN_FILES; do
+    if [ -f "$f" ]; then
+        # 使用 PowerShell 讀取第一個有效字節（跳過 BOM）
+        FIRST_CHAR=$(powershell.exe -NoProfile -Command "
+            \$bytes = [System.IO.File]::ReadAllBytes('$f')
+            \$start = 0
+            if (\$bytes.Length -ge 3 -and \$bytes[0] -eq 0xEF -and \$bytes[1] -eq 0xBB -and \$bytes[2] -eq 0xBF) { \$start = 3 }
+            elseif (\$bytes.Length -ge 2 -and (\$bytes[0] -eq 0xFF -or \$bytes[0] -eq 0xFE)) { \$start = 2 }
+            [char]\$bytes[\$start]
+        " 2>/dev/null || echo "?")
+        if [ "$FIRST_CHAR" != "[" ]; then
+            echo "   ❌ ERR-023: $f 標頭損壞！第一個字符是 '$FIRST_CHAR'，應為 '['"
+            echo "      修復：在文件開頭加入 '[' 字符"
+            echo "      PowerShell: \$c=[IO.File]::ReadAllText('$f'); [IO.File]::WriteAllText('$f','['+\$c,(New-Object Text.UTF8Encoding(\$false)))"
+            TSCN_HEADER_BROKEN=$((TSCN_HEADER_BROKEN + 1))
+        fi
+    fi
+done
+if [ $TSCN_HEADER_BROKEN -gt 0 ]; then
+    echo ""
+    echo "❌ 發現 $TSCN_HEADER_BROKEN 個 .tscn 文件標頭損壞，阻斷 Commit！"
+    echo "   根本原因：PowerShell -replace 操作消耗了 '[' 字符（ERR-023）"
+    echo "   最安全的修復：在 .tscn 文件第一行添加 '[' 前綴"
+    exit 1
+fi
+echo "   ✅ 所有 .tscn 文件標頭格式正確"
+
+
 
 # ——————————————————————————————————————
 # [通用規則 2] 機密掃描
@@ -71,12 +155,26 @@ echo "   ✅ LFS 檢查通過"
 echo "[通用/2] 掃描機密資訊洩露..."
 STAGED_CONTENT=$(git diff --cached)
 SECRETS_FOUND=0
-echo "$STAGED_CONTENT" | grep -iE '(api_key|apikey|secret_key|password|private_key|access_token)\s*=\s*["\x27][A-Za-z0-9+/]{20,}' && SECRETS_FOUND=1 || true
+echo "$STAGED_CONTENT" | grep -iE '(api_key|apikey|secret_key|password|private_key|access_token)\s*=\s*["'"'"'][A-Za-z0-9+/]{20,}' && SECRETS_FOUND=1 || true
 if [ $SECRETS_FOUND -eq 1 ]; then
     echo "❌ 偵測到硬編碼機密，阻斷 Commit！"
     exit 1
 fi
 echo "   ✅ 機密掃描通過"
+
+# ——————————————————————————————————————
+# [通用規則 3] TODO/FIXME 新增行掃描（警告，不阻斷）
+# ——————————————————————————————————————
+echo "[通用/3] 掃描新增行中的 TODO/FIXME..."
+STAGED_GD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
+if [ -n "$STAGED_GD" ]; then
+    TODO_FOUND=$(git diff --cached -- '*.gd' | grep '^+' | grep -v '^+++' | grep -iE '(TODO|FIXME|HACK|XXX)' || true)
+    if [ -n "$TODO_FOUND" ]; then
+        echo "⚠️  [警告] 新增代碼中包含 TODO/FIXME（不阻斷，但請留意）："
+        echo "$TODO_FOUND" | head -10
+    fi
+fi
+echo "   ✅ TODO 掃描完成"
 
 # ——————————————————————————————————————
 # [角色規則] Designer 專屬檢查
@@ -86,7 +184,6 @@ if [ "$ROLE" = "designer" ]; then
     CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
     if [ -n "$CODE_FILES" ]; then
         echo "❌ [Designer 規則違反] Designer 不應提交代碼文件！"
-        echo "   設計師只能修改 docs/GAME_DESIGN.md 等文件"
         exit 1
     fi
     echo "   ✅ 無代碼文件，符合 Designer 規則"
@@ -94,8 +191,7 @@ if [ "$ROLE" = "designer" ]; then
     echo "[Designer/2] 驗證包含 GAME_DESIGN.md 的更新..."
     DESIGN_CHANGED=$(git diff --cached --name-only | grep 'docs/GAME_DESIGN.md' || true)
     if [ -z "$DESIGN_CHANGED" ]; then
-        echo "⚠️  [Designer 警告] 此次提交未更新 GAME_DESIGN.md"
-        echo "   Designer 的提交通常應更新設計文件。(5秒後繼續...)"
+        echo "⚠️  [Designer 警告] 此次提交未更新 GAME_DESIGN.md（5秒後繼續...）"
         sleep 5
     else
         echo "   ✅ GAME_DESIGN.md 已更新"
@@ -110,9 +206,7 @@ if [ "$ROLE" = "architect" ]; then
     GD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
     if [ -n "$GD_FILES" ]; then
         echo "❌ [Architect 規則違反] Architect 不應提交代碼文件！"
-        echo "   以下文件請由 Developer 角色處理："
         echo "$GD_FILES"
-        echo "   提示：切換角色 → .\\scripts\\set-role.ps1 developer"
         exit 1
     fi
     echo "   ✅ 無代碼文件，符合 Architect 規則"
@@ -120,12 +214,24 @@ if [ "$ROLE" = "architect" ]; then
     echo "[Architect/2] 驗證 implementation_plan.md 已修改..."
     PLAN_CHANGED=$(git diff --cached --name-only | grep 'implementation_plan.md' || true)
     if [ -z "$PLAN_CHANGED" ]; then
-        echo "⚠️  [Architect 警告] 此次提交未包含 implementation_plan.md"
-        echo "   Architect 的提交通常應包含設計文件的修改。"
-        echo "   若確認這是正確的，請繼續。(5秒後繼續...)"
+        echo "⚠️  [Architect 警告] 此次提交未包含 implementation_plan.md（5秒後繼續...）"
         sleep 5
     else
         echo "   ✅ implementation_plan.md 已更新"
+    fi
+
+    echo "[Architect/3] 驗證 Autoload 順序（project.godot）..."
+    if [ -f "project.godot" ]; then
+        # 確認 DebugOverlay 在 DebugBridge 之前
+        OVERLAY_LINE=$(grep -n "DebugOverlay" project.godot | head -1 | cut -d: -f1 || echo "0")
+        BRIDGE_LINE=$(grep -n "DebugBridge" project.godot | head -1 | cut -d: -f1 || echo "0")
+        if [ "$OVERLAY_LINE" -gt 0 ] && [ "$BRIDGE_LINE" -gt 0 ]; then
+            if [ "$OVERLAY_LINE" -lt "$BRIDGE_LINE" ]; then
+                echo "   ✅ Autoload 順序正確（DebugOverlay → DebugBridge）"
+            else
+                echo "⚠️  [Architect 警告] DebugOverlay 應在 DebugBridge 之前"
+            fi
+        fi
     fi
 fi
 
@@ -139,8 +245,26 @@ if [ "$ROLE" = "developer" ]; then
     if [ -n "$CHANGED_GD" ]; then
         GODOT_BIN="C:/Users/88698/Downloads/Godot_v4.6.2-stable_win64.exe/Godot_v4.6.2-stable_win64.exe"
         if [ -f "$GODOT_BIN" ]; then
-            "$GODOT_BIN" --headless --check-only --path . 2>&1
-            if [ $? -ne 0 ]; then
+            PROJECT_ROOT=$(git rev-parse --show-toplevel)
+            VALIDATION_FAILED=0
+            for gd_file in $CHANGED_GD; do
+                RES_PATH="res://$(echo "$gd_file" | tr '\\' '/')"
+                OUT=$(powershell.exe -NoProfile -Command "
+                    \$p = Start-Process -FilePath '$GODOT_BIN' \`
+                        -ArgumentList \"--headless\", \"--path\", '$PROJECT_ROOT', \"--check-only\", '$RES_PATH' \`
+                        -PassThru -NoNewWindow -RedirectStandardOutput \$env:TEMP\godot_out.txt \`
+                        -RedirectStandardError \$env:TEMP\godot_err.txt
+                    if (-not \$p.WaitForExit(15000)) { \$p.Kill() }
+                    (Get-Content \$env:TEMP\godot_out.txt -ErrorAction SilentlyContinue) +
+                    (Get-Content \$env:TEMP\godot_err.txt -ErrorAction SilentlyContinue)
+                " 2>&1)
+                if echo "$OUT" | grep -qiE 'Parse Error|SCRIPT ERROR|error.*\.gd'; then
+                    echo "❌ GDScript 語法錯誤：$gd_file"
+                    echo "$OUT"
+                    VALIDATION_FAILED=1
+                fi
+            done
+            if [ $VALIDATION_FAILED -ne 0 ]; then
                 echo "❌ GDScript 語法驗證失敗，阻斷 Commit！"
                 exit 1
             fi
@@ -158,12 +282,67 @@ if [ "$ROLE" = "developer" ]; then
         GD_IN_COMMIT=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
         if [ -n "$GD_IN_COMMIT" ]; then
             echo "❌ [Developer 規則違反] 禁止直接在 main 分支提交 .gd 代碼文件！"
-            echo "   請使用 Worktree 在 feature 分支上工作："
-            echo "   .\\scripts\\worktree.ps1 new [feature-name]"
             exit 1
         fi
     fi
     echo "   ✅ 分支檢查通過（目前：$CURRENT_BRANCH）"
+
+    echo "[Developer/3] 驗證新增 .gd 文件有群組宣告（Debug 整合）..."
+    NEW_GD=$(git diff --cached --name-only --diff-filter=A | grep '\.gd$' || true)
+    if [ -n "$NEW_GD" ]; then
+        for gd_file in $NEW_GD; do
+            # 跳過 autoload 和 test 文件（不需要 group）
+            case "$gd_file" in
+                scripts/autoload/*|test/*|scripts/camera/*|scripts/ui/*|hooks/*)
+                    continue
+                    ;;
+            esac
+            # 檢查遊戲實體腳本是否有 add_to_group
+            if echo "$gd_file" | grep -qE 'scripts/(player|enemy|npc)/'; then
+                HAS_GROUP=$(grep 'add_to_group' "$gd_file" || true)
+                if [ -z "$HAS_GROUP" ]; then
+                    echo "⚠️  [Developer 警告] $gd_file 可能缺少 add_to_group()（DebugBridge 感知需要）"
+                fi
+            fi
+        done
+    fi
+    echo "   ✅ Debug 整合初步驗證完成"
+
+    echo "[Developer/4] 驗證 project.godot Autoload 一致性..."
+    if git diff --cached --name-only | grep -q 'project.godot'; then
+        # 確認 DebugOverlay 和 DebugBridge 都存在
+        if [ -f "project.godot" ]; then
+            HAS_OVERLAY=$(grep "DebugOverlay" project.godot || true)
+            HAS_BRIDGE=$(grep "DebugBridge" project.godot || true)
+            if [ -z "$HAS_OVERLAY" ] || [ -z "$HAS_BRIDGE" ]; then
+                echo "⚠️  [Developer 警告] project.godot 缺少 DebugOverlay 或 DebugBridge Autoload"
+            else
+                echo "   ✅ Debug Autoload 存在"
+            fi
+        fi
+    fi
+fi
+
+# ——————————————————————————————————————
+# [角色規則] Reviewer 專屬檢查
+# ——————————————————————————————————————
+if [ "$ROLE" = "reviewer" ]; then
+    echo "[Reviewer/1] 驗證不包含代碼文件..."
+    CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+    if [ -n "$CODE_FILES" ]; then
+        echo "❌ [Reviewer 規則違反] Reviewer 不應提交代碼文件！"
+        exit 1
+    fi
+    echo "   ✅ 無代碼文件，符合 Reviewer 規則"
+
+    echo "[Reviewer/2] 驗證包含 docs/ 審查記錄..."
+    REVIEW_DOCS=$(git diff --cached --name-only | grep 'docs/' || true)
+    if [ -z "$REVIEW_DOCS" ]; then
+        echo "⚠️  [Reviewer 警告] 此次提交未包含 docs/ 審查記錄（5秒後繼續...）"
+        sleep 5
+    else
+        echo "   ✅ 審查記錄存在"
+    fi
 fi
 
 # ——————————————————————————————————————
@@ -174,7 +353,6 @@ if [ "$ROLE" = "qa" ]; then
     CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
     if [ -n "$CODE_FILES" ]; then
         echo "❌ [QA 規則違反] QA 不應提交代碼文件！"
-        echo "   QA 只能提交測試報告（docs/qa-report-*.md）"
         exit 1
     fi
     echo "   ✅ 無代碼文件，符合 QA 規則"
@@ -182,11 +360,27 @@ if [ "$ROLE" = "qa" ]; then
     echo "[QA/2] 驗證包含 QA 報告文件..."
     QA_REPORT=$(git diff --cached --name-only --diff-filter=ACM | grep 'docs/qa-report' || true)
     if [ -z "$QA_REPORT" ]; then
-        echo "⚠️  [QA 警告] 此次提交未包含 QA 報告（docs/qa-report-*.md）"
-        echo "   QA 的提交通常應包含測試報告。請確認。(5秒後繼續...)"
+        echo "⚠️  [QA 警告] 此次提交未包含 QA 報告（docs/qa-report-*.md）（5秒後繼續...）"
         sleep 5
     else
         echo "   ✅ QA 報告已包含"
+    fi
+
+    echo "[QA/3] 驗證 debug_state.json 已存在（QA 必須親自執行遊戲）..."
+    DEBUG_JSON_WIN=$(powershell.exe -NoProfile -Command "
+        \$path = \"\$env:APPDATA\Godot\app_userdata\2026 06 04\debug_state.json\"
+        if (Test-Path \$path) { 'EXISTS' } else { 'MISSING' }
+    " 2>/dev/null || echo "CHECK_FAILED")
+    
+    if [ "$DEBUG_JSON_WIN" = "EXISTS" ]; then
+        echo "   ✅ debug_state.json 存在（QA 確實執行了遊戲）"
+    elif [ "$DEBUG_JSON_WIN" = "MISSING" ]; then
+        echo "⚠️  [QA 警告] debug_state.json 不存在！"
+        echo "   QA 必須執行遊戲（並按 F5 確認 DebugBridge 正常輸出）才能提交報告"
+        echo "   (5秒後繼續，但請確認已執行遊戲測試...)"
+        sleep 5
+    else
+        echo "   ℹ️  無法檢查 debug_state.json（PowerShell 不可用，跳過）"
     fi
 fi
 

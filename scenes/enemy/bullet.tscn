@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://dg32y28u3vj3"]
+
+[ext_resource type="Script" path="res://scripts/enemy/bullet.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://c4osqrsnd0d5j" path="res://assets/tilesets/mrmotext/colored/color_T_10_fanqiehong.png" id="2_tex"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_bullet"]
+atlas = ExtResource("2_tex")
+region = Rect2(56, 16, 8, 8)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_bullet"]
+radius = 3.0
+
+[node name="Bullet" type="Area2D"]
+collision_layer = 8
+collision_mask = 3
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture_filter = 1
+texture = SubResource("AtlasTexture_bullet")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_bullet")

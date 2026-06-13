@@ -1,0 +1,34 @@
+[gd_scene load_steps=8 format=3 uid="uid://dln827yoptipy"]
+
+[ext_resource type="TileSet" uid="uid://d2qfp8a4t5xh2" path="res://assets/tilesets/mrmotext/mrmotext_ex_tileset.tres" id="1_spyje"]
+[ext_resource type="Script" uid="uid://ctlroy5aj462y" path="res://scripts/enemy/enemy3.gd" id="2_script"]
+[ext_resource type="Resource" uid="uid://cscgsbl82668l" path="res://resources/enemy/basic_enemy_stats.tres" id="3_stats"]
+[ext_resource type="PackedScene" uid="uid://dxeeufc3qc2yj" path="res://scenes/enemy/bullet_enemy3.tscn" id="3_uwa6l"]
+[ext_resource type="PackedScene" uid="uid://0xen7cv5e5p" path="res://scenes/VFX/EnemyHit.tscn" id="4_hit_vfx"]
+[ext_resource type="PackedScene" uid="uid://iy1ni5julw9" path="res://scenes/VFX/EnemyDeath.tscn" id="5_death_vfx"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_dqbur"]
+radius = 7.015744
+height = 15.997763
+
+[node name="Enemy3" type="CharacterBody2D" unique_id=1977865432]
+collision_layer = 4
+collision_mask = 3
+script = ExtResource("2_script")
+stats = ExtResource("3_stats")
+bullet_scene = ExtResource("3_uwa6l")
+hit_vfx_scene = ExtResource("4_hit_vfx")
+death_vfx_scene = ExtResource("5_death_vfx")
+
+[node name="Appearance" type="TileMapLayer" parent="." unique_id=1153893746]
+texture_filter = 1
+texture_repeat = 1
+tile_map_data = PackedByteArray(0, 0, 0, 0, 255, 255, 44, 0, 10, 0, 15, 0, 0, 32, 255, 255, 255, 255, 32, 0, 6, 0, 21, 0, 0, 0, 255, 255, 0, 0, 28, 0, 10, 0, 19, 0, 0, 32, 0, 0, 0, 0, 28, 0, 11, 0, 17, 0, 0, 0)
+tile_set = ExtResource("1_spyje")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1270304979]
+rotation = -1.554072
+shape = SubResource("CapsuleShape2D_dqbur")
+
+[node name="WallDetector" type="RayCast2D" parent="." unique_id=1016290750]
+target_position = Vector2(-14, 0)
