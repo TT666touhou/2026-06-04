@@ -135,3 +135,29 @@ if ([0] -ne '[') {  = '[' +  }
 - _aim_dir state var updated by _get_aim_dir() on each attack call (not every frame) — intentional, low overhead
 - Players without aim bindings (p3/p4) gracefully fall back to horizontal shooting
 - Muzzle flash VFX flip_h follows shot_dir.x < 0.0
+
+
+---
+
+## Phase 6.5 Reviewer Report — 2026-06-14
+
+### 審查範圍
+- oom_portal.gd：enter_direction @export + _do_trigger 傳遞邏輯
+- game_world.gd：_pending_enter_direction + load_next_room_portal 簽名 + Walk-in 呼叫
+- player.gd：_entry_locked 狀態 + _physics_process Walk-in 分支 + start_room_entry()
+- rea_0_room_01.tscn / rea_0_room_02.tscn：Portal 屬性完整性
+
+### 通過項目 ✅
+1. **雙向連接修復**：room_02.LeftPortal.target_room_path 已正確設定為 room_01 路徑
+2. **Walk-in 速度計算**：_entry_speed = 48/0.35 = 137px/s，每幀 2.2px，0.37s 走完，合理
+3. **競態保護**：_triggered + _is_loading_room 雙重防重入，Walk-in 期間不會誤觸 Portal
+4. **重力保留**：Walk-in 期間 _apply_gravity(delta) 仍然執行，玩家自然落地
+5. **Sensor 8/8 PASS**：無 BOM / 無 UID 自引用 / 無 physics callback / 無 narrowing / 無廢棄 API
+6. **enter_direction auto 推導**：left→right / right→left / top→down / bottom→up 邏輯正確
+
+### 潛在邊緣案例（已確認不影響當前版本）⚠️
+- _respawn_player 直接 teleport 到硬編碼位置 (100, -80)，不呼叫 Walk-in → **設計上正確**（死亡重生不需要 Walk-in 效果）
+- 若 enter_direction 為 "auto" 且 door_id 是未知字串 → fallback 為 "right" → **可接受**
+
+### Reviewer 要求
+- 無阻塞問題，**核准此次提交**
