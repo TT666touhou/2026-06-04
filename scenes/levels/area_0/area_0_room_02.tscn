@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://43k6gebhvu6c6"]
+[gd_scene load_steps=6 format=3 uid="uid://43k6gebhvu6c6"]
 
 [ext_resource type="Script" path="res://scripts/level/rooms/room_base.gd" id="1_roombase"]
 [ext_resource type="Script" path="res://scripts/camera/camera_zone.gd" id="2_camzone"]
@@ -8,17 +8,9 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_camzone"]
 size = Vector2(320.0, 176.0)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wallright"]
-size = Vector2(16.0, 208.0)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_walltop"]
-size = Vector2(352.0, 16.0)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_wallbottom"]
-size = Vector2(352.0, 16.0)
-
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_portal"]
 size = Vector2(24.0, 96.0)
+
 
 [node name="Area0Room02" type="Node2D"]
 script = ExtResource("1_roombase")
@@ -31,32 +23,6 @@ zone_id = "room02_main"
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CameraZone"]
 position = Vector2(160.0, -88.0)
 shape = SubResource("RectangleShape2D_camzone")
-
-[node name="BoundaryWalls" type="Node2D" parent="."]
-
-[node name="WallRight" type="StaticBody2D" parent="BoundaryWalls"]
-collision_layer = 1
-collision_mask = 0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="BoundaryWalls/WallRight"]
-position = Vector2(328.0, -88.0)
-shape = SubResource("RectangleShape2D_wallright")
-
-[node name="WallTop" type="StaticBody2D" parent="BoundaryWalls"]
-collision_layer = 1
-collision_mask = 0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="BoundaryWalls/WallTop"]
-position = Vector2(160.0, -184.0)
-shape = SubResource("RectangleShape2D_walltop")
-
-[node name="WallBottom" type="StaticBody2D" parent="BoundaryWalls"]
-collision_layer = 1
-collision_mask = 0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="BoundaryWalls/WallBottom"]
-position = Vector2(160.0, 8.0)
-shape = SubResource("RectangleShape2D_wallbottom")
 
 [node name="TileLayers" type="Node2D" parent="."]
 
