@@ -69,3 +69,27 @@
 - **Spritesheet 量測**：必須用 System.Drawing 量測後計算，不允許目測估算
 - **VFX 比例**：以玩家碰撞體大小為設計基準
 
+
+
+---
+
+## 2026-06-14 Phase 6.5 Architect 反省 — Portal Walk-in 轉場
+
+### 失誤分析
+- **失誤**：初期設計 SpawnMarker 系統時，_reset_player_at_door() 只做「瞬間 teleport 到 SpawnMarker」
+- **根因**：只考慮了「位置正確」，沒有考慮**玩家進入感知體驗**
+- **影響**：SpawnMarker 位置稍微偏差就產生割裂感，且不符合 2D Metroidvania 業界標準
+
+### 設計教訓
+- 2D Metroidvania（空洞騎士/Celeste/Metroid Dread）標準轉場流程：
+  Fade Out → 場景切換 → Fade In → **Walk-in（短暫鎖定輸入+自動向內行走 40-60px）**
+- Walk-in 期間重力正常，只鎖定水平輸入方向控制
+- 進入方向由 door_id 自動推導（left→向右，right→向左）
+
+### 架構升級
+- oom_portal.gd：新增 enter_direction @export（auto/right/left/up/down）
+- player.gd：新增 start_room_entry(dir, dist, dur) 封裝 entry 狀態
+- game_world.gd：_reset_player_at_door() 改為呼叫 walk-in 而非直接 teleport
+
+### ERR 提案
+- 將「SpawnMarker 放置未考慮 walk-in 方向」加入 Sensor Level 2 觸發清單
