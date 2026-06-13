@@ -747,7 +747,7 @@ RoomXX (Node2D)                  ← 房間根節點，掛 room_base.gd 腳本
 
 > 此章節所描述的 BoundaryWalls 已於 2026-06-13 完全移除（見 §10.10）。
 > 所有房間的碰撞封閉由 PlatformLayer TileSet Physics Layer 負責。
-> Portal 開口處由地形設計師手動疫空不畫 Tile。
+> Portal 開口處由地形設計師手動留空不畫 Tile。
 
 ---
 
@@ -846,3 +846,36 @@ RoomXxx (Node2D + RoomBase.gd)
 - `area_0_room_01.tscn`：已移除 BoundaryWalls（2026-06-13）
 - `area_0_room_02.tscn`：已移除 BoundaryWalls（2026-06-13）
 - 所有未來的房間模板不再包含 BoundaryWalls
+
+---
+
+### 10.11 Walk-in 房間進入轉場設計 [CONFIRMED — 2026-06-13]
+
+**設計目標**：玩家穿越 Portal 進入新房間時，不直接「彈出」於洞口，而是執行一段 Walk-in 動畫，模擬玩家從走廊走進房間的物理感（參考 Hollow Knight）。
+
+#### Walk-in 機制規格
+
+| 屬性 | 規格 |
+|------|------|
+| 鎖定期間 | 玩家輸入完全被忽略（移動/跳躍/攻擊），只有重力正常施加 |
+| 移動速度 | `speed` 參數的 100%（與正常移動速度一致） |
+| 移動距離 | 48 px（一個走廊深度） |
+| 持續時間 | 48px / 100px/s ≈ 0.48 秒 |
+| 接口 | `player.start_room_entry(direction: Vector2, distance: float, duration: float)` |
+
+#### 進入方向規則
+
+| 觸發門 (door_id) | Walk-in 方向 | 說明 |
+|----------------|------------|------|
+| `left` | `Vector2.RIGHT`（+X） | 從左門進入 → 向右走 |
+| `right` | `Vector2.LEFT`（-X） | 從右門進入 → 向左走 |
+| `top` | `Vector2.DOWN`（+Y） | 從頂部進入 → 向下走 |
+| `bottom` | `Vector2.UP`（-Y） | 從底部進入 → 向上走 |
+
+#### 實作位置
+- `scripts/player/player.gd`：`start_room_entry()` 方法 + `_entry_locked` 狀態機（在 `_physics_process` 鎖定輸入）
+- `scripts/level/game_world.gd`：`_reset_player_at_door()` — 根據 `entry_door_id` 決定方向並呼叫 `start_room_entry()`
+
+#### 目前限制
+- Walk-in 期間不能跳躍（設計決策：防止玩家在進入動畫中意外輸入）
+- 多人模式下每個玩家獨立執行 Walk-in（無同步問題，因為是本地動畫）
