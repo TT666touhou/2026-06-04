@@ -52,7 +52,7 @@
 | **6.2** | **Area_0 Room_01/02 地形手動搭建（玩家完成）** | **✅ DONE** | 2026-06-14 |
 | **6.3** | **遊戲進入點修正：Title→area_0_room_01（DungeonGenerator 固定進入點）** | **✅ DONE** | 2026-06-14 |
 | **6.4** | **移除 game_world.tscn 中全局碰撞牆 Ground/Ceiling/WallLeft/WallRight（玩家在房間內被意外阻擋 BUG 修正）** | **✅ DONE** | 2026-06-14 |
-| **6.5** | **Portal 雙向連接修復 + 空洞騎士式 Walk-in 轉場（room_02 LeftPortal target_room_path BUG 修正；enter_direction @export；player.start_room_entry()）** | **✅ DONE** | 2026-06-14 |
+| **6.5** | **Portal 系統強化：@export_file 優化 + walk-in 轉場 + room_02 LeftPortal→room_01 雙向連結修復** | **✅ DONE** | 2026-06-14 |
 
 ---
 
