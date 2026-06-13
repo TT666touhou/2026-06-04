@@ -505,6 +505,9 @@ Player (CharacterBody2D)
 | **2026-06-13** | **移除 BoundaryWalls（§10.10）** | **TileMapLayer Physics Layer 為唯一碰撞策略；BoundaryWalls collision_mask=0 從未生效** | **Designer+Architect** |
 | **2026-06-14** | **遊戲進入點固定為 area_0_room_01（廢棄 DungeonGenerator 隨機模式）** | **進入正式手動搭建關卡階段；test_room 移出 COMBAT_ROOMS 池；DungeonGenerator 保留但不再隨機選舊 test_room** | **Designer+Developer** |
 | **2026-06-14** | **移除 game_world.tscn 中的預設靜態碰撞牆（Ground/Ceiling/WallLeft/WallRight）** | **這 4 個節點是早期開發用的全局邊界牆，在正式地圖階段由 PlatformLayer TileSet 每房間自行提供碰撞封閉後已屬冗餘** | **Designer+Developer** |
+| **2026-06-14** | **房間轉場改為空洞騎士式 Edge Walk-in（移除 SpawnPoint 瞬間傳送）** | **玩家進入新房間時，從門口邊緣自動向內行走 48px / 0.35s，期間鎖定輸入，完成後恢復控制。Walk-in 方向由 door_id 推導：left→向右，right→向左** | **Designer+Architect（用戶需求+總結群企學標準）** |
+| **2026-06-14** | **Portal @export 強化：新增 enter_direction 屬性** | **設計師可在 Inspector 直接配置進入方向（auto/right/left/up/down），支援未來上下方向 Portal** | **Architect** |
+| **2026-06-14** | **修復 area_0_room_02 LeftPortal 缺少 target_room_path 導致回到 test_room 的 BUG** | **room_02.LeftPortal.target_room_path 需設為 res://scenes/levels/area_0/area_0_room_01.tscn** | **Developer（用戶發現）** |
 
 ---
 
@@ -696,24 +699,36 @@ RoomXX (Node2D)                  ← 房間根節點，掛 room_base.gd 腳本
 
 ---
 
-### 10.6 Portal 設計規範 [CONFIRMED]
+### 10.6 Portal 設計規範 [CONFIRMED — 2026-06-14 v2]
 
-**第一階段（Area_0）**：只配置右方出口（RightPortal）。
+**Area_0 雙向連接**：room_01 ↔ room_02。
 
 | 屬性 | 規格 |
 |------|------|
 | door_id | 方向字串（"right" / "left" / "top" / "bottom"） |
-| target_room_path | 目標 .tscn 路徑（空字串 = 交由 DungeonGenerator 決定） |
+| target_room_path | 目標 .tscn 路徑（**不可為空字串，手動室必須明確指定**） |
 | target_door_id | 對應房間的入口 door_id（右出 → 左入，即 "left"） |
+| enter_direction | 進入方向（auto/right/left/up/down）。auto = 由 door_id 自動推導 |
 | 觸發碰撞 | collision_mask=2（只偵測 Players 層） |
-| SpawnMarker | 玩家從目標房間的 SpawnMarker 位置出現 |
+| SpawnMarker | 玩家從目標房間的 SpawnMarker **門口邊緣**出現 |
 
 **Portal 對接規則**：
 ```
-area_0_room_01 RightPortal (door_id="right")
+area_0_room_01 RightPortal (door_id="right", target_room_path=".../area_0_room_02.tscn")
     ↕
-area_0_room_02 LeftPortal (door_id="left")
+area_0_room_02 LeftPortal  (door_id="left",  target_room_path=".../area_0_room_01.tscn")
 ```
+
+**Walk-in 轉場規格 [CONFIRMED 2026-06-14]** — 參考空洞騎士 (Hollow Knight) 等 Metroidvania 業界標準實作：
+
+| 項目 | 規格 |
+|------|------|
+| Walk-in 距離 | 48px |
+| Walk-in 持續時間 | 0.35秒 |
+| 輸入鎖定 | Walk-in 期間玩家全部輸入**失效** |
+| 重力 | Walk-in 期間重力正常（玩家會自然落地） |
+| 方向推導 | `left` 門 → 玩家向**右**走入 (Vector2(1,0))，`right` 門 → 向**左** (Vector2(-1,0)) |
+| SpawnMarker 位置 | 門口邊緣（稍靠外側，讓 Walk-in 後玩家自然展於房間內） |
 
 ---
 
