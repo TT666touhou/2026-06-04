@@ -31,7 +31,11 @@ class RoomDef:
 ## 房間場景池（設計師可擴充）
 ## ─────────────────────────────────────────────
 ## 普通戰鬥房場景列表
+## Area_0 正式房間（優先）
 const COMBAT_ROOMS: Array[String] = [
+	"res://scenes/levels/area_0/area_0_room_01.tscn",
+	"res://scenes/levels/area_0/area_0_room_02.tscn",
+	## Legacy test rooms (compatibility)
 	"res://scenes/test_room_a.tscn",
 	"res://scenes/test_room_b.tscn",
 ]

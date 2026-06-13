@@ -119,3 +119,31 @@ func _process(delta: float) -> void:
 	var cy := clampf(_target_pos.y, float(limit_top) + half_h, float(limit_bottom) - half_h)
 	
 	global_position = global_position.lerp(Vector2(cx, cy), follow_speed * delta)
+
+## ── CameraZone integration (Hollow-Knight style) ─────────────────────────
+## Called by GameWorld.apply_room_camera_zone() when the player enters a CameraZone.
+## Smoothly tweens all four camera limits over 0.3 s.
+## Compatible with the existing Marker2D limit system -- this method replaces
+## the static limits set in _ready() with zone-driven limits.
+func set_limits_from_zone(zone: Area2D) -> void:
+	if not zone.has_method("get_camera_limits"):
+		push_warning("[MultiplayerCamera] zone has no get_camera_limits() method.")
+		return
+	var rect: Rect2 = zone.get_camera_limits()
+
+	## Kill any existing camera-limit tween before starting a new one
+	var tween: Tween = create_tween()
+	tween.set_parallel(true)
+	## ERR-001 safe: Tween callbacks run outside physics flush
+	## Camera2D.limit_* are int properties; use roundi() (ERR-004 / narrowing rule)
+	tween.tween_method(_set_limit_left,   float(limit_left),   rect.position.x, 0.3)
+	tween.tween_method(_set_limit_right,  float(limit_right),  rect.end.x,      0.3)
+	tween.tween_method(_set_limit_top,    float(limit_top),    rect.position.y, 0.3)
+	tween.tween_method(_set_limit_bottom, float(limit_bottom), rect.end.y,      0.3)
+	print("[MultiplayerCamera] Tweening limits to zone: %s -> %s" % [rect.position, rect.end])
+
+## Helper setters (required because Camera2D.limit_* are int, not float).
+func _set_limit_left(v: float)   -> void: limit_left   = roundi(v)
+func _set_limit_right(v: float)  -> void: limit_right  = roundi(v)
+func _set_limit_top(v: float)    -> void: limit_top    = roundi(v)
+func _set_limit_bottom(v: float) -> void: limit_bottom = roundi(v)

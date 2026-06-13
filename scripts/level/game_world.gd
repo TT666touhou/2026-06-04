@@ -449,6 +449,9 @@ func _finish_portal_room_load(scene_path: String) -> void:
 
 	print("[GameWorld] Portal 房間載入完成：", scene_path, "  入口 door_id=", _pending_entry_door_id)
 
+	## Apply CameraZone from new room (if it has one)
+	call_deferred("_apply_room_camera_zone_deferred")
+
 	## Fade In
 	var fader := get_node_or_null("ScreenFader")
 	if fader and fader.has_method("fade_in"):
@@ -456,22 +459,22 @@ func _finish_portal_room_load(scene_path: String) -> void:
 
 	call_deferred("_unlock_room_loading")
 
-## 依據 door_id 尋找目標房間的 RoomPortal，從其 SpawnMarker 定位玩家
+## 依據 door_id 尋找目標房間的 RoomPortal（遞迴搜尋，支援 Portals 容器）
+## 從其 SpawnMarker 定位玩家
 func _reset_player_at_door(entry_door_id: String) -> void:
 	var spawn_pos := Vector2(80.0, -80.0)  ## 後備預設位置
 
-	## 在新房間的子節點中找對應 door_id 的 RoomPortal
 	if _current_room_node and not entry_door_id.is_empty():
-		for child: Node in _current_room_node.get_children():
-			if child is RoomPortal and child.door_id == entry_door_id:
-				var marker := child.get_node_or_null("SpawnMarker")
-				if marker:
-					spawn_pos = (marker as Node2D).global_position
-					print("[GameWorld] 找到 SpawnMarker：door_id=%s pos=%s" % [entry_door_id, str(spawn_pos)])
-				else:
-					push_warning("[GameWorld] RoomPortal '%s' 沒有 SpawnMarker 子節點" % entry_door_id)
-				break
-		if spawn_pos == Vector2(80.0, -80.0):
+		## 遞迴搜尋所有子節點（支援 Portals 容器結構）
+		var portal := _find_portal_by_door_id(_current_room_node, entry_door_id)
+		if portal != null:
+			var marker := portal.get_node_or_null("SpawnMarker")
+			if marker:
+				spawn_pos = (marker as Node2D).global_position
+				print("[GameWorld] 找到 SpawnMarker：door_id=%s pos=%s" % [entry_door_id, str(spawn_pos)])
+			else:
+				push_warning("[GameWorld] RoomPortal '%s' 沒有 SpawnMarker" % entry_door_id)
+		else:
 			push_warning("[GameWorld] 找不到 door_id='%s' 的 RoomPortal，使用預設位置" % entry_door_id)
 
 	## 放置所有玩家
@@ -483,3 +486,44 @@ func _reset_player_at_door(entry_door_id: String) -> void:
 			p.visible = true
 			p.set_physics_process(true)
 			print("[GameWorld] 玩家 %s 從 door_id=%s 出現" % [p.name, entry_door_id])
+
+## 遞迴搜尋房間內所有節點，找到指定 door_id 的 RoomPortal
+func _find_portal_by_door_id(root: Node, door_id: String) -> RoomPortal:
+	for child: Node in root.get_children():
+		if child is RoomPortal:
+			var portal := child as RoomPortal
+			if portal.door_id == door_id:
+				return portal
+		## 搜尋子容器（如 Portals Node2D）
+		var found: RoomPortal = _find_portal_by_door_id(child, door_id)
+		if found != null:
+			return found
+	return null
+
+## ── CameraZone 整合 ────────────────────────────────────────────────────────
+## 公開方法：供 RoomBase._apply_camera_zone() 和 CameraZone._notify_camera() 呼叫
+## ERR-001 safe: 呼叫者需確保已在 call_deferred 環境
+func apply_room_camera_zone(zone: Area2D) -> void:
+	var cam := get_node_or_null("MultiplayerCamera")
+	if cam == null:
+		## 嘗試找 Camera2D 型別的任意相機
+		for child in get_children():
+			if child is Camera2D:
+				cam = child
+				break
+	if cam == null:
+		push_warning("[GameWorld] apply_room_camera_zone: MultiplayerCamera not found")
+		return
+	if cam.has_method("set_limits_from_zone"):
+		cam.set_limits_from_zone(zone)
+	else:
+		push_warning("[GameWorld] Camera has no set_limits_from_zone method")
+
+## 延後版（在 _finish_portal_room_load 結尾呼叫，確保 room 節點已完全 ready）
+func _apply_room_camera_zone_deferred() -> void:
+	if _current_room_node == null:
+		return
+	var zone := _current_room_node.get_node_or_null("CameraZone")
+	if zone == null:
+		return  ## 舊房間（test_room）無 CameraZone，略過
+	apply_room_camera_zone(zone as Area2D)
