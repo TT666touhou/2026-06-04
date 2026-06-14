@@ -940,3 +940,81 @@ RoomXxx (Node2D + RoomBase.gd)
 | 單人限制 | 只生成一個 debug player（p1_） |
 | 無血量 UI | HUD 需要 GameWorld 信號，在 standalone 模式下可能顯示異常（可接受） |
 | 縮放固定 3x | 與遊戲正式顯示縮放一致 |
+
+---
+
+## 10.13 Checkpoint 系統
+
+> **設計決策日期**: 2026-06-14 | 來源: /grill-me 設計討論
+
+### 概念
+
+類似《艾爾登法環》的「賜福」。玩家在房間中找到 Checkpoint，靠近後按 F 鍵激活，之後成為 F6 debug 出生點。
+
+### 設計共識（CONFIRMED）
+
+| 決策 | 結果 |
+|------|------|
+| 名稱 | **Checkpoint**（暫定英文，未來可改世界觀名稱）|
+| 激活鍵 | **F 鍵**（`ui_interact` action）|
+| F6 有 Checkpoint | 在 Checkpoint.SpawnMarker 旁直接出現（無 Walk-in 動畫）|
+| F6 無 Checkpoint | **Walk-in 模式**（由 Checkpoint 的 `entry_direction` 決定進入方向）|
+| 入口方向指定 | Checkpoint 節點的 `@export entry_direction: String`，設計時 Inspector 手動指定 |
+| 持久化範圍 | **Session-local**（本次遊戲記憶，重開遊戲重置）|
+| 外觀 | 設計師用 Tileset 搭建外型；腳本控制激活前/後 AnimatedSprite2D 視覺差異 |
+
+### Checkpoint 場景結構
+
+```
+Checkpoint (Area2D, checkpoint.gd)
+├── CollisionShape2D          <- 互動感應範圍（CircleShape2D, radius=40）
+├── SpawnMarker (Marker2D)    <- 玩家 F6 生成位置（position = (24, -16)）
+├── ActivationVFX (AnimatedSprite2D)  <- 激活視覺（未激活=灰暗，激活=金黃色）
+└── InteractHint (Label)      <- 互動提示（靠近顯示 "[F] Activate Checkpoint"）
+```
+
+### 激活流程
+
+1. 玩家進入 Checkpoint Area2D 範圍
+2. InteractHint 出現（"[F] Activate Checkpoint"）
+3. 玩家按 **F 鍵**（`ui_interact`）
+4. `activate()` 執行：`_activated = true`
+5. ActivationVFX 切換至激活態（modulate 金黃色 `Color(1.2, 1.0, 0.3, 1.0)`）
+6. 發送 `player_activated(self)` 信號
+
+### F6 Spawn 優先順序（room_base.gd）
+
+```
+優先 1: Checkpoint (group "Checkpoints") 存在於房間
+  → 在 checkpoint.get_spawn_position() 生成
+  → _facing 設定為 entry_direction 的方向
+
+優先 2: Portal SpawnMarker 存在
+  → 計算 entry_direction（靠近哪側門）
+  → 玩家從邊界外 Walk-in（64px, 0.5s）
+
+Fallback: Vector2(80, -80)
+  → 向右 Walk-in
+```
+
+### Inspector 設定（entry_direction 值）
+
+| 值 | 含義 | Walk-in 向量 |
+|----|------|-------------|
+| `"right"` | 從左側門進入，玩家朝右走 | Vector2.RIGHT |
+| `"left"` | 從右側門進入，玩家朝左走 | Vector2.LEFT |
+| `"up"` | 從下方進入，玩家朝上走 | Vector2.UP |
+| `"down"` | 從上方進入，玩家朝下走 | Vector2.DOWN |
+
+### 現有配置（area_0_room_01）
+
+- **位置**: 房間左側 (80, -96)
+- **entry_direction**: `"right"`（玩家從左側進入，面朝右）
+- **用途**: 第一個房間的出生點（取代隨機 Portal 生成）
+
+### 未來擴展方向（現階段不實作）
+
+- 死亡時回到最後激活的 Checkpoint（需要 GlobalState）
+- 多個 Checkpoint 的持久化存檔（需要 SaveSystem）
+- 多人模式：全員進入才激活
+- Checkpoint 傳送功能（艾爾登法環的「地圖傳送」）
