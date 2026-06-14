@@ -95,7 +95,7 @@ func _start_solo() -> void:
 	## 否則玩家會在虛空出現、受重力下墜、產生閃爍。
 	var player := PLAYER_SCENE.instantiate()
 	player.name = "SoloPlayer"
-	player.player_prefix = "p1_"  ## 單機用 p1_ 前綴（Input Map 有定義 p1_attack/move 等）
+	player.player_prefix = "p1_"  ## 單機用 p1_ 前綴（Input Map 定義：p1_move_left/right/jump/roll/melee/ranged）
 	player.bullet_scene = BULLET_SCENE  ## 注入子彈場景
 	player.visible = false              ## 隱藏直到房間載入完成
 	player.set_physics_process(false)   ## 停用物理（不受重力影響）

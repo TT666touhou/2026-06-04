@@ -1,9 +1,13 @@
 extends CharacterBody2D
 ## Player1 — 標準 2D 橫向移動控制器
 ## 操控（可在 Project Settings → Input Map 修改）：
-##   move_left / move_right → 水平移動
-##   jump                   → Space / W / ↑（跳躍 + Apex 二段跳）
-##   roll                   → Shift（翻滾）
+##   move_left / move_right → A/D 或 ←/→（水平移動）
+##   jump                   → Space（P1）/ ↑（P2）（跳躍 + Apex 二段跳）
+##   roll                   → Shift（P1）/ Numpad End（P2）（翻滾）
+##   melee                  → 滑鼠左鍵（LMB）（近戰 3 連擊 Combo）
+##   ranged                 → 滑鼠右鍵（RMB）（遠程射擊，發射 bullet_scene）
+##
+## ⚠️ 注意：input map 中存在 `p1_attack`（Z 鍵）但此腳本不使用，為廢棄遺留，未來可清除。
 
 # ═══════════════════════════════════════════════════════════════
 # EXPORT 參數（全部可在 Inspector 即時調整）

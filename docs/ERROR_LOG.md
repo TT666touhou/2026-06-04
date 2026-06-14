@@ -50,7 +50,7 @@
 | 2026-06-12 | 玩家 group 追蹤 | `add_to_group("Players")` 在 `_ready()` 中執行；DebugBridge 和 MultiplayerCamera 都通過 `get_tree().get_nodes_in_group("Players")` 取得玩家 |
 | 2026-06-12 | 相機 Limit Marker | CamLimit Marker2D 放在 MultiplayerCamera 的**子節點**下，NodePath 用相對路徑 `CamLimitTop` |
 | 2026-06-12 | 多玩家輸入 | `player_prefix` 變數在 `@export_group("Multiplayer")` 下宣告；input action 格式為 `{prefix}move_left`，prefix 為 `""/"p1_/"p2_"` 等 |
-| 2026-06-12 | 攻擊系統設計 | 短按 < 0.3s = 近戰 (`_perform_melee_attack`)；長按 >= 0.3s = 遠程 (`_fire_bullet`)；用 `_attack_hold_timer` 計時；翻滾時禁止攻擊 |
+| 2026-06-12 | 攻擊系統設計 | ~~短按/長按已廢棄~~ → **[CONFIRMED 2026-06-12]** 滑鼠左鍵（LMB）= 近戰 `p1_melee`（3連 Combo）；滑鼠右鍵（RMB）= 遠程 `p1_ranged`（發射子彈）。`player.gd` 在 `_handle_attack()` 中使用 `player_prefix + "melee"` / `player_prefix + "ranged"`。⚠️ `p1_attack`（Z鍵）仍在 input map 中但**從未在代碼中使用**，為遺留廢棄 Action。 |
 | 2026-06-12 | Rogue-lite 房間生成 | `DungeonGenerator` 用 `class_name DungeonGenerator`；GameWorld 的 `@onready var _dungeon: Node`（不能用 DungeonGenerator 型別因前向引用問題）；`advance_room()` 回傳 `String`，明確宣告 `var x: String = _dungeon.advance_room()` |
 | 2026-06-13 | [PATTERN-VFX-POS] OneShotVFX 偏移 | `vfx_x_offset = _facing * melee_range * 0.8` ← 用攻擊範圍的 80% 作為偏移。固定值（如 14px）會讓所有特效疊在角色中心 |
 | 2026-06-13 | [PATTERN-VFX-SPEED] OneShotVFX 速度 | speed≈(幀數/攻擊鎖定時間)*0.6。16幀/0.15s*0.6≈64 → 設 60fps。預設 24fps（16幀=0.667s）遠超攻擊動作，感覺「拖尾」 |
