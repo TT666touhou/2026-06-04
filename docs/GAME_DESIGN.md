@@ -1,4 +1,4 @@
-**GDD 最後同步：2026-06-14 v9** | 維護者：Designer 角色
+**GDD 最後同步：2026-06-14 v10** | 維護者：Designer 角色
 
 # GAME DESIGN DOCUMENT
 # ============================================================
@@ -29,6 +29,7 @@
 | 技術限制 | [CONFIRMED] | 2026-06-12 |
 | 房間連接系統 | [CONFIRMED] | 2026-06-12 |
 | **地圖房間結構設計規範** | **[CONFIRMED]** | **2026-06-14 v7** |
+| **開發者工作流工具（F6 Debug Player）** | **[CONFIRMED]** | **2026-06-14 v10** |
 
 ---
 
@@ -884,3 +885,49 @@ RoomXxx (Node2D + RoomBase.gd)
 #### 目前限制
 - Walk-in 期間不能跳躍（設計決策：防止玩家在進入動畫中意外輸入）
 - 多人模式下每個玩家獨立執行 Walk-in（無同步問題，因為是本地動畫）
+
+---
+
+### 10.12 F6 房間直跑 Debug Player 系統 [CONFIRMED — 2026-06-14]
+
+**設計目標**：讓開發者在 Godot Editor 中按 F6 直接執行任何 room 場景時，自動獲得一個可操控的玩家，無需手動配置 GameWorld 或切換主場景。
+
+#### 動機
+
+手動搭建地圖時，開發者需要反覆查看效果，但完整啟動流程（Title→GameWorld→DungeonGenerator→Room）耗時且繁瑣。此工具讓任何 room.tscn 場景按 F6 後立即可玩。
+
+#### 實作位置
+
+- **`scripts/level/rooms/room_base.gd`**：`_maybe_spawn_debug_player()` + `_get_debug_spawn_pos()` + `_add_debug_camera()`
+
+#### 運作機制 [CONFIRMED]
+
+| 步驟 | 說明 |
+|------|------|
+| 1. 偵測模式 | `_ready()` 呼叫 `call_deferred("_maybe_spawn_debug_player")` |
+| 2. 條件判斷 | `get_tree().current_scene == self` → 表示此 RoomBase 是根場景（F6 模式） |
+| 3. 玩家生成 | 載入 `scenes/player/player.tscn`，設 `player_prefix = "p1_"`，注入 `bullet_scene` |
+| 4. 顏色設定 | 呼叫 `apply_player_color(0)`（預設第1套顏色） |
+| 5. 生成位置 | 優先使用第一個 Portal 的 SpawnMarker（偏移 60px 向內），否則預設 (80, -80) |
+| 6. 相機注入 | 加入 Camera2D（zoom=3x，smoothing=5.0）作為 player 的子節點 |
+
+#### 不干擾正常流程 [CONFIRMED]
+
+- 在 GameWorld 流程中，`get_tree().current_scene` 是 `GameWorld` 節點而非 `RoomBase`，條件不成立，此函式立即返回
+- 完全無副作用：不修改任何 global state，不依賴 AutoLoad
+
+#### 使用說明
+
+1. 在 Godot Editor 中開啟任意 `area_0_room_XX.tscn`
+2. 按 F6（Run Current Scene）
+3. 玩家自動出現，使用 **方向鍵/p1_ 輸入** 操控
+4. 可測試地形碰撞、視覺效果、相機縮放
+
+#### 限制與設計決策
+
+| 限制 | 說明 |
+|------|------|
+| Portal 不工作 | F6 模式無 GameWorld，Portal 觸發後無法換房間（正常） |
+| 單人限制 | 只生成一個 debug player（p1_） |
+| 無血量 UI | HUD 需要 GameWorld 信號，在 standalone 模式下可能顯示異常（可接受） |
+| 縮放固定 3x | 與遊戲正式顯示縮放一致 |
