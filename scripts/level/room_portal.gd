@@ -73,7 +73,8 @@ func _do_trigger() -> void:
 	print("[RoomPortal] 觸發：%s → %s" % [door_id, target_door_id])
 	var game_world := get_tree().get_root().get_node_or_null("GameWorld")
 	if game_world == null:
-		push_error("[RoomPortal] 找不到 GameWorld 節點！")
+		## F6 獨立模式：沒有 GameWorld 屬於預期行為，降為 warning 不阻礙測試
+		push_warning("[RoomPortal] F6 standalone mode: GameWorld not found, portal transition disabled.")
 		return
 	if not game_world.has_method("load_next_room_portal"):
 		push_error("[RoomPortal] GameWorld 沒有 load_next_room_portal 方法！")

@@ -117,17 +117,20 @@ func _maybe_spawn_debug_player() -> void:
 			player._facing = sign(dir.x)
 		print("[RoomBase] Checkpoint spawn at: %s" % str(spawn_info["pos"]))
 	else:
-		## Walk-in spawn：計算邊界外起始位置，然後 Walk-in
+		## Walk-in spawn：從 SpawnMarker 位置（邊界線）向室內走入
+		## ERR-WALKIN-FIX：舊版從邊界外（-64px）向邊界端走，造成 player 在邊界外不可見。
+		## 修正：player 從 SpawnMarker 位置（邊界線上）出發，向室內方向走入。
+		## 這樣 player 從一開始就在相機可見範圍內，符合 "進入房間" 的直覺體驗。
 		var dir: Vector2 = spawn_info["direction"]
 		var target_pos: Vector2 = spawn_info["pos"]
 		var walk_distance: float = 64.0
 		var walk_duration: float = 0.5
-		## 起始位置 = 目標位置 - 方向 * walk_distance（在邊界外）
-		player.global_position = target_pos - dir * walk_distance
+		## 起始位置 = SpawnMarker 位置（邊界線上），Walk-in 向室內方向
+		player.global_position = target_pos
 		if player.has_method("start_room_entry"):
 			player.start_room_entry(dir, walk_distance, walk_duration)
-		print("[RoomBase] Walk-in spawn, direction=%s, from=%s to=%s" % [
-			str(dir), str(player.global_position), str(target_pos)])
+		print("[RoomBase] Walk-in spawn, direction=%s, start=%s, walk_into=%s" % [
+			str(dir), str(player.global_position), str(target_pos + dir * walk_distance)])
 
 	## Add a simple Camera2D for the standalone session
 	_add_debug_camera(player)
