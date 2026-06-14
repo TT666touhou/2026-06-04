@@ -1,16 +1,21 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-commit  (v3 — 強化版)
+# hooks/pre-commit  (v4 — 全面強化版)
 # AI-Agnostic + Role-Aware Pre-Commit Hook
 #
 # 觸發時機：每次 git commit 前
-# v3 新增功能：
-#   - Debug 整合驗證（確認 group、錯誤處理）
-#   - Autoload 順序驗證
-#   - 靜態錯誤零容忍（error 級別）
-#   - QA 階段強制 debug_state.json 存在
-#   - 所有角色禁止 TODO/FIXME 遺留在新增行
+# v4 新增功能（2026-06-14）：
+#   - 🚫 DEVELOPER 完全禁止直接 git commit 任何 .gd/.tscn/.tres
+#     → Developer 必須透過 dev-submit.ps1 投遞給 Reviewer 審查佇列
+#     → 只有 QA 角色可以執行最終 commit+push（唯一合法提交者）
+#   - ⏱️ 時間限制警告（防卡死）：Reviewer≤30min, QA≤45min, Dev嘗試≤20min
+#   - 所有現有 v3 功能保留
 # ==========================================================
+
+## ── 時間限制常數（供警告訊息使用）──
+## REVIEWER 必須在 30 分鐘內完成審查
+## QA 必須在 45 分鐘內完成測試
+## Developer 每次嘗試上限 20 分鐘
 
 set -e
 
@@ -266,9 +271,38 @@ fi
 
 # ——————————————————————————————————————
 # [角色規則] Developer 專屬檢查
+# 🚫 v4 新規則：Developer 禁止直接 git commit 任何代碼文件！
+#    Developer 必須透過 dev-submit.ps1 投遞給 Reviewer。
+#    只有 QA 角色可以執行最終 commit+push。
 # ——————————————————————————————————————
 if [ "$ROLE" = "developer" ]; then
-    echo "[Developer/1] 執行 GDScript 語法驗證..."
+    echo "[Developer/0] 🚫 v4 強制規則：Developer 不允許直接 git commit 代碼文件..."
+    DEV_CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+    if [ -n "$DEV_CODE_FILES" ]; then
+        echo ""
+        echo "❌ ════════════════════════════════════════════════════════════"
+        echo "❌  [Developer v4 規則違反] Developer 禁止直接 git commit 代碼！"
+        echo "❌ ════════════════════════════════════════════════════════════"
+        echo ""
+        echo "  違規文件："
+        echo "$DEV_CODE_FILES"
+        echo ""
+        echo "  ✅ 正確流程："
+        echo "     1. 執行靜態驗證：Godot --check-only"
+        echo "     2. 執行 Sensor 掃描：.\scripts\sensor-scan.ps1"
+        echo "     3. 投遞給 Reviewer：.\scripts\dev-submit.ps1 -feature [功能名稱]"
+        echo "     4. 等待 Reviewer 審查（限時 30 分鐘）"
+        echo "     5. Reviewer 批准後，QA 執行最終測試並 commit"
+        echo ""
+        echo "  ⏱️  時間限制提醒："
+        echo "     Developer 每次修復嘗試 ≤ 20 分鐘"
+        echo "     若超時 → 熔斷，切換 architect role 求援"
+        echo ""
+        exit 1
+    fi
+    echo "   ✅ 無代碼文件（Developer 本次提交僅含文件，符合 v4 規則）"
+
+    echo "[Developer/1] 執行 GDScript 語法驗證（非代碼文件提交略過）..."
     CHANGED_GD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
 
     if [ -n "$CHANGED_GD" ]; then
@@ -402,13 +436,19 @@ fi
 # [角色規則] QA 專屬檢查
 # ——————————————————————————————————————
 if [ "$ROLE" = "qa" ]; then
-    echo "[QA/1] 驗證不包含代碼文件..."
+    echo "[QA/1] ✅ QA 是指定最終提交者，允許提交 .gd/.tscn/.tres（公告檢查）..."
     CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
     if [ -n "$CODE_FILES" ]; then
-        echo "❌ [QA 規則違反] QA 不應提交代碼文件！"
-        exit 1
+        echo "   ℹ️ QA 正在提交代碼文件（v4 合法：QA 是唯一最終提交者）"
+        echo "   代碼文件："
+        echo "$CODE_FILES"
+        echo ""
+        echo "   驗證：以下條件必須全部已滿足（QA 表示上述已完成）:"
+        echo "   - Reviewer 已批准此 PR（APPROVE）"
+        echo "   - QA 靜態驗證通過（--check-only 0 error）"
+        echo "   - QA 執行 F6 場景驗證通過"
+        echo "   - QA 執行實機驗證通過"
     fi
-    echo "   ✅ 無代碼文件，符合 QA 規則"
 
     echo "[QA/2] 驗證包含 QA 報告文件..."
     QA_REPORT=$(git diff --cached --name-only --diff-filter=ACM | grep 'docs/qa-report' || true)
@@ -451,6 +491,28 @@ if [ "$ROLE" = "qa" ]; then
     else
         echo "   ⚠️  docs/GAME_DESIGN.md 不存在，跳過 GDD TODO 掃描"
     fi
+
+    echo "[QA/5] ★ v4 強制：確認 F6 場景驗證已執行..."
+    CHANGED_TSCN=$(git diff --cached --name-only --diff-filter=ACM | grep '\.tscn$' || true)
+    if [ -n "$CHANGED_TSCN" ]; then
+        echo "   ⚠️  本次提交包含以下 .tscn 場景，QA 必須確認已對每個執行 F6 測試："
+        echo "$CHANGED_TSCN"
+        echo ""
+        echo "   F6 驗證清單（QA 提交前自我確認）："
+        echo "   □ 每個 .tscn 用 F6 獨立開啟，確認玩家可正常出現"
+        echo "   □ 鏡頭限制正確（不漂移到房間邊界外）"
+        echo "   □ 玩家可正常操控和移動"
+        echo "   □ Console 無 error（僅 warning 可接受）"
+        echo "   □ F6 行為與 F5（透過 TITLE）一致"
+        echo ""
+        echo "   ⚠️  若任何項目未完成 → 退回 Developer 並說明原因（5秒後繼續...）"
+        sleep 5
+    else
+        echo "   ℹ️  本次無 .tscn 場景變更，F6 驗證略過"
+    fi
+
+    echo ""
+    echo "   ⏱️  QA 時間限制提醒：必須在 45 分鐘內完成所有測試（超時 → 退回 Developer）"
 fi
 
 # ——————————————————————————————————————

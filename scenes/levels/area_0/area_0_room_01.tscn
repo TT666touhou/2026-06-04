@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://dok43r6li0lyn" path="res://scripts/camera/camera_zone.gd" id="2_camzone"]
 [ext_resource type="Script" uid="uid://6fqhp24b5vdq" path="res://scripts/level/room_portal.gd" id="3_portal"]
 [ext_resource type="TileSet" uid="uid://c0oelmexdkmf7" path="res://assets/tilesets/mrmotext/mrmotext_world_tileset.tres" id="4_tileset"]
-[ext_resource type="PackedScene" uid="uid://79ga1b8OIEi" path="res://scenes/level/checkpoint.tscn" id="5_checkpoint"]
+[ext_resource type="PackedScene" uid="uid://rsrm67hsrrx4" path="res://scenes/level/checkpoint.tscn" id="5_checkpoint"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_camzone"]
 size = Vector2(736, 176)
@@ -54,6 +54,5 @@ shape = SubResource("RectangleShape2D_portal")
 
 [node name="SpawnMarker" type="Marker2D" parent="Portals/RightPortal" unique_id=1371986117]
 
-[node name="Checkpoint" parent="." instance=ExtResource("5_checkpoint")]
-position = Vector2(80, -96)
-entry_direction = "right"
+[node name="Checkpoint" parent="." unique_id=1361553868 instance=ExtResource("5_checkpoint")]
+position = Vector2(80, -33)

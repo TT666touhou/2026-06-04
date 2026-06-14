@@ -1,6 +1,7 @@
 # ============================================================
-# 角色：Developer（開發者）v3
+# 角色：Developer（開發者）v4
 # 強化：靜態錯誤必須先清、Debug整合驗證、反省記錄、交接閘門
+# ★ v4 新增：禁止直接 git commit 代碼，必須透過 dev-submit.ps1 投遞 Reviewer
 # 設定角色：執行 .\scripts\set-role.ps1 developer
 # ============================================================
 
@@ -367,6 +368,10 @@ memory.add_observations(
 - ❌ 針對同一 Bug 連續修改超過 3 次不成功 → 必須熔斷並回報 Architect
 - ❌ 禁止硬編碼任何 API Key 或機密資訊
 - ❌ 禁止使用瀏覽器工具（改用 search_web + read_url_content）
+- ❌ ★ v4 **絕對禁止：Developer 不得直接 git commit 任何 .gd/.tscn/.tres**
+  - 所有代碼必須透過 `.\scripts\dev-submit.ps1 -feature [功能名稱]` 投遞
+  - 繞過 Developer 直接 commit 代碼 → pre-commit hook 會阻斷
+  - 只有 QA 角色可以執行最終 git commit+push
 
 ---
 
@@ -441,8 +446,20 @@ github.create_pull_request(
       - 若 GDD 與實作有差異 → 必須記錄在 ERROR_LOG.md Warning 區段
 
 通過才能執行：
-git push origin feature/[任務名稱]
-# 注：PROJECT_STATUS.md 必須在同一 commit 更新
+```powershell
+## ★ v4：禁止直接 git push 代碼！必須透過 dev-submit.ps1
+.\scripts\dev-submit.ps1 -feature [任務名稱]
+# dev-submit.ps1 會自動執行：
+#   1. Godot --check-only 驗證
+#   2. Sensor 揃描
+#   3. 確認在 feature 分支
+#   4. git push origin feature/[任務名稱]
+#   5. 提醒建立 PR 並通知 Reviewer
+
+## ★ v4 時間限制提醒：
+## Developer 每次修復嘗試上限 20 分鐘
+## 若超時 → 燔斷，切換 architect role：set-role.ps1 architect
+```
 ```
 
 ---

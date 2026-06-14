@@ -15,14 +15,13 @@ script = ExtResource("1_checkpoint")
 shape = SubResource("CircleShape2D_interact")
 
 [node name="SpawnMarker" type="Marker2D" parent="." unique_id=1479987548]
-position = Vector2(24, -16)
+position = Vector2(0, -7)
 
 [node name="ActivationVFX" type="AnimatedSprite2D" parent="." unique_id=254677563]
 modulate = Color(0.4, 0.4, 0.4, 0.8)
 position = Vector2(0, -24)
 
 [node name="InteractHint" type="Label" parent="." unique_id=191851215]
-visible = false
 offset_left = -32.0
 offset_top = -56.0
 offset_right = -32.0
@@ -31,6 +30,7 @@ text = "[F] Activate Checkpoint"
 
 [node name="Appearance" type="TileMapLayer" parent="." unique_id=1468293490]
 texture_filter = 1
-tile_map_data = PackedByteArray()
+position = Vector2(-4, 0)
+tile_map_data = PackedByteArray(0, 0, 0, 0, 255, 255, 27, 0, 15, 0, 14, 0, 0, 0, 0, 0, 0, 0, 24, 0, 15, 0, 15, 0, 0, 0)
 tile_set = ExtResource("2_1b3wg")
 rendering_quadrant_size = 8
