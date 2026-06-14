@@ -1,19 +1,21 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v6
+## sensor-scan.ps1 -- Sensor Automated Scan Script v7
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
 ## Checks:
-##   1/10  BOM scan (.gd files must be UTF-8 without BOM)
-##   2/10  .tscn ext_resource UID self-reference (ERR-013)
-##   3/10  Physics callback dangerous patterns (ERR-001)
-##   4/10  int() narrowing conversion (ERR-002)
-##   5/10  Godot 3 deprecated API (ERR-014)
-##   6/10  .tscn header first byte validity (ERR-023)
-##   7/10  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
-##   8/10  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
-##   9/10  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
-##   10/10 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
+##   1/12  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/12  .tscn ext_resource UID self-reference (ERR-013)
+##   3/12  Physics callback dangerous patterns (ERR-001)
+##   4/12  int() narrowing conversion (ERR-002)
+##   5/12  Godot 3 deprecated API (ERR-014)
+##   6/12  .tscn header first byte validity (ERR-023)
+##   7/12  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   8/12  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
+##   9/12  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
+##   10/12 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
+##   11/12 Variant node property access with := (ERR-030) - use explicit type: var x: Node2D = node as Node2D
+##   12/12 TileSet .tres missing tile_size (ERR-031) - every TileSet must have explicit tile_size in [resource]
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -27,7 +29,7 @@ function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Re
 function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v6] Godot Project Integrity Scan"                    -ForegroundColor Cyan
+Write-Host " [Sensor v7] Godot Project Integrity Scan"                    -ForegroundColor Cyan
 Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
@@ -465,17 +467,94 @@ if (-not (Test-Path $gddPath)) {
 if ($gddIssues -eq 0) { if (Test-Path $gddPath) { Write-Pass "GDD content integrity check complete" } }
 
 ## ============================================================
+## 11/12  Variant node property access with := (ERR-030)
+##
+##  BAD: var cam_zone = get_node_or_null("X")   ← untyped Variant
+##       var x := cam_zone.global_position       ← Cannot infer type
+##
+##  GOOD: var cam_zone: Node2D = get_node_or_null("X") as Node2D
+##        var x: Vector2 = cam_zone.global_position
+##
+##  Detection: pattern  var X = get_node_or_null(  (no colon-type)
+##             followed by: var Y := <X>.   (property on untyped var)
+## ============================================================
+Write-Host "`n[11/12] Scanning for ERR-030 (Variant := property access on get_node_or_null)..." -ForegroundColor Yellow
+$err030Count = 0
+
+foreach ($f in $scriptFiles) {
+    $lines = [System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8)
+    ## Collect all variable names assigned with untyped get_node_or_null (no ': Type' annotation)
+    $untypedNodes = @{}
+    $lineNo = 0
+    foreach ($line in $lines) {
+        $lineNo++
+        $trimmed = $line.TrimStart()
+        if ($trimmed.StartsWith('#')) { continue }
+        ## Match: var varname = get_node_or_null(  [no colon-type before = ]
+        if ($trimmed -match '^var\s+(\w+)\s*=\s*get_node_or_null\(') {
+            $varName = $Matches[1]
+            $untypedNodes[$varName] = $lineNo
+        }
+        ## Match: var Y := untypedVar.someProperty  (not .get_node_or_null, which returns Variant but is OK to chain)
+        foreach ($uv in $untypedNodes.Keys) {
+            if ($trimmed -match "^var\s+\w+\s*:=\s*${uv}\.(global_position|position|rotation|scale|transform|size)") {
+                Write-Fail "ERR-030: Variant property access with := in '$($f.Name)':$lineNo -- '$trimmed'. Declare '$uv' with explicit type: 'var ${uv}: Node2D = get_node_or_null(...) as Node2D'"
+                $err030Count++
+                break
+            }
+        }
+    }
+}
+if ($err030Count -eq 0) { Write-Pass "No ERR-030: No untyped Variant property access with :=" }
+
+## ============================================================
+## 12/12  TileSet .tres missing tile_size (ERR-031)
+##
+##  Every TileSet .tres [resource] block MUST have explicit tile_size.
+##  Missing tile_size → Godot uses default Vector2i(16,16).
+##  If texture tiles are 8x8, this causes editor grid misalignment.
+##
+##  Detection: file has type="TileSet" header AND [resource] block
+##             but [resource] block does NOT contain 'tile_size ='
+## ============================================================
+Write-Host "`n[12/12] Scanning TileSet .tres for missing tile_size (ERR-031)..." -ForegroundColor Yellow
+$err031Count = 0
+
+$tresFiles = [array](Get-ChildItem $Root -Recurse -Filter "*.tres" -ErrorAction SilentlyContinue |
+    Where-Object { -not $_.FullName.Contains("\.git\") })
+if ($null -eq $tresFiles) { $tresFiles = @() }
+
+foreach ($f in $tresFiles) {
+    try {
+        $content = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::UTF8)
+        ## Only process TileSet resources
+        if (-not ($content -match 'gd_resource type="TileSet"')) { continue }
+        ## Find last [resource] block (root resource)
+        $resIdx = $content.LastIndexOf('[resource]')
+        if ($resIdx -lt 0) { continue }
+        $resBlock = $content.Substring($resIdx, [Math]::Min(400, $content.Length - $resIdx))
+        if (-not ($resBlock -match 'tile_size\s*=')) {
+            Write-Fail "ERR-031: TileSet .tres missing tile_size in [resource] block: '$($f.Name)'. Add 'tile_size = Vector2i(W, H)' to [resource] block (check texture tile dimensions first)."
+            $err031Count++
+        }
+    } catch {
+        Write-Warn "Cannot read .tres for ERR-031 check: $($f.Name) -- $_"
+    }
+}
+if ($err031Count -eq 0) { Write-Pass "All TileSet .tres have explicit tile_size (ERR-031 clear)" }
+
+## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v6] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v7] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
     Write-Host " Role action: DEVELOPER must fix GDScript errors; Sensor will re-verify." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v6] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v7] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v6] PASSED (10/10) -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v7] PASSED (12/12) -- No issues found." -ForegroundColor Green
     exit 0
 }

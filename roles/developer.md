@@ -144,6 +144,23 @@
              ✅ 建立 VFX 場景後在 Godot 編輯器確認 Animation Frames 面板顯示個別幀（非整條 sheet）
                       後續 -replace 或 Substring(1) 移除 BOM 時會意外消耗第一個 '[' 字元。
 
+          s. 【ERR-030 後】get_node_or_null 必須顯式型別標注（Cannot infer type 問題）：
+             ❌ 危險：var cam = get_node_or_null("X") → var pos := cam.global_position → Parser Error!
+             ✅ 正確：
+               var cam: Node2D = get_node_or_null("CameraZone") as Node2D
+               var pos: Vector2 = cam.global_position
+             角則：任何 get_node_or_null() 的返回値在存取屬性前，必須加 `: NodeType = ... as NodeType`
+             Sensor v7 Check 11/12 自動偵測。
+
+          t. 【ERR-031 後】TileSet .tres 必須顯式聲明 tile_size：
+             ❌ 危險：[resource] 區塊中沒有 tile_size = Vector2i(W, H) → Godot 預設 16×16
+             ✅ 正確：
+               [resource]
+               tile_size = Vector2i(8, 8)  ## 或 Vector2i(16, 16) 依圖片調查
+               sources/0 = SubResource("...")
+             檢查方式：圖片尺寸 ÷ tile 數量 = 實際 tile 尺寸
+             Sensor v7 Check 12/12 自動偵測。
+
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：
       memory.search_nodes("arch_decision_[功能名稱]")
       memory.search_nodes("task_[功能名稱]")
@@ -282,6 +299,8 @@ push_warning("[MultiplayerCamera] 沒有找到玩家，等待中...")
 □ 5. 如有 Autoload 修改 → 確認 project.godot 中的順序正確
 □ 6. 如有 RPC 函式 → 確認 @rpc 屬性標記正確
 □ 7. Git pre-commit hook 通過
+□ 8. 如有新建或修改 .tres TileSet → 確認 [resource] 區塊有 tile_size (ERR-031)
+□ 9. 如有比較複雜的節點存取序列 → 確認 get_node_or_null 回傳就加型別標注 (ERR-030)
 ```
 
 ---

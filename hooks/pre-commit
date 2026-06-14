@@ -350,6 +350,30 @@ if [ "$ROLE" = "developer" ]; then
             fi
         fi
     fi
+
+    echo "[Developer/5] 驗證暫存的 TileSet .tres 有顯式 tile_size (ERR-031)..."
+    CHANGED_TRES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.tres$' || true)
+    if [ -n "$CHANGED_TRES" ]; then
+        TILESET_MISSING=0
+        for tres_file in $CHANGED_TRES; do
+            if grep -q 'gd_resource type="TileSet"' "$tres_file" 2>/dev/null; then
+                RESOURCE_SECTION=$(awk '/^\[resource\]/{found=1} found{print}' "$tres_file")
+                if ! echo "$RESOURCE_SECTION" | grep -q 'tile_size'; then
+                    echo "   ❌ [ERR-031] TileSet '$tres_file' 缺少 tile_size！"
+                    echo "      在 [resource] 區塊加入: tile_size = Vector2i(W, H)"
+                    TILESET_MISSING=1
+                fi
+            fi
+        done
+        if [ $TILESET_MISSING -eq 0 ]; then
+            echo "   ✅ 所有暫存 TileSet .tres 均有 tile_size (ERR-031 通過)"
+        else
+            echo "   ⚠️  建議修復後再提交 (5秒後繼續...)"
+            sleep 5
+        fi
+    else
+        echo "   ℹ️  本次無 .tres 文件變更"
+    fi
 fi
 
 # ——————————————————————————————————————
