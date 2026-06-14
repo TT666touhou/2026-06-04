@@ -471,6 +471,8 @@ Player (CharacterBody2D)
 | MRMOTEXT Extended 1.1 | `assets/tilesets/mrmotext/MRMOTEXT_EX.png` | 角色/敵人主要 tileset |
 | MRMOTEXT x3 | `assets/tilesets/mrmotext/MRMOTEXT-x3.png` | 大型元素 tileset |
 | MRMOTEXT 染色版（34色） | `assets/tilesets/mrmotext/colored/` | 顏色變體 |
+| DungeonMode bitmap | `assets/tilesets/dungeonmode/dungeon-mode.png` | 地牢環境專用 tileset（16×16格，8×8px/tile）|
+| DungeonMode 染色版（34色） | `assets/tilesets/dungeonmode/colored/` | 地牢環境顏色變體（與 MRMOTEXT 同調色盤）|
 | VfxMix | `assets/vfxmix/` | 全套特效資源 |
 | VfxMix 調色盤 | `assets/vfxmix/palette.pal` | 34色標準調色盤 |
 
@@ -488,6 +490,9 @@ Player (CharacterBody2D)
 | 2026-06-12 | 房間連接採用 Hollow Knight 走廊洞口風格 | 實體化走廊提供空間感 + 探索回饋 | 用戶 |
 | 2026-06-12 | 過渡效果：漸黑漸亮 Fade（0.3~0.5秒） | 最接近空洞騎士體驗，簡單穩定 | 用戶 |
 | 2026-06-12 | 本地多人模式，2~4 人 | 先本地後線上的階段性策略 | 用戶 |
+| 2026-06-14 | 導入 DungeonMode tileset（dungeon-mode.png）| 補充地牢環境所需特殊牆壁/門/地板圖形，與 MRMOTEXT 同為 8×8px 可共用染色流程 | 用戶 |
+| 2026-06-14 | DungeonMode 使用 34色調色盤（與 MRMOTEXT 完全一致）| 保持視覺風格統一，不引入第二套色票系統 | 用戶 |
+| 2026-06-14 | DungeonMode 不生成 x3 縮放版 | 環境磚塊統一使用 8px 原版，透過 Camera zoom 控制顯示大小 | 用戶 |
 | 2026-06-12 | 玩家顏色：P1橙、P2藍、P3綠、P4紫 | 視覺區分清晰，與 VfxMix 調色盤相容 | Developer |
 | **2026-06-12** | **攻擊輸入：左鍵=近戰，右鍵=遠程** | **比短按/長按更直覺，降低輸入錯誤率** | **用戶** |
 | **2026-06-12** | **VFX：slash/spark/impact/death 四種特效** | **VfxMix 現有素材直接利用，風格統一** | **Designer** |
