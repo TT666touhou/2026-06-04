@@ -139,8 +139,9 @@ func _update_vfx(is_active: bool) -> void:
 			_vfx.modulate = Color(0.4, 0.4, 0.4, 0.8)  ## 灰暗
 			_vfx.show()
 
-func _set_hint_visible(visible: bool) -> void:
+## ERR-B fix: 參數名 'visible' 遮蔽 CanvasItem.visible 屬性 → 改為 'show_hint'
+func _set_hint_visible(show_hint: bool) -> void:
 	if _hint == null:
 		return
 	if _hint is CanvasItem:
-		(_hint as CanvasItem).visible = visible
+		(_hint as CanvasItem).visible = show_hint

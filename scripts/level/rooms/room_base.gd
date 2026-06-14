@@ -23,8 +23,9 @@ const _DEBUG_BULLET_SCENE_PATH := "res://scenes/player/player_bullet.tscn"
 
 func _ready() -> void:
 	_spawn_point = get_node_or_null("SpawnPoint") as Marker2D
-	if _spawn_point == null:
-		push_warning("[RoomBase] No SpawnPoint found in room: %s" % room_id)
+	## SpawnPoint 預警郏延至 _get_debug_spawn_info() 判斷：
+	## 若有 Checkpoint 或 Portal SpawnMarker 就不需要 SpawnPoint
+	## 此處不發出預警，_maybe_spawn_debug_player 內部已有 fallback 機制
 
 	_camera_zone = get_node_or_null("CameraZone")
 
@@ -166,10 +167,11 @@ func _get_debug_spawn_info() -> Dictionary:
 					var direction := _guess_portal_entry_direction(marker.global_position)
 					return {"pos": marker.global_position, "mode": "portal", "direction": direction}
 		## 也搜索直接在 root 下的 Portal SpawnMarker
-		var marker: Marker2D = child.get_node_or_null("SpawnMarker") as Marker2D
-		if marker:
-			var direction := _guess_portal_entry_direction(marker.global_position)
-			return {"pos": marker.global_position, "mode": "portal", "direction": direction}
+		## ERR-A fix: 用 root_marker 避免與 inner scope 的 marker 同名（GDScript shadow 警告）
+		var root_marker: Marker2D = child.get_node_or_null("SpawnMarker") as Marker2D
+		if root_marker:
+			var direction := _guess_portal_entry_direction(root_marker.global_position)
+			return {"pos": root_marker.global_position, "mode": "portal", "direction": direction}
 
 	## Fallback：預設位置右側進入
 	return {"pos": Vector2(80, -80), "mode": "fallback", "direction": Vector2.RIGHT}
@@ -205,11 +207,12 @@ func _add_debug_camera(player: Node) -> void:
 
 	var cam := Camera2D.new()
 	cam.name = "DebugCamera"
-	cam.make_current()
 	## Smooth follow
 	cam.position_smoothing_enabled = true
 	cam.position_smoothing_speed = 5.0
 	## Zoom to match the game's pixel-art scale (3x)
 	cam.zoom = Vector2(3.0, 3.0)
+	## ERR-D fix: add_child 必須在 make_current() 之前，否則 !is_inside_tree() 止渡
 	player.add_child(cam)
+	cam.make_current()
 	print("[RoomBase] Debug Camera2D added (zoom=3x, smooth follow)")

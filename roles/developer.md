@@ -161,6 +161,34 @@
              檢查方式：圖片尺寸 ÷ tile 數量 = 實際 tile 尺寸
              Sensor v7 Check 12/12 自動偵測。
 
+          u. 【ERR-032 後】for-loop 嵌套禁止同名變數（shadow 警告）：
+             ❌ 危險（inner/outer 同名）：
+               for child in children:
+                   for portal in child:
+                       var marker = portal.get("SpawnMarker")  # inner marker
+                   var marker = child.get("SpawnMarker")  # outer marker ← 同名！
+             ✅ 正確（加前綴區別）：
+               var root_marker = child.get("SpawnMarker")  # 明確命名
+             ⚠️ 危險通用名：marker / node / child / item / ref / obj → 嵌套循環前先確認無同名
+
+          v. 【ERR-033 後】函式參數不能與基底類別屬性同名（shadow 警告）：
+             ❌ 危險：func set_visibility(visible: bool)  ← visible 是 CanvasItem.visible
+             ❌ 危險：func move(position: Vector2)        ← position 是 Node2D.position
+             ❌ 危險：func rename(name: String)           ← name 是 Node.name
+             ✅ 正確：func set_visibility(show: bool) / func move(target: Vector2)
+             禁止用作參數名：visible / position / rotation / scale / modulate / name / owner / process_mode / transform
+
+          w. 【ERR-034 後】is_inside_tree 相依 API 必須在 add_child 後呼叫：
+             ❌ 危險：
+               var cam = Camera2D.new()
+               cam.make_current()  # cam 還沒加入樹！
+               player.add_child(cam)
+             ✅ 正確：
+               var cam = Camera2D.new()
+               player.add_child(cam)  # 先加入樹
+               cam.make_current()     # 再呼叫依賴樹的 API
+             受影響 API：make_current() / set_as_top_level() / connect() (on tree signals) / get_viewport()
+
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：
       memory.search_nodes("arch_decision_[功能名稱]")
       memory.search_nodes("task_[功能名稱]")

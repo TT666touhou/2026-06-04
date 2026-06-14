@@ -1,21 +1,23 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v7
+## sensor-scan.ps1 -- Sensor Automated Scan Script v8
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
 ## Checks:
-##   1/12  BOM scan (.gd files must be UTF-8 without BOM)
-##   2/12  .tscn ext_resource UID self-reference (ERR-013)
-##   3/12  Physics callback dangerous patterns (ERR-001)
-##   4/12  int() narrowing conversion (ERR-002)
-##   5/12  Godot 3 deprecated API (ERR-014)
-##   6/12  .tscn header first byte validity (ERR-023)
-##   7/12  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
-##   8/12  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
-##   9/12  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
-##   10/12 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
-##   11/12 Variant node property access with := (ERR-030) - use explicit type: var x: Node2D = node as Node2D
-##   12/12 TileSet .tres missing tile_size (ERR-031) - every TileSet must have explicit tile_size in [resource]
+##   1/14  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/14  .tscn ext_resource UID self-reference (ERR-013)
+##   3/14  Physics callback dangerous patterns (ERR-001)
+##   4/14  int() narrowing conversion (ERR-002)
+##   5/14  Godot 3 deprecated API (ERR-014)
+##   6/14  .tscn header first byte validity (ERR-023)
+##   7/14  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   8/14  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
+##   9/14  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
+##   10/14 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
+##   11/14 Variant node property access with := (ERR-030) - use explicit type: var x: Node2D = node as Node2D
+##   12/14 TileSet .tres missing tile_size (ERR-031) - every TileSet must have explicit tile_size in [resource]
+##   13/14 Func param shadowing base class property (ERR-033) - visible/position/name etc. as param names
+##   14/14 make_current() before add_child (ERR-034) - node must be in tree before calling tree-dependent API
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -544,17 +546,90 @@ foreach ($f in $tresFiles) {
 if ($err031Count -eq 0) { Write-Pass "All TileSet .tres have explicit tile_size (ERR-031 clear)" }
 
 ## ============================================================
+## 13/14  Func param shadowing base class property (ERR-033)
+##
+##  GDScript 4 reports shadowing warning when a function parameter
+##  has the same name as an inherited property (visible, position, etc.)
+##  Detects: func xxx(visible:), func xxx(position:), etc.
+## ============================================================
+Write-Host "`n[13/14] Scanning for ERR-033 (func param shadowing base class property)..." -ForegroundColor Yellow
+$shadowProps  = @('visible','position','rotation','scale','modulate','name','owner','process_mode','transform','z_index')
+$err033Count  = 0
+foreach ($f in $gdFiles) {
+    try {
+        $lines = [System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8)
+        $lineNo = 0
+        foreach ($line in $lines) {
+            $lineNo++
+            $trimmed = $line.TrimStart()
+            if ($trimmed -match '^func\s+\w+\s*\(') {
+                foreach ($prop in $shadowProps) {
+                    ## Match: func xxx(visible:  or  func xxx(..., visible:
+                    if ($trimmed -match "\b${prop}\s*:") {
+                        Write-Fail "ERR-033: Func param '$prop' shadows base class property in '$($f.Name)':$lineNo. Rename param to avoid shadowing (e.g. 'show_hint' instead of 'visible')."
+                        $err033Count++
+                    }
+                }
+            }
+        }
+    } catch {
+        Write-Warn "Cannot read file for ERR-033 check: $($f.Name) -- $_"
+    }
+}
+if ($err033Count -eq 0) { Write-Pass "No ERR-033: No func param shadowing base class properties" }
+
+## ============================================================
+## 14/14  make_current() before add_child (ERR-034)
+##
+##  Camera2D.make_current() requires is_inside_tree() == true.
+##  Detects: make_current() on the line BEFORE add_child() for same var.
+##  Heuristic: 'make_current' appears before 'add_child' within 5 lines
+##  in the same function body.
+## ============================================================
+Write-Host "`n[14/14] Scanning for ERR-034 (make_current() before add_child())..." -ForegroundColor Yellow
+$err034Count = 0
+foreach ($f in $gdFiles) {
+    try {
+        $content = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::UTF8)
+        $lines   = $content -split "`n"
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            $trimmedI = $lines[$i].TrimStart()
+            ## Skip comment lines
+            if ($trimmedI.StartsWith('#')) { continue }
+            if ($trimmedI -match '\bmake_current\b\(\)') {
+                ## Look AHEAD up to 6 non-comment lines for add_child
+                ## If add_child appears AFTER make_current → ERR-034
+                $window_end = [Math]::Min($lines.Count - 1, $i + 6)
+                for ($j = $i + 1; $j -le $window_end; $j++) {
+                    $trimmedJ = $lines[$j].TrimStart()
+                    ## Skip comment lines in the window
+                    if ($trimmedJ.StartsWith('#')) { continue }
+                    if ($trimmedJ -match '\badd_child\b') {
+                        Write-Fail "ERR-034: make_current() at line $($i+1) appears BEFORE add_child() at line $($j+1) in '$($f.Name)'. Node must be in scene tree before calling make_current()."
+                        $err034Count++
+                        break
+                    }
+                }
+            }
+        }
+    } catch {
+        Write-Warn "Cannot read file for ERR-034 check: $($f.Name) -- $_"
+    }
+}
+if ($err034Count -eq 0) { Write-Pass "No ERR-034: No make_current() before add_child() patterns" }
+
+## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v7] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v8] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
     Write-Host " Role action: DEVELOPER must fix GDScript errors; Sensor will re-verify." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v7] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v8] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v7] PASSED (12/12) -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v8] PASSED (14/14) -- No issues found." -ForegroundColor Green
     exit 0
 }
