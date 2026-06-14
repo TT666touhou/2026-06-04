@@ -185,6 +185,34 @@ memory.add_observations(
 - ❌ 禁止使用瀏覽器工具（改用 search_web + read_url_content）
 - ❌ **禁止提出多人遊戲不相容的機制設計**（見下方 MMP 清單）
 - ❌ **[ERR-DOC-001] 禁止使用 PowerShell `-replace` 修改 .md 文檔**。原因：`-replace` 的雙引號替換字串中 `$1` 被展開為 PS 變數（空值），導致中文內容靜默損壞。**唯一正確方式：使用 `replace_file_content` 或 `multi_replace_file_content` 工具直接修改文件。**
+- ❌ **[PixelLab] 禁止在 GDD 角色設計未 [CONFIRMED] 時標記 [PIXELLAB_READY]**（§O 規範）
+
+## 🎨 PixelLab 角色規格維護（§O 標準）
+
+Designer 負責維護 `docs/pixellab_specs.md`，包含：
+- 每個角色的外觀規格（尺寸、風格、配色）
+- API Prompt（英文，符合 GDD）
+- 生成優先度和狀態追蹤
+
+### PixelLab 角色標記流程
+```
+1. GDD 角色設計已 [CONFIRMED] → 可以撰寫 PixelLab Prompt
+2. Prompt 撰寫完成 → 在 docs/pixellab_specs.md 標記 [PIXELLAB_READY]
+3. 通知 Developer 執行生成
+4. Developer 回報生成結果後 → 確認外觀是否符合設計意圖
+5. 外觀不符 → 修改 Prompt 並更新 [PIXELLAB_READY] 狀態
+```
+
+### Prompt 撰寫規範
+```
+[角色外觀描述], 8-bit pixel art, side view facing left,
+castlevania dark fantasy style, transparent background,
+[高度]px tall, retro game sprite, minimal color palette
+```
+- **禁止使用中文**（API 英文效果最佳）
+- **必須包含** `transparent background`
+- **必須說明** 高度（依 GDD：角色高約 22px）
+
 
 ## 📋 Designer 反省記錄 [2026-06-13]
 

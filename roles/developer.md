@@ -372,6 +372,35 @@ memory.add_observations(
   - 所有代碼必須透過 `.\scripts\dev-submit.ps1 -feature [功能名稱]` 投遞
   - 繞過 Developer 直接 commit 代碼 → pre-commit hook 會阻斷
   - 只有 QA 角色可以執行最終 git commit+push
+- ❌ **[PixelLab §O] 禁止在查詢餘額前執行 pixellab_generate.py**（Sensor Level 2 觸發）
+- ❌ **[PixelLab §O] 禁止在 docs/pixellab_specs.md 未標記 [PIXELLAB_READY] 時生成角色**
+
+## 🎨 PixelLab API 執行職責（§O 標準）
+
+Developer 負責執行 PixelLab 圖片生成，遵循以下協議：
+
+### 執行前強制檢查
+```powershell
+# 1. 確認角色規格已就緒
+Get-Content "D:\2026-06-04\docs\pixellab_specs.md" | Select-String "PIXELLAB_READY"
+
+# 2. 查詢餘額（必做！剩餘 < 1 次禁止執行）
+$headers = @{ "Authorization" = "Bearer 956460ee-978e-4d60-999a-f4b0f567bb48" }
+$b = Invoke-RestMethod -Uri "https://api.pixellab.ai/v2/balance" -Headers $headers
+Write-Host "剩餘次數: $($b.subscription.generations)"
+if ($b.subscription.generations -lt 1) { Write-Error "配額不足！"; exit 1 }
+```
+
+### 執行腳本
+```powershell
+python D:\2026-06-04\scripts\utils\pixellab_generate.py
+```
+
+### 執行後必做
+1. 確認 PNG 保存到 `assets/characters/`
+2. 確認 `generation_log.json` 已更新
+3. 截圖回報 Designer 確認外觀
+4. Designer 確認後才整合到 Godot .tscn 場景
 
 ---
 
