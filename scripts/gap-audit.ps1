@@ -35,7 +35,7 @@ foreach ($c in $rc) {
 
 # 4. Check developer
 $dev = [System.IO.File]::ReadAllText('d:\2026-06-04\roles\developer.md', [System.Text.Encoding]::UTF8)
-$dc = @('GAP-006','DEV-DOC1','DEV-DOC5')
+$dc = @('GAP-006','DEV-DOC1','DEV-DOC5','ERR-029','Portal Walk-in')
 Write-Host '=== DEVELOPER CHECKS ==='
 foreach ($c in $dc) {
     if ($dev.Contains($c)) { Write-Host ('  OK: ' + $c) }
