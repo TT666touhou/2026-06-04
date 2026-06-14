@@ -1,18 +1,19 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v5
+## sensor-scan.ps1 -- Sensor Automated Scan Script v6
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
 ## Checks:
-##   1/9  BOM scan (.gd files must be UTF-8 without BOM)
-##   2/9  .tscn ext_resource UID self-reference (ERR-013)
-##   3/9  Physics callback dangerous patterns (ERR-001)
-##   4/9  int() narrowing conversion (ERR-002)
-##   5/9  Godot 3 deprecated API (ERR-014)
-##   6/9  .tscn header first byte validity (ERR-023)
-##   7/9  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
-##   8/9  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
-##   9/9  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
+##   1/10  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/10  .tscn ext_resource UID self-reference (ERR-013)
+##   3/10  Physics callback dangerous patterns (ERR-001)
+##   4/10  int() narrowing conversion (ERR-002)
+##   5/10  Godot 3 deprecated API (ERR-014)
+##   6/10  .tscn header first byte validity (ERR-023)
+##   7/10  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   8/10  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
+##   9/10  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
+##   10/10 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -26,7 +27,7 @@ function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Re
 function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v5] Godot Project Integrity Scan"                    -ForegroundColor Cyan
+Write-Host " [Sensor v6] Godot Project Integrity Scan"                    -ForegroundColor Cyan
 Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
@@ -363,17 +364,118 @@ foreach ($f in $gdFiles) {
 if ($err028Count -eq 0) { Write-Pass "No ERR-028: No SceneTree scripts incorrectly calling get_tree()" }
 
 ## ============================================================
+## 10/10  GAME_DESIGN.md Content Integrity (ERR-DOC-001) [GAP-001/004/010]
+##
+##  This check addresses the "silent GDD corruption" gap where:
+##  - PowerShell -replace causes Chinese character corruption (e.g. 疫空 燔斷)
+##  - Critical GDD sections lose their content without any error
+##  - [GDD TODO] markers are left unresolved
+##
+##  Enforces:
+##  (a) No known garbled characters from ERR-DOC-001 list
+##  (b) Key section anchor keywords must exist (cross-check with sensor.md Level 3)
+##  (c) No unresolved [GDD TODO] markers (QA must not pass with these)
+##
+##  ⚠️ ROLE ENFORCEMENT:
+##     - If CORRUPT: Designer must use replace_file_content tool to fix
+##     - If MISSING_KEYWORDS: Designer must verify the section was not accidentally erased
+##     - If GDD_TODO: QA must require Designer to resolve before signing off
+## ============================================================
+Write-Host "`n[10/10] Scanning GAME_DESIGN.md content integrity (ERR-DOC-001 / GAP-001/004/010)..." -ForegroundColor Yellow
+$gddIssues = 0
+
+$gddPath = Join-Path $Root "docs\GAME_DESIGN.md"
+if (-not (Test-Path $gddPath)) {
+    Write-Warn "GAME_DESIGN.md not found at '$gddPath' -- skipping GDD integrity check"
+} else {
+    $gddContent = [System.IO.File]::ReadAllText($gddPath, [System.Text.Encoding]::UTF8)
+
+    # --- (a) Known garbled characters from ERR-DOC-001 ---
+    # These arise when PowerShell -replace processes Chinese text with $1 expanding to empty.
+    # We use Unicode codepoints to avoid encoding issues in this .ps1 file itself.
+    # U+75AB = corrupted "liu" (should be U+7559 = stay/reserve)
+    # U+71D4 = corrupted char, U+9120 = corrupted char, U+9150 = corrupted char
+    $corruptList = @(
+        ([char]0x75AB + [char]0x7A7A),   # U+75AB U+7A7A = corrupted (should be: U+7559 = 留空)
+        ([char]0x71D4 + [char]0x65B7),   # garbled variant
+        ([char]0x9120 + [char]0x6838),   # garbled variant
+        ([char]0x9150 + [char]0x65AD),   # garbled variant
+        ([char]0x6E3A + [char]0x8A8D),   # garbled variant
+        ([char]0x7A2E + [char]0x5165),   # garbled variant
+        ([char]0x9881 + [char]0x5E03),   # garbled variant of U+767C U+5E03 (fa bu)
+        [char]0x6DAD,                     # isolated garbled char
+        ([char]0x6E3A + [char]0x832B)    # garbled variant
+    )
+    $corruptFound = @()
+    foreach ($c in $corruptList) {
+        if ($gddContent.Contains($c)) { $corruptFound += "U+$('{0:X4}' -f [int][char]$c[0])" }
+    }
+    if ($corruptFound.Count -gt 0) {
+        Write-Fail "ERR-DOC-001: GAME_DESIGN.md contains garbled Unicode chars: $($corruptFound -join ', ')"
+        Write-Host "   Root cause: PowerShell -replace was used on .md file, causing Chinese char corruption" -ForegroundColor Red
+        Write-Host "   Fix: Use replace_file_content tool to restore the affected section" -ForegroundColor Yellow
+        Write-Host "   Role: DESIGNER must fix before any commit" -ForegroundColor Yellow
+        $gddIssues++
+    } else {
+        Write-Pass "GDD has no known garbled characters (ERR-DOC-001 clear)"
+    }
+
+    # --- (b) Key section keyword presence check (sensor.md Level 3 enforcement) ---
+    # These ASCII/mixed keywords must exist to confirm critical GDD sections were not erased
+    $requiredKeywords = @{
+        'MeleeSlash.tscn'            = 'sec-8.3 (Melee VFX design)'
+        '_spawn_melee_vfx_at_marker' = 'sec-8.3.1 (VFX Marker method)'
+        'target_room_path'           = 'sec-10.5 (door connection/target_room property)'
+        'start_room_entry'           = 'sec-10.11 (Walk-in room entry transition)'
+    }
+    $missingKeywords = @()
+    foreach ($kw in $requiredKeywords.Keys) {
+        if (-not $gddContent.Contains($kw)) {
+            $missingKeywords += "'$kw' (section: $($requiredKeywords[$kw]))"
+        }
+    }
+    if ($missingKeywords.Count -gt 0) {
+        Write-Fail "GDD missing critical section keywords:"
+        foreach ($m in $missingKeywords) {
+            Write-Host "     Missing: $m" -ForegroundColor Red
+        }
+        Write-Host "   Possible cause: Section was accidentally erased by a PowerShell operation" -ForegroundColor Yellow
+        Write-Host "   Role: DESIGNER must restore the missing section from git history" -ForegroundColor Yellow
+        $gddIssues++
+    } else {
+        Write-Pass "GDD all $($requiredKeywords.Count) critical section keywords present"
+    }
+
+    # --- (c) Unresolved [GDD TODO] markers ---
+    $gddTodoMatches = [regex]::Matches($gddContent, '\[GDD TODO\]')
+    if ($gddTodoMatches.Count -gt 0) {
+        Write-Warn "GDD has $($gddTodoMatches.Count) unresolved [GDD TODO] marker(s) -- QA must NOT pass until Designer resolves all"
+        $gddLines = $gddContent -split "`n"
+        $lineNo = 0
+        foreach ($line in $gddLines) {
+            $lineNo++
+            if ($line.Contains('[GDD TODO]')) {
+                Write-Host "     Line ${lineNo}: $($line.Trim())" -ForegroundColor Yellow
+            }
+        }
+    } else {
+        Write-Pass "GDD has no unresolved [GDD TODO] markers"
+    }
+}
+if ($gddIssues -eq 0) { if (Test-Path $gddPath) { Write-Pass "GDD content integrity check complete" } }
+
+## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v5] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v6] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
     Write-Host " Role action: DEVELOPER must fix GDScript errors; Sensor will re-verify." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v5] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v6] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v5] PASSED -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v6] PASSED (10/10) -- No issues found." -ForegroundColor Green
     exit 0
 }

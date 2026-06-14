@@ -400,24 +400,12 @@ git push origin feature/[任務名稱]
 
 ---
 
-## 📋 Developer 文件同步 Routine（每次收工必做）
-
-> **Developer 是代碼現況的第一手目擊者。你知道哪些東西做了，GDD 必須反映這點。**
-
-```
-□ DEV-DOC1. 打開 docs/GAME_DESIGN.md，確認本次實作的功能有對應章節
-□ DEV-DOC2. 若章節標記 [DRAFT] 但已實作 → 記錄「待 Designer 更新」列表，附上章節名稱
-□ DEV-DOC3. 更新 docs/PROJECT_STATUS.md 的「快速總覽」Phase 狀態
-□ DEV-DOC4. 若發現新 Bug 或設計衝突 → 立即在 ERROR_LOG.md 新增 Warning 記錄
-□ DEV-DOC5. 確認 docs/ERROR_LOG.md 的「最佳實踐 PATTERN」有涵蓋本次的踩坑點
-```
-
----
-
 ## 📄 文件守護 (Doc Guardian) — 強制 Routine【開發者專屬】
 
 > **每次有遊戲改動（輸入、機制、UI、行為變化），Developer 必須執行此 Routine。**
 > 不更新文件的功能不算真正完成。
+
+> [GAP-006 已修復] 舊版重複清單（DEV-DOC1-5 第一版）已合併至以下統一版本。
 
 ### DEV 文件同步清單（每次 commit 收工前必做）
 

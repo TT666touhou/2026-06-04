@@ -196,6 +196,35 @@ if [ "$ROLE" = "designer" ]; then
     else
         echo "   ✅ GAME_DESIGN.md 已更新"
     fi
+
+    echo "[Designer/3] 掃描 GAME_DESIGN.md 中的已知亂碼字元（GAP-001 修復）..."
+    if [ -n "$DESIGN_CHANGED" ] && [ -f "docs/GAME_DESIGN.md" ]; then
+        # 已知亂碼清單（ERR-DOC-001：PowerShell -replace 造成的中文字元損壞）
+        # 正確字應為：留空、熔斷、稽核、截斷、渺茫→確認、種類→列出、頒布→發布
+        CORRUPT_FOUND=$(powershell.exe -NoProfile -Command "
+            \$content = [IO.File]::ReadAllText('docs/GAME_DESIGN.md')
+            \$corrupts = @('疫空','燔斷','鄠核','酐断','渺認','種入','颁','涭','渺','鄠','酐','燔')
+            \$found = @()
+            foreach (\$c in \$corrupts) {
+                if (\$content.Contains(\$c)) { \$found += \$c }
+            }
+            if (\$found.Count -gt 0) { 'CORRUPT:' + (\$found -join ',') } else { 'CLEAN' }
+        " 2>/dev/null || echo "CHECK_FAILED")
+        if echo "$CORRUPT_FOUND" | grep -q '^CORRUPT:'; then
+            CHARS=$(echo "$CORRUPT_FOUND" | sed 's/^CORRUPT://')
+            echo "❌ [ERR-DOC-001] GAME_DESIGN.md 含有已知亂碼字元：$CHARS"
+            echo "   根本原因：使用了 PowerShell -replace 修改 .md 文件，\$1 展開為空值"
+            echo "   修復方法：使用 replace_file_content 工具修復對應段落"
+            echo "   禁止提交含亂碼的 GDD！"
+            exit 1
+        elif [ "$CORRUPT_FOUND" = "CHECK_FAILED" ]; then
+            echo "   ⚠️  亂碼掃描跳過（PowerShell 不可用）"
+        else
+            echo "   ✅ GAME_DESIGN.md 無已知亂碼字元"
+        fi
+    else
+        echo "   ℹ️  本次未修改 GAME_DESIGN.md，跳過亂碼掃描"
+    fi
 fi
 
 # ——————————————————————————————————————
@@ -381,6 +410,45 @@ if [ "$ROLE" = "qa" ]; then
         sleep 5
     else
         echo "   ℹ️  無法檢查 debug_state.json（PowerShell 不可用，跳過）"
+    fi
+
+    echo "[QA/4] 掃描 GAME_DESIGN.md 中未解決的 [GDD TODO]（GAP-008 修復）..."
+    if [ -f "docs/GAME_DESIGN.md" ]; then
+        GDD_TODO_COUNT=$(grep -c '\[GDD TODO\]' docs/GAME_DESIGN.md 2>/dev/null || echo 0)
+        if [ "$GDD_TODO_COUNT" -gt 0 ]; then
+            echo "❌ [QA 規則違反] GAME_DESIGN.md 有 $GDD_TODO_COUNT 個未解決的 [GDD TODO]！"
+            echo "   QA 不能通過！必須先請 Designer 更新對應章節。"
+            echo "   未解決項目位置："
+            grep -n '\[GDD TODO\]' docs/GAME_DESIGN.md | head -10
+            exit 1
+        else
+            echo "   ✅ GAME_DESIGN.md 無未解決的 [GDD TODO]"
+        fi
+    else
+        echo "   ⚠️  docs/GAME_DESIGN.md 不存在，跳過 GDD TODO 掃描"
+    fi
+fi
+
+# ——————————————————————————————————————
+# [Developer fix: 提交 ERROR_LOG 提醒]
+# ——————————————————————————————————————
+if [ "$ROLE" = "developer" ]; then
+    COMMIT_MSG_FILE=".git/COMMIT_EDITMSG"
+    if [ -f "$COMMIT_MSG_FILE" ]; then
+        COMMIT_MSG=$(cat "$COMMIT_MSG_FILE" 2>/dev/null || echo "")
+    else
+        COMMIT_MSG=""
+    fi
+    # 若 staged message（透過 -m 傳遞）含 fix: 關鍵字，且 ERROR_LOG 未被修改
+    STAGED_MSG=$(git log --format="%s" -1 2>/dev/null || echo "")
+    if git diff --cached --name-only | grep -q 'fix\|Fix'; then
+        ERROR_LOG_STAGED=$(git diff --cached --name-only | grep 'docs/ERROR_LOG.md' || true)
+        if [ -z "$ERROR_LOG_STAGED" ]; then
+            echo "⚠️  [Developer 提醒 GAP-003] 本次 commit 疑似包含 bug 修復，但 docs/ERROR_LOG.md 未更新"
+            echo "   規則10：任何 ROLE 修復錯誤後必須更新 ERROR_LOG.md"
+            echo "   （5秒後繼續，但請確認已更新 ERROR_LOG.md...）"
+            sleep 5
+        fi
     fi
 fi
 
