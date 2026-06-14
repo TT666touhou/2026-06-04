@@ -613,3 +613,42 @@ region = Rect2(0, 0, 132, 126)
 | 2026-06-13 | QA 驗證覆蓋範圍 | VFX 驗證不能只測試 VFX 場景本身，必須從玩家場景出發（player instantiate → marker → VFX spawn 全流程） |
 | 2026-06-13 | @export 配置覆蓋 | 新增 @export PackedScene 後，必須更新所有引用該腳本的 .tscn，包含基底場景 |
 | 2026-06-13 | 工作流盲點 | AI 修改多版本場景時容易遺漏「主要使用的基底場景」。必須以測試場景（test_room）為起點追蹤引用鏈 |
+
+---
+
+## ERR-029 Portal 重觸發黑屏 — 進門後立即被傳送回去 (2026-06-14)
+
+- **Severity**: Critical（房間轉場後畫面永久黑屏，玩家無法遊玩）
+- **Error Type**: Portal Collision Race Condition / Walk-in Re-trigger Bug
+- **Files Affected**: `scripts/level/game_world.gd`
+- **Symptom**: 玩家透過 Portal 從 room_01 進入 room_02 後，ScreenFader 開始 FadeIn（漸亮）時，立即又觸發 Portal 回到 room_01，導致再次 FadeOut，形成黑屏循環。
+- **Root Cause**: 
+  1. `_finish_portal_room_load` 在新房間載入後，把玩家 teleport 到 entry portal 的 `SpawnMarker` 位置（就在 portal Area2D 碰撞區內部）
+  2. 玩家出現在 Area2D 內，Godot 立即發出 `body_entered` signal
+  3. 新房間的 RoomPortal 是**新建立的實例**，`_triggered = false`（初始值）
+  4. `_check_trigger()` 看到 `_triggered=false` → 設 `_triggered=true` → `call_deferred("_do_trigger")` 排隊執行
+  5. 結果：walk-in 完成後立即再次換房間，導致 FadeIn 被打斷再 FadeOut → 黑屏
+  - **注意**：`_is_loading_room` 守衛只在 GameWorld 層面防止重複載入，無法防止新 portal 實例的首次觸發
+- **Log 特徵（診斷依據）**:
+  ```
+  [ScreenFader] 開始 Fade In     ← 正常漸亮
+  [RoomPortal] 觸發：left → right  ← FadeIn 中途！又觸發
+  [ScreenFader] 開始 Fade Out    ← 再次漸黑 → 黑屏
+  ```
+- **Fix**: 在 `_finish_portal_room_load` 中，先找到 entry portal 並設 `monitoring = false`，再執行 `_reset_player_at_door`（放置玩家）。Walk-in 結束後（0.65秒：walk_dur=0.35 + 安全餘量 0.3）用 `create_timer` callback `_re_enable_portal()` 重新啟用。
+- **Prevention Rules (新增)**:
+  - **Rule 1**: 任何 Portal 換房間系統，在玩家出現（teleport/spawn）到 portal 附近時，**必須在放置前先禁用 entry portal 的 monitoring**
+  - **Rule 2**: RoomPortal 的 `_triggered` 防護只保護**同一幀內**的重複觸發；新場景載入後的新實例不受保護
+  - **Rule 3**: 凡 walk-in 動畫使用 SpawnMarker 作為起點，SpawnMarker 必須在 portal Area2D 的碰撞區**邊界外**，或 portal 必須在 walk-in 期間暫時禁用
+  - **Responsibility**: Developer（walk-in 設計未考慮 portal 重觸發競態條件）
+- **Commit**: `[DEV] fix: ERR-029 portal re-trigger black screen — disable entry portal during walk-in`
+
+---
+
+## 🟢 New Pattern (Session 12 - ERR-029)
+
+| Date | Context | Best Practice |
+|------|---------|---|
+| 2026-06-14 | Portal SpawnMarker 位置 | SpawnMarker 不能放在 portal Area2D 碰撞區**正中心**，應放在邊界（門口邊緣），或在放置玩家前先禁用 portal monitoring |
+| 2026-06-14 | 新場景實例的防重入 | `_triggered` 只保護 portal 實例層面的重複，新房間加載後新 portal 實例的 `_triggered=false` 是正常的 — 保護必須在**房間載入系統（GameWorld）**層面實現 |
+| 2026-06-14 | walk-in + FadeIn 競態 | Walk-in（0.35s）＋ FadeIn（0.4s）總計 0.75s — portal cooldown 至少需要 0.65s 才能安全避開 walk-in 期間的偶發 body_entered |
