@@ -100,10 +100,7 @@ func _maybe_spawn_debug_player() -> void:
 		if bullet_packed and player.get("bullet_scene") != null:
 			player.bullet_scene = bullet_packed
 
-	## Apply color skin 0
-	if player.has_method("apply_player_color"):
-		player.apply_player_color(0)
-
+	## 玩家顏色待 GDD §6.1 確認後實作，暫不套用
 	## 取得 spawn 資訊（Dictionary: pos, mode, direction）
 	var spawn_info := _get_debug_spawn_info()
 	add_child(player)

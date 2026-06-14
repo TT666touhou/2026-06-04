@@ -101,7 +101,7 @@ func _start_solo() -> void:
 	player.set_physics_process(false)   ## 停用物理（不受重力影響）
 	_players_root.add_child(player)
 	player.global_position = Vector2(100, -200)  ## 放到畫面外，防止相機抖動
-	player.apply_player_color(0)
+	## 玩家顏色待 GDD §6.1 確認後實作，底不套用
 	## 連接死亡信號
 	if player.has_signal("died"):
 		player.died.connect(_on_player_died.bind(player))
