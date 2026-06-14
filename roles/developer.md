@@ -452,6 +452,12 @@ v. 【TextureRect 心心 UI】心心 TextureRect 設定：
    - size_flags_horizontal = SIZE_SHRINK_CENTER
    - size_flags_vertical = SIZE_SHRINK_CENTER
    禁止使用 STRETCH_SCALE（導致變形）
+
+w. 【Portal Walk-in 保護 — ERR-029】玩家從 SpawnMarker 出現到 portal Area2D 內時，
+   必須在放置玩家前先設 entry_portal.monitoring = false，
+   walk-in 完成後（duration + 安全餘量，建議 0.65s）再用 create_timer 重新啟用。
+   禁止假設 RoomPortal._triggered 能防護新場景實例：新房間加載後 _triggered=false 是初始值，
+   玩家一出現在 Area2D 內 body_entered 立即觸發。保護必須在 GameWorld 層面（載入系統側）實現。
 ```
 
 ---
