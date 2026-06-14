@@ -1,8 +1,18 @@
 extends Node
-## Dungeon Generator — Rogue-lite 房間生成系統
-## Phase 3：根據設計文件，生成隨機的房間序列
-## 規則：普通房 → 精英房 → Boss房 → 休息房
-## 每次進入新 Run 時呼叫 generate_run()
+## Dungeon Generator — 房間序列管理器
+## [GDD §7.1 決策 2026-06-14 v2]
+## 設計決策：地圖不是程序化生成的，而是由設計師預先決定的手工房間。
+## DungeonGenerator 的職責是管理「固定序列」的房間推進，而非隨機生成。
+##
+## 舊設計（已廢棄）：
+##   - 隨機普通戰鬥房 × N → 精英房（30%機率）→ 休息房 → Boss 房
+##   - 依賴 min_combat_rooms / max_combat_rooms / elite_room_chance 等隨機化參數
+##
+## 新設計（當前）：
+##   - 固定序列：area_0_room_01 → area_0_room_02 → (未來 Boss 房)
+##   - 第一間房（ENTRY_ROOM）固定，不隨機
+##   - Portal 系統直接決定下一房間（target_room_path），無需 DungeonGenerator 隨機化
+##   - DungeonGenerator 僅作為「進度追蹤器」使用
 
 class_name DungeonGenerator
 
@@ -28,41 +38,34 @@ class RoomDef:
 		difficulty_bonus = bonus
 
 ## ─────────────────────────────────────────────
-## 房間場景池（設計師可擴充）
+## 房間場景定義（固定序列，設計師決定）
 ## ─────────────────────────────────────────────
-## 普通戰鬥房場景列表（設計師可擴充）
 ## [GDD §10 決策 2026-06-14]
-## - 正式局為 Area_0 以上的手動搭建房間
-## - test_room_a/b 已從池中移除（設計驗證用屏擤除）
-const COMBAT_ROOMS: Array[String] = [
-	"res://scenes/levels/area_0/area_0_room_01.tscn",
-	"res://scenes/levels/area_0/area_0_room_02.tscn",
-]
+## - 正式局為 Area_0 以上的手動搭建房間，地圖由設計師預先決定
+## - 非程序化生成：不使用隨機化種子、不隨機挑選房間
+## - Portal 系統（target_room_path）已直接硬連結各房間的出口/入口
+## - DungeonGenerator 保留作為「進度追蹤器 + 難度標記」，不負責隨機選房
 
-## 進入點：性第一間房固定為 area_0_room_01（不隨機）
+## 進入點：第一間房固定為 area_0_room_01
 ## [GDD §10 決策 2026-06-14]
 const ENTRY_ROOM: String = "res://scenes/levels/area_0/area_0_room_01.tscn"
 
-## 精英房場景列表（若不存在則退回普通房）
-const ELITE_ROOMS: Array[String] = [
-	"res://scenes/test_room_b.tscn",  ## 暫時複用， Phase 3.2 新增
+## Area_0 完整的手工房間序列（由設計師決定，依此順序推進）
+const AREA_0_ROOMS: Array[String] = [
+	"res://scenes/levels/area_0/area_0_room_01.tscn",
+	"res://scenes/levels/area_0/area_0_room_02.tscn",
+	## 未來新增房間在此追加（保持手工決定的順序）
 ]
 
-## Boss 房
+## Boss 房（Area_0 結尾，尚未實作時 fallback 到 ENTRY_ROOM）
 const BOSS_ROOM: String = "res://scenes/level/boss_room.tscn"
 
-## 休息房（若無則跳過）
+## 休息房（可選，Area_0 無休息房設計，保留接口供未來 Area_1+）
 const REST_ROOM: String = "res://scenes/level/rest_room.tscn"
 
 ## ─────────────────────────────────────────────
-## 生成設定
+## 進度追蹤狀態
 ## ─────────────────────────────────────────────
-@export var min_combat_rooms: int = 3
-@export var max_combat_rooms: int = 5
-@export var elite_room_chance: float = 0.3   ## 30% 機率將普通房升級為精英房
-@export var include_rest_room: bool = true
-@export var seed_override: int = 0  ## 0 = 隨機；非零 = 固定種子（DEBUG 用）
-
 ## 當前生成的房間序列
 var current_run: Array[RoomDef] = []
 var current_room_index: int = -1
@@ -76,68 +79,30 @@ signal room_entered(room_index: int, room_def: RoomDef)
 ## 公開 API
 ## ─────────────────────────────────────────────
 func _ready() -> void:
-	print("[DungeonGenerator] 初始化完成")
+	print("[DungeonGenerator] 初始化完成（固定序列模式，非程序化生成）")
 
-## 生成一次完整的 Run 房間序列
-## 返回：Array[RoomDef]（已排序，Boss 在最後）
+## 建立固定的 Run 房間序列（非隨機，依設計師決定的 AREA_0_ROOMS 順序）
+## [GDD §10 決策 2026-06-14]：地圖由設計師預先決定
 func generate_run() -> Array[RoomDef]:
-	var rng := RandomNumberGenerator.new()
-	if seed_override != 0:
-		rng.seed = seed_override
-		print("[DungeonGenerator] 使用固定種子：", seed_override)
-	else:
-		rng.randomize()
-		print("[DungeonGenerator] 使用隨機種子：", rng.seed)
-
 	current_run.clear()
 	current_room_index = -1
 
-	## [GDD §10 2026-06-14] 第一間房固定為 area_0_room_01（不隨機選）
-	current_run.append(RoomDef.new(RoomType.COMBAT, ENTRY_ROOM, 0))
-	print("[DungeonGenerator] 進入點（固定）：", ENTRY_ROOM)
+	## 將 AREA_0_ROOMS 依序加入（固定序列，不隨機）
+	for i: int in range(AREA_0_ROOMS.size()):
+		var path: String = AREA_0_ROOMS[i]
+		## 第一間是 ENTRY_ROOM（COMBAT），其餘依位置推斷類型
+		var room_type := RoomType.COMBAT
+		var difficulty := i  ## 越後面越難
+		current_run.append(RoomDef.new(room_type, path, difficulty))
+		print("[DungeonGenerator] 房間 ", i + 1, ": ", path)
 
-	## 1. 決定普通房數量（追加房間，不包含進入點）
-	var n_combat := rng.randi_range(max(0, min_combat_rooms - 1), max(0, max_combat_rooms - 1))
-	print("[DungeonGenerator] 生成 ", n_combat, " 間追加戰鬥房")
-
-	## 2. 生成戰鬥房序列（隨機決定是否為精英）
-	## 從 COMBAT_ROOMS 中排除已使用的 ENTRY_ROOM
-	var combat_pool: Array[String] = []
-	for p: String in COMBAT_ROOMS:
-		if p != ENTRY_ROOM:
-			combat_pool.append(p)
-	combat_pool.shuffle()
-
-	var difficulty := 0
-	for i: int in range(n_combat):
-		difficulty += 1
-		## 是否升級為精英房
-		var is_elite := rng.randf() < elite_room_chance and i > 0
-		if is_elite:
-			var elite_path: String = _pick_random(ELITE_ROOMS, rng)
-			current_run.append(RoomDef.new(RoomType.ELITE, elite_path, difficulty))
-			print("[DungeonGenerator] 房間 ", i + 2, ": 精英房 (", elite_path, ")")
-		else:
-			if combat_pool.is_empty():
-				print("[DungeonGenerator] 房間池已空，跟進入點重式使用")
-				current_run.append(RoomDef.new(RoomType.COMBAT, ENTRY_ROOM, difficulty))
-			else:
-				var combat_path: String = combat_pool[i % combat_pool.size()]
-				current_run.append(RoomDef.new(RoomType.COMBAT, combat_path, difficulty))
-				print("[DungeonGenerator] 房間 ", i + 2, ": 普通房 (", combat_path, ")")
-
-	## 3. 休息房（可選，在 Boss 前一間）
-	if include_rest_room and ResourceLoader.exists(REST_ROOM):
-		current_run.append(RoomDef.new(RoomType.REST, REST_ROOM, 0))
-		print("[DungeonGenerator] 加入休息房")
-
-	## 4. Boss 房（固定在最後）
+	## Boss 房固定在最後
 	var boss_path: String = BOSS_ROOM if ResourceLoader.exists(BOSS_ROOM) else ENTRY_ROOM
-	current_run.append(RoomDef.new(RoomType.BOSS, boss_path, difficulty + 2))
+	current_run.append(RoomDef.new(RoomType.BOSS, boss_path, current_run.size()))
 	print("[DungeonGenerator] Boss 房：", boss_path)
 
 	run_generated.emit(current_run)
-	print("[DungeonGenerator] Run 生成完成，共 ", current_run.size(), " 間房")
+	print("[DungeonGenerator] Run 建立完成，共 ", current_run.size(), " 間房（固定序列）")
 	return current_run
 
 ## 進入下一間房間（由 RoomTransition 或 GameWorld 呼叫）
@@ -169,14 +134,6 @@ func get_run_progress() -> float:
 	return float(current_room_index + 1) / float(current_run.size())
 
 ## ─────────────────────────────────────────────
-## 內部工具函式
-## ─────────────────────────────────────────────
-func _pick_random(arr: Array, rng: RandomNumberGenerator) -> String:
-	if arr.is_empty():
-		return ""
-	return arr[rng.randi_range(0, arr.size() - 1)]
-
-## ─────────────────────────────────────────────
 ## Debug 輸出（供 DebugBridge 讀取）
 ## ─────────────────────────────────────────────
 func get_debug_info() -> Dictionary:
@@ -194,4 +151,5 @@ func get_debug_info() -> Dictionary:
 		"current_index": current_room_index,
 		"progress": get_run_progress(),
 		"rooms": rooms_info,
+		"mode": "fixed_sequence",  ## [GDD §10] 固定序列，非程序化生成
 	}

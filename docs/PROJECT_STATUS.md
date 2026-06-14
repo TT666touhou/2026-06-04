@@ -55,6 +55,7 @@
 | **6.5** | **Portal 系統強化：@export_file 優化 + walk-in 轉場 + room_02 LeftPortal→room_01 雙向連結修復** | **✅ DONE** | 2026-06-14 |
 | **6.6** | **[HOTFIX] ERR-029 Portal 重觸發黑屏修復（entry portal walk-in 保護機制）** | **✅ DONE** | 2026-06-14 |
 | **6.7** | **[DEV TOOL] F6 房間直跑 Debug Player 自動生成（room_base.gd 偵測根場景，自動注入玩家+相機）** | **✅ DONE** | 2026-06-14 |
+| **6.8** | **F6 鏡頭縮放修復（3x→4x），移除 test_room_a/b，重構 DungeonGenerator 為固定序列模式** | **✅ DONE** | 2026-06-14 |
 
 ---
 
@@ -145,12 +146,15 @@
 
 ### Phase 3.2 — DungeonGenerator（關卡生成器）
 - **完成日期**：2026-06-12
-- **完成驗證**：headless 執行輸出「生成 4 間戰鬥房」，5間房完整序列
 - **關鍵檔案**：
   - `scripts/level/dungeon_generator.gd`（class_name DungeonGenerator）
   - `scripts/level/game_world.gd` ← 整合，`load_next_room()`, `_load_room_scene()`
   - `scenes/level/game_world.tscn` ← DungeonGenerator 子節點
-- **房間序列規則**：普通房(COMBAT) × N → 精英房(ELITE，30%機率) → 休息房(REST，可選) → Boss房
+- **[2026-06-14 更新] 重構為固定序列模式**：地圖不是程序化生成的，而是設計師預先決定的。
+  - `AREA_0_ROOMS` 固定陣列取代舊的 `COMBAT_ROOMS`（隨機池）
+  - 移除廢棄的 `ELITE_ROOMS`（原包含 test_room_b.tscn）、`@export` 隨機化參數
+  - 新增 `generate_run()` 非隨機版本，依序推進固定場景
+- **API 保持相容**：`generate_run()`, `advance_room()`, `get_current_room()`, `get_debug_info()` 同名同簽名
 - **重要**：`game_world.gd` 使用 `@onready var _dungeon: Node`（不用 `DungeonGenerator` 型別，避免 class_name 前向引用問題）
 
 ---
@@ -164,9 +168,8 @@
   - `dungeon_generator.gd` 有房間場景路徑清單
   - `room_transition.gd` 更新為呼叫 `GameWorld.load_next_room()`
 - **未完成**：
-  - `scenes/test_room_a.tscn` 和 `test_room_b.tscn` 內容為佔位符（無地形、無敵人）
-  - `scenes/level/boss_room.tscn` ← **不存在**（DungeonGenerator 會 fallback 到 test_room_b）
-  - `scenes/level/rest_room.tscn` ← **不存在**（DungeonGenerator 跳過休息房）
+  - `scenes/level/boss_room.tscn` ← **不存在**（DungeonGenerator 將 fallback 到 ENTRY_ROOM）
+  - `scenes/level/rest_room.tscn` ← **不存在**
   - 房間門/傳送點機制未完成（RoomTransition 只有基礎節點）
 - **下一步**：實作最小可用房間（有平台可站立 + RoomTransition 觸發點）
 
@@ -238,8 +241,6 @@
 | `scenes/level/game_world.tscn` | ✅ | 主遊戲場景 |
 | `scenes/player/player.tscn` | ✅ | 玩家場景 |
 | `scenes/player/player_bullet.tscn` | ✅ | 子彈場景 |
-| `scenes/test_room_a.tscn` | ⚠️ | 佔位符（無豐富內容）|
-| `scenes/test_room_b.tscn` | ⚠️ | 佔位符 |
 | `scenes/level/boss_room.tscn` | ❌ | 不存在 |
 | `scenes/level/rest_room.tscn` | ❌ | 不存在 |
 
@@ -273,6 +274,7 @@
 | 2026-06-13 15:39 | Developer | **Phase 6.1 Area_0 房間結構框架完成**：建立 room_base.gd（SpawnPoint查詢+CameraZone通知）、camera_zone.gd（空洞騎士風格鏡頭邊界）、area_0_room_01/02.tscn（含CameraZone/BoundaryWalls/TileLayers三層/Portal）。MultiplayerCamera 新增 set_limits_from_zone()（Tween 0.3s）。game_world 新增 apply_room_camera_zone + _find_portal_by_door_id（遞迴搜尋）。dungeon_generator COMBAT_ROOMS 加入 area_0 路徑。Sensor v4 8/8 PASS。 |
 | 2026-06-13 15:50 | Developer/Sensor | **[ERR-028] SceneTree 腳本呼叫 get_tree() 修復**：`qa_vfx_test2.gd:46` 的 `await get_tree().process_frame` 改為 `await process_frame`。**Sensor v5 升級**：sensor-scan.ps1 新增 Check 9/9 自動偵測 ERR-028。Sensor v5 9/9 PASS。 |
 | 2026-06-13 16:19 | Designer/Developer | **[設計決策] 移除 BoundaryWalls**：Designer+Architect 討論確認，TileMapLayer Physics Layer 為唯一碰撞策略，BoundaryWalls (collision_mask=0) 從未生效。從 area_0_room_01/02.tscn 移除所有 BoundaryWalls 節點與 sub_resource。更新 GAME_DESIGN.md §10.8/10.9/10.10 記錄決策。Sensor v5 9/9 PASS。 |
+| **2026-06-14** | **QA** | **Phase 6.8**：修復 F6 縮放（room_base.gd zoom 3→4，與 MultiplayerCamera.max_zoom 一致）；刪除廢棄的 test_room_a.tscn 和 test_room_b.tscn；重構 dungeon_generator.gd 為固定序列模式（移除 COMBAT_ROOMS/ELITE_ROOMS 隨機池、廢棄 @export 參數）；更新 GAME_DESIGN.md §10.12、reviewer.md、qa.md、PROJECT_STATUS.md，清除所有 test_room 殘留引用。 |
 
 
 

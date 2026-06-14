@@ -565,5 +565,5 @@ func _apply_room_camera_zone_deferred() -> void:
 		return
 	var zone := _current_room_node.get_node_or_null("CameraZone")
 	if zone == null:
-		return  ## 舊房間（test_room）無 CameraZone，略過
+		return  ## 無 CameraZone 的房間略過（所有正式房間應有 CameraZone）
 	apply_room_camera_zone(zone as Area2D)

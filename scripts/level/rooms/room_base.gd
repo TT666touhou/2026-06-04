@@ -199,6 +199,7 @@ func _guess_portal_entry_direction(marker_pos: Vector2) -> Vector2:
 
 ## Add a simple Camera2D that follows the debug player.
 ## ⚠️ ERR-001 safety: camera added as child of player, not scene root.
+## ERR-CAMERA-F6 fix: Apply CameraZone limits so F6 behaviour matches F5/GameWorld.
 func _add_debug_camera(player: Node) -> void:
 	## Check if a Camera2D already exists in the scene
 	for child in get_children():
@@ -210,9 +211,31 @@ func _add_debug_camera(player: Node) -> void:
 	## Smooth follow
 	cam.position_smoothing_enabled = true
 	cam.position_smoothing_speed = 5.0
-	## Zoom to match the game's pixel-art scale (3x)
-	cam.zoom = Vector2(3.0, 3.0)
+	## ★ ERR-CAMERA-ZOOM 修復：F6 縮放必須與 F5 相同（ MultiplayerCamera.max_zoom = 4.0）
+	## GDD §2.1： Camera2D zoom=4，等效 32px/tile 顯示
+	cam.zoom = Vector2(4.0, 4.0)
+
+	## ── ERR-CAMERA-F6 修復 ────────────────────────────────────────────────
+	## F5 模式：GameWorld.MultiplayerCamera 透過 set_limits_from_zone(zone) 取得邊界。
+	## F6 模式：我們必須直接讀取 CameraZone 的 Rect2 並設定 limit_*，
+	##          否則鏡頭會在無限制的空間中自由漂移，看起來和 F5 完全不同。
+	var zone_node: Node = get_node_or_null("CameraZone")
+	if zone_node != null and zone_node.has_method("get_camera_limits"):
+		var zone: CameraZone = zone_node as CameraZone
+		if zone != null:
+			var rect: Rect2 = zone.get_camera_limits()
+			cam.limit_left   = int(rect.position.x)
+			cam.limit_top    = int(rect.position.y)
+			cam.limit_right  = int(rect.position.x + rect.size.x)
+			cam.limit_bottom = int(rect.position.y + rect.size.y)
+			print("[RoomBase] Debug camera limits applied from CameraZone: L=%d T=%d R=%d B=%d" % [
+				cam.limit_left, cam.limit_top, cam.limit_right, cam.limit_bottom])
+		else:
+			push_warning("[RoomBase] CameraZone node is not CameraZone class, limits not applied")
+	else:
+		push_warning("[RoomBase] No CameraZone found; F6 camera will have no boundary limits")
+
 	## ERR-D fix: add_child 必須在 make_current() 之前，否則 !is_inside_tree() 止渡
 	player.add_child(cam)
 	cam.make_current()
-	print("[RoomBase] Debug Camera2D added (zoom=3x, smooth follow)")
+	print("[RoomBase] Debug Camera2D added (zoom=4x 匹配 F5/MultiplayerCamera, smooth follow)")

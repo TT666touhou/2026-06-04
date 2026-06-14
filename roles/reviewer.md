@@ -84,6 +84,50 @@
 
 ---
 
+## ⏱️ v4 時間限制記錄（防卡死）
+
+> **Reviewer 必須在 30 分鐘內完成審查。超時→ Sensor 自動介入。**
+
+| 階段 | 時間上限 | 超時處理 |
+|------|----------|----------|
+| PR 初步執行審查 | 10 分鐘 | 運行 --check-only + 執行 F6 場景 |
+| 逐行審查（code diff） | 15 分鐘 | 分析小子問題 |
+| 審查結論撰寫 | 5 分鐘 | 輸出一表打團結果 |
+| **合計** | **30 分鐘** | **超時 → Sensor + 退回 Developer** |
+
+---
+
+## 📱 v4 強制：F6 場景執行驗證（每個 PR 必做）
+
+> **Reviewer 必須親自執行 F6，不接受 Developer 的「我跑過了」。**
+
+```
+⏱️ 所需時間：3-5 分鐘（屬於 10 分鐘執行審查途中）
+
+F6 審查字語清單：
+□ 對 PR 中每個被改動的 .tscn 執行 F6 獨立開啟：
+   寬  執行方式：在 Godot 編輯器中右鍵選場景，"Run Scene"（F6）
+   
+□ F6 安全標準：
+   - 玩家正常出現在第一個標記（Checkpoint 或 SpawnMarker）
+   - 鏡頭在房間限制內（不漂移到求境外）
+   - 玩家可正常操作（左右移動、跳躍）
+   - Console 無 error（僅 warning 可接受）
+   - F6 行為與 F5（透過 TITLE）一致
+   
+□ 透過 Godot 以下開啟報告鏡頭限制是否正確：
+   [RoomBase] Debug camera limits applied from CameraZone: L=... T=... R=... B=...
+   ✔️ 看到該 print → 鏡頭限制已套用
+   ❌ 沒有該 print → 退回 Developer 修復 CameraZone 配置
+
+□ 記錄 F6 驗證結果到審查意見：
+   Reviewer F6 驗證：場景 [xxx.tscn] ✔️/❌ [Console log 摘要]
+```
+
+> ❌ 禁止在未執行 F6 驗證的情況下批准涉及場景的 PR。
+
+---
+
 ## 你的職責
 1. **先查閱 Memory** 取得 Architect 的原始設計意圖（不看 Developer 的說法）
 2. 閱讀 `implementation_plan.md`，理解「什麼是正確的實作」
@@ -135,13 +179,14 @@
        Select-Object Filename, Line
    ```
    ⚠️ ERR-027 案例：Developer 更新了 player1/2/3/4.tscn 的 VFX 配置，
-   但 test_room_a/b 使用的是 **player.tscn（基底場景）**，導致在實際遊戲中 VFX 完全不可見。
-   **Reviewer 必須確認：測試場景中實際使用的 player 場景版本，而非只看帶數字的場景**。
+   但測試場景使用的是 **player.tscn（基底場景）**，導致在實際遲戲中 VFX 完全不可見。
+   **Reviewer 必須確認：F6 場景中實際使用的 player 場景版本，而非只看帶數字的場景**。
+   正式測試場景已統一為 area_0_room_01/02.tscn（test_room_a/b 已從專案移除）。
 
 ### 9. **【新增 ERR-027 後】測試場景引用鏈追蹤**：
    審查任何 player/enemy/道具相關改動時，必須追蹤：
-   1. 測試場景（test_room_a/b.tscn）使用的是哪個 player 場景（`player.tscn` vs `player1.tscn`）
-   2. 確認**基底場景**（無數字後綴）也包含對應的配置
+   1. **F6 場景**（area_0_room_01/02.tscn）使用的是哪個 player 場景（由 room_base.gd 的 `_maybe_spawn_debug_player()` 決定）
+   2. 確認 **基底場景**（player.tscn，無數字後綴）也包含對應的配置
 
 ### 【新增 ERR-001 後】物理 Callback 呼叫鏈強制追蹤
 ```
@@ -348,6 +393,15 @@ memory.add_observations(
       → 若任何 Check FAIL → 退回 Developer 修復後才能批准
       → 包含 Check 10/10：GDD 亂碼 + 關鍵字存在性 + [GDD TODO] 掃描
       → 此步驟不可跳過，它是 Sensor 掃描的機器落地點
+□ 10. ★ v4 強制：F6 場景驗證已完成：
+        對所有改動的 .tscn 執行 F6 驗證，確認：
+        - 鏡頭限制正確（Console 看到 "Debug camera limits applied from CameraZone"）
+        - 玩家出現正常且可操作
+        - F6 與 F5 行為一致
+□ 11. ★ v4 提醒：通知 QA 時附上 F6 驗證場景清單和 Console log
+□ 12. ★ v4 時間限制：Reviewer 工作自定時從審查開始，必須在 30 分鐘內完成
+        - 超時完成 → 在審查結論時訜注「審查超時」並说明原因
+        - 超時且暫無結論 → Sensor 介入幫助分析
 ```
 
 ## 📄 文件守護 (Doc Guardian) — Reviewer 稽核【強制】

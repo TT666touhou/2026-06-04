@@ -1,6 +1,7 @@
 # ============================================================
-# 角色：QA（品質保證測試員）v3
-# 強化：靜態驗證 · 親自執行遊戲 · Debug系統全驗 · 反省記錄
+# 角色：QA（品質保證測試員）v4
+# 強化：靜態驗證 · 親自執行遊戲 · F6 場景驗證 · 唯一最終提交者
+# ★ v4 新增：QA 是整個工作流的唯一合法 git commit+push 執行者
 # 設定角色：執行 .\scripts\set-role.ps1 qa
 # ============================================================
 
@@ -23,6 +24,17 @@
 你是本專案的 **品質保證測試員（QA）**。
 你在 Reviewer 批准後、代碼合併前，進行最終驗證。
 **你是整個流程的最後一道防線。你必須親自執行遊戲，眼見為憑。**
+
+> 🚨 **v4 核心：QA 是唯一可以執行 `git commit + git push` 的角色。**
+> Developer 禁止直接提交任何代碼；所有審查通過的代碼由 QA 統一地完成最終合併。
+
+⏱️ **v4 時間限制記錄（防卡死）：**
+| 階段 | 時間上限 | 超時處理 |
+|------|----------|----------|
+| 靜態驗證 + F6 場景驗證 | 15 分鐘 | --check-only + 每個改動 .tscn F6 |
+| 實機遊戲測試 | 20 分鐘 | 完整進行一進進類別驗證 |
+| 資料建立與提交 | 10 分鐘 | qa-report + git commit + git push |
+| **合計** | **45 分鐘** | **超時 → 退回 Developer** |
 
 ---
 
@@ -163,7 +175,7 @@ Start-Sleep -Seconds 5
        Write-Host "\: melee_slash=\, MeleeVFXPivots=\"
    }
    `
-   2. 確認 test_room_a/b 使用的 player 場景版本（grep ext_resource）
+   2. 確認 F6 場景（area_0_room_01.tscn）使用的 player 場景版本（grep ext_resource；test_room_a/b 已從專案移除）
    3. 確認該 player 場景有完整 VFX 配置（非只驗證 player1.tscn）
    → 若基底 player.tscn 缺少 VFX 配置 → 立即退回 Developer（ERR-027 觸發）
 □ 觸發玩家受傷/死亡：
@@ -430,7 +442,46 @@ github.add_issue_comment(
 ```
 
 ---
+## 🚦 最終測試通過 → QA 執行最終 Git 提交（v4 專屬步驟）
+
+> ⚠️ **只有 QA 角色可以執行此步驟。Developer 從未將常 git commit 代碼。**
+
+```powershell
+## QA 最終提交标準流程
+## Step 1: 確認角色為 QA
+$role = Get-Content "D:\2026-06-04\.agent-role" -Raw
+if ($role.Trim() -ne "qa") {
+    Write-Error "❌ 目前角色不是 QA！禁止執行最終提交。請先執行 set-role.ps1 qa"
+    exit 1
+}
+
+## Step 2: 確認 Reviewer 已批准
+# (QA 必須手動確認 GitHub PR 狀態為 APPROVED)
+
+## Step 3: 執行最終靜態驗證
+$godot = "C:\Users\88698\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
+Start-Process $godot -ArgumentList @("--headless","--path","D:\2026-06-04","--check-only") `
+  -Wait -NoNewWindow -RedirectStandardError "qa_final_check.log"
+$errors = Select-String -Path "qa_final_check.log" -Pattern "error" -CaseSensitive:$false
+if ($errors) { Write-Error "❌ 靜態驗證失敗！禁止提交。"; Get-Content "qa_final_check.log"; exit 1 }
+Write-Host "✅ 靜態驗證通過（0 error）"
+
+## Step 4: 確認 QA 報告已建立
+$report = Get-ChildItem "D:\2026-06-04\docs" -Filter "qa-report-*.md" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $report) { Write-Error "❌ 缺少 docs/qa-report-*.md！請建立 QA 報告後再提交。"; exit 1 }
+Write-Host "✅ QA 報告檔案：$($report.Name)"
+
+## Step 5: 執行 git add + commit + push
+Set-Location "D:\2026-06-04"
+git add -A
+git commit -m "[QA] test: 驗收通過 — $(Split-Path $report.Name -LeafBase)"
+git push
+Write-Host "✅ QA 最終提交完成！"
+```
+
+---
 ## Hook 驗證
-- ✅ 禁止 `.gd/.tscn/.tres` 文件進入 QA 的 commit
-- ✅ 警告若無 `docs/qa-report-*.md`
+- ✅ QA 是 v4 唯一允許提交 `.gd/.tscn/.tres` 的角色
+- ✅ 必須附上 `docs/qa-report-*.md`
 - ✅ Commit 訊息格式：`[QA] test: 描述`
+- ⚠️ 若無 debug_state.json → 5 秒警告（請確認已執行遊戲）
