@@ -444,6 +444,16 @@ func _finish_portal_room_load(scene_path: String) -> void:
 		if room_def and room_def.get("difficulty_bonus") != null:
 			_apply_room_difficulty(roundi(float(room_def.get("difficulty_bonus"))))
 
+	## ⚠️ ERR-029 修復：先禁用 entry portal，防止玩家 Walk-in 期間立即重觸發
+	## 玩家從 SpawnMarker（位於 entry portal 內部）出現，body_entered 會在放置瞬間觸發
+	## 若 _triggered=false（新房間新實例），portal 會立即 call_deferred 再次換房間
+	var entry_portal: RoomPortal = null
+	if _current_room_node and not _pending_entry_door_id.is_empty():
+		entry_portal = _find_portal_by_door_id(_current_room_node, _pending_entry_door_id)
+		if entry_portal != null:
+			entry_portal.monitoring = false
+			print("[GameWorld] 暫時禁用 entry portal: door_id=%s（Walk-in 保護）" % _pending_entry_door_id)
+
 	## 定位玩家到指定 door_id 的 SpawnMarker
 	_reset_player_at_door(_pending_entry_door_id)
 
@@ -456,6 +466,14 @@ func _finish_portal_room_load(scene_path: String) -> void:
 	var fader := get_node_or_null("ScreenFader")
 	if fader and fader.has_method("fade_in"):
 		fader.fade_in()
+
+	## Walk-in 完成後重新啟用 entry portal（walk_dur=0.35 + 安全餘量 0.3 = 0.65 秒）
+	if entry_portal != null:
+		var re_enable_timer := get_tree().create_timer(0.65)
+		re_enable_timer.timeout.connect(
+			_re_enable_portal.bind(entry_portal),
+			CONNECT_ONE_SHOT
+		)
 
 	call_deferred("_unlock_room_loading")
 
@@ -514,6 +532,13 @@ func _find_portal_by_door_id(root: Node, door_id: String) -> RoomPortal:
 		if found != null:
 			return found
 	return null
+
+## Walk-in 保護計時器 callback：重新啟用被暫時禁用的 entry portal
+## ⚠️ ERR-029：需檢查 portal 是否仍然有效（可能在多人情況下已被 queue_free）
+func _re_enable_portal(portal: RoomPortal) -> void:
+	if is_instance_valid(portal):
+		portal.monitoring = true
+		print("[GameWorld] Entry portal 重新啟用：door_id=%s" % portal.door_id)
 
 ## ── CameraZone 整合 ────────────────────────────────────────────────────────
 ## 公開方法：供 RoomBase._apply_camera_zone() 和 CameraZone._notify_camera() 呼叫
