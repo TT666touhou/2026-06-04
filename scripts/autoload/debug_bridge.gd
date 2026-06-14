@@ -136,7 +136,7 @@ func _collect_state() -> Dictionary:
 	var scene_name: String = String(scene.name) if scene != null else "null"
 	state["current_scene"] = scene_name
 
-	# ── Rogue-lite 地牡/房間層狀 ──────────────────────────────────
+	# ── 房間序列狀態（DungeonGenerator 固定序列模式）────────────────────────
 	var game_world := get_tree().get_root().get_node_or_null("GameWorld")
 	if game_world and game_world.has_method("get_dungeon_debug_info"):
 		state["dungeon"] = game_world.get_dungeon_debug_info()

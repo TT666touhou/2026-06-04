@@ -174,7 +174,7 @@ func _on_player_disconnected(peer_id: int) -> void:
 		print("[GameWorld] 玩家節點已移除：%d" % peer_id)
 
 # ═══════════════════════════════════════════════════════════════
-# Rogue-lite 房間控制
+# 房間序列控制（DungeonGenerator 固定序列）
 # ═══════════════════════════════════════════════════════════════
 
 ## 進入下一間房間（由 RoomTransition 節點觸發，或直接呼叫）
