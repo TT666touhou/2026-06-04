@@ -32,6 +32,16 @@
       - 確保你的設計決策不會違反已知的技術約束
       ⚠️ 若設計需要觸發已知 Critical 錯誤才能實現 → 必須先找到替代方案
 
+【第零步 B（§O 強制）：PixelLab 相關需求時 — 必須讀取 API Reference】
+
+□ 0b. 若本次工作涉及任何角色生成、PixelLab API 使用：
+       Get-Content "D:\2026-06-04\docs\pixellab_api_reference.md"
+       - 確認可用的 API 端點、參數選項、限制
+       - 確認 color_palette、style、animation 等參數的合法值
+       - 確認 Trial 帳號的額度上限（不可超額）
+       完成後，根據本次 PixelLab 工作進度更新 pixellab_api_reference.md 的「Last Updated」欄位
+       ⚠️ 未讀 pixellab_api_reference.md 就提出 API 用法 → 視為嚴重違規
+
 【第一步：完整性檢查 — 開始任何設計工作前必做】
 □ 1. 讀取 docs/GAME_DESIGN.md，確認現有設計沒有前後矛盾
 □ 2. 查詢 Memory MCP 確認已鎖定的設計決策（避免覆蓋 LOCKED 內容）
@@ -186,21 +196,40 @@ memory.add_observations(
 - ❌ **禁止提出多人遊戲不相容的機制設計**（見下方 MMP 清單）
 - ❌ **[ERR-DOC-001] 禁止使用 PowerShell `-replace` 修改 .md 文檔**。原因：`-replace` 的雙引號替換字串中 `$1` 被展開為 PS 變數（空值），導致中文內容靜默損壞。**唯一正確方式：使用 `replace_file_content` 或 `multi_replace_file_content` 工具直接修改文件。**
 - ❌ **[PixelLab] 禁止在 GDD 角色設計未 [CONFIRMED] 時標記 [PIXELLAB_READY]**（§O 規範）
+- ❌ **[§O-REF] 禁止在未讀 `docs/pixellab_api_reference.md` 的情況下提出任何 PixelLab API 用法或參數設計**
 
 ## 🎨 PixelLab 角色規格維護（§O 標準）
 
-Designer 負責維護 `docs/pixellab_specs.md`，包含：
-- 每個角色的外觀規格（尺寸、風格、配色）
-- API Prompt（英文，符合 GDD）
-- 生成優先度和狀態追蹤
+Designer 負責維護以下兩個文件：
+
+| 文件 | 路徑 | 內容 |
+|------|------|------|
+| **API 功能參考** | `docs/pixellab_api_reference.md` | 所有可用 API 端點、參數選項、限制（Designer 必讀必維護）|
+| **角色規格** | `docs/pixellab_specs.md` | 每個角色的外觀規格、Prompt、生成狀態 |
+
+### 🔒 pixellab_api_reference.md 維護規則（§O-REF）
+
+> 此文件是 PixelLab API 的唯一真理來源，Designer 必須主動維護。
+
+```
+維護觸發條件：
+- 每次發現 API 新功能或限制 → 立即更新
+- 每次 PixelLab 生成工作完成後 → 更新生成結果欄位
+- 每次用戶對 API 選項提出新認知 → 更新對應章節
+
+更新格式：在文件頂部修改 "Last Updated: YYYY-MM-DD" 戳記
+驗證：sensor-scan.ps1 Check 15/15 會確認 Last Updated 戳記存在
+```
 
 ### PixelLab 角色標記流程
 ```
-1. GDD 角色設計已 [CONFIRMED] → 可以撰寫 PixelLab Prompt
-2. Prompt 撰寫完成 → 在 docs/pixellab_specs.md 標記 [PIXELLAB_READY]
-3. 通知 Developer 執行生成
-4. Developer 回報生成結果後 → 確認外觀是否符合設計意圖
-5. 外觀不符 → 修改 Prompt 並更新 [PIXELLAB_READY] 狀態
+1. 讀取 docs/pixellab_api_reference.md（確認可用參數）
+2. GDD 角色設計已 [CONFIRMED] → 可以撰寫 PixelLab Prompt
+3. Prompt 撰寫完成 → 在 docs/pixellab_specs.md 標記 [PIXELLAB_READY]
+4. 通知用戶確認（不由 AI 主動生成）
+5. 用戶確認後 Developer 執行生成
+6. 生成結果確認後 → 更新 pixellab_api_reference.md 生成結果欄位
+7. 外觀不符 → 修改 Prompt 並更新 [PIXELLAB_READY] 狀態
 ```
 
 ### Prompt 撰寫規範
