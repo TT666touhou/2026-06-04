@@ -59,6 +59,11 @@ func _apply_camera_zone() -> void:
 ## Detection: the scene tree root's first child is this RoomBase node,
 ## meaning no GameWorld/AutoLoad infrastructure is present.
 ## In normal game flow (via GameWorld), this function does nothing.
+##
+## F6 spawn 優先順序：
+##   1. 找到房間內的 Checkpoint → 直接在 SpawnMarker 旁生成（無 Walk-in）
+##   2. 找到 Portal 的 SpawnMarker → Walk-in 進場動畫
+##   3. Fallback Vector2(80, -80) → Walk-in 從右方進入
 func _maybe_spawn_debug_player() -> void:
 	## Check: is this RoomBase the effective root scene?
 	## In standalone F6 mode, get_tree().current_scene == self
@@ -98,35 +103,96 @@ func _maybe_spawn_debug_player() -> void:
 	if player.has_method("apply_player_color"):
 		player.apply_player_color(0)
 
-	## Determine spawn position: use left portal's SpawnMarker if available,
-	## otherwise fall back to a sensible default above floor level
-	var spawn_pos := _get_debug_spawn_pos()
+	## 取得 spawn 資訊（Dictionary: pos, mode, direction）
+	var spawn_info := _get_debug_spawn_info()
 	add_child(player)
-	player.global_position = spawn_pos
+
+	if spawn_info["mode"] == "checkpoint":
+		## Checkpoint spawn：直接出現在 SpawnMarker 旁（無 Walk-in）
+		player.global_position = spawn_info["pos"]
+		## 設定朝向為進場方向的相反（玩家面朝房間內部）
+		var dir: Vector2 = spawn_info["direction"]
+		if player.get("_facing") != null and dir.x != 0.0:
+			player._facing = sign(dir.x)
+		print("[RoomBase] Checkpoint spawn at: %s" % str(spawn_info["pos"]))
+	else:
+		## Walk-in spawn：計算邊界外起始位置，然後 Walk-in
+		var dir: Vector2 = spawn_info["direction"]
+		var target_pos: Vector2 = spawn_info["pos"]
+		var walk_distance: float = 64.0
+		var walk_duration: float = 0.5
+		## 起始位置 = 目標位置 - 方向 * walk_distance（在邊界外）
+		player.global_position = target_pos - dir * walk_distance
+		if player.has_method("start_room_entry"):
+			player.start_room_entry(dir, walk_distance, walk_duration)
+		print("[RoomBase] Walk-in spawn, direction=%s, from=%s to=%s" % [
+			str(dir), str(player.global_position), str(target_pos)])
 
 	## Add a simple Camera2D for the standalone session
 	_add_debug_camera(player)
 
-	print("[RoomBase] Debug player spawned at: %s" % str(spawn_pos))
+## 回傳 F6 spawn 的完整資訊 Dictionary: {pos, mode, direction}
+## mode: "checkpoint" | "portal" | "fallback"
+func _get_debug_spawn_info() -> Dictionary:
+	## 優先 1：找房間內的 Checkpoint（group: Checkpoints）
+	for child: Node in get_children():
+		## Checkpoint 可能直接是 child 或在容器中
+		if child.is_in_group("Checkpoints"):
+			var cp_pos: Vector2 = child.global_position
+			var cp_dir: Vector2 = Vector2.RIGHT
+			if child.has_method("get_spawn_position"):
+				cp_pos = child.get_spawn_position()
+			if child.has_method("get_entry_vector"):
+				cp_dir = child.get_entry_vector()
+			return {"pos": cp_pos, "mode": "checkpoint", "direction": cp_dir}
+		## 也搜索子節點容器（如 CheckpointContainer）
+		for grandchild: Node in child.get_children():
+			if grandchild.is_in_group("Checkpoints"):
+				var cp_pos: Vector2 = grandchild.global_position
+				var cp_dir: Vector2 = Vector2.RIGHT
+				if grandchild.has_method("get_spawn_position"):
+					cp_pos = grandchild.get_spawn_position()
+				if grandchild.has_method("get_entry_vector"):
+					cp_dir = grandchild.get_entry_vector()
+				return {"pos": cp_pos, "mode": "checkpoint", "direction": cp_dir}
 
-## Find a good spawn position: prefers a portal SpawnMarker, falls back to
-## a hardcoded offset inside the room bounds.
-func _get_debug_spawn_pos() -> Vector2:
-	## Try to find any SpawnMarker inside a RoomPortal
-	for child in get_children():
+	## 優先 2：找 Portal 的 SpawnMarker
+	for child: Node in get_children():
 		if child.get_class() == "Node2D" and child.name == "Portals":
-			for portal in child.get_children():
-				var marker := portal.get_node_or_null("SpawnMarker") as Marker2D
+			for portal: Node in child.get_children():
+				var marker: Marker2D = portal.get_node_or_null("SpawnMarker") as Marker2D
 				if marker:
-					## Offset slightly inward so player isn't inside portal hitbox
-					return marker.global_position + Vector2(60, 0)
-		## Also handle portals directly under root (not in Portals container)
-		var marker := child.get_node_or_null("SpawnMarker") as Marker2D
+					## Walk-in 方向：從 SpawnMarker 位置判斷（靠左側→從右方進入）
+					var direction := _guess_portal_entry_direction(marker.global_position)
+					return {"pos": marker.global_position, "mode": "portal", "direction": direction}
+		## 也搜索直接在 root 下的 Portal SpawnMarker
+		var marker: Marker2D = child.get_node_or_null("SpawnMarker") as Marker2D
 		if marker:
-			return marker.global_position + Vector2(60, 0)
+			var direction := _guess_portal_entry_direction(marker.global_position)
+			return {"pos": marker.global_position, "mode": "portal", "direction": direction}
 
-	## Fall back: sensible position near the bottom-left of typical room layout
-	return Vector2(80, -80)
+	## Fallback：預設位置右側進入
+	return {"pos": Vector2(80, -80), "mode": "fallback", "direction": Vector2.RIGHT}
+
+## 根據 SpawnMarker 的 X 位置猜測入場方向
+## 靠近左邊界 → 從右方（Vector2.RIGHT）進入
+## 靠近右邊界 → 從左方（Vector2.LEFT）進入
+func _guess_portal_entry_direction(marker_pos: Vector2) -> Vector2:
+	## 用 CameraZone 的邊界判斷（若有）
+	var cam_zone = get_node_or_null("CameraZone")
+	if cam_zone != null:
+		var shape_node := cam_zone.get_node_or_null("CollisionShape2D")
+		if shape_node != null and shape_node is CollisionShape2D:
+			var shape := (shape_node as CollisionShape2D).shape
+			if shape is RectangleShape2D:
+				var rect_center := cam_zone.global_position + (shape_node as CollisionShape2D).position
+				## marker 在中心左側 → 從右方進入（Walk-in 向右）
+				if marker_pos.x < rect_center.x:
+					return Vector2.RIGHT
+				else:
+					return Vector2.LEFT
+	## 無法判斷：預設從右方進入
+	return Vector2.RIGHT
 
 ## Add a simple Camera2D that follows the debug player.
 ## ⚠️ ERR-001 safety: camera added as child of player, not scene root.

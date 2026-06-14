@@ -1,0 +1,29 @@
+[gd_scene format=4 uid="uid://79ga1b8OIEi"]
+
+[ext_resource type="Script" uid="uid://13RkbxpifKD" path="res://scripts/level/checkpoint.gd" id="1_checkpoint"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
+radius = 40.0
+
+[node name="Checkpoint" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+monitorable = false
+script = ExtResource("1_checkpoint")
+entry_direction = "right"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_interact")
+
+[node name="SpawnMarker" type="Marker2D" parent="."]
+position = Vector2(24, -16)
+
+[node name="ActivationVFX" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -24)
+modulate = Color(0.4, 0.4, 0.4, 0.8)
+
+[node name="InteractHint" type="Label" parent="."]
+position = Vector2(-32, -56)
+text = "[F] Activate Checkpoint"
+visible = false
