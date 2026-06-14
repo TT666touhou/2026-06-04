@@ -24,6 +24,9 @@ check.log
 bug_fix*.log
 check*.log
 sensor_*.log
+# Temp underscore-prefixed scripts (single-use workflow tools, must be cleaned up after task)
+scripts/_*.ps1
+scripts/_*.md
 # QA 測試臨時文件
 scripts/qa_vfx_test*.gd
 scripts/qa_vfx_final.gd

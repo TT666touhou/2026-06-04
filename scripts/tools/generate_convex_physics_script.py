@@ -175,13 +175,15 @@ def parse_source0_tile_coords(tres_path):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def format_hull(hull_pts):
-    """將凸包頂點列表轉換為 GDScript PackedVector2Array 字面量"""
-    flat = []
+    """將凸包頂點列表轉換為 GDScript 4 正確的 PackedVector2Array 字面量
+    
+    GDScript 4 語法：PackedVector2Array([Vector2(x,y), Vector2(x,y), ...])
+    注意：不能用 PackedVector2Array(x, y, x, y, ...) 的 flat int 形式。
+    """
+    vec_parts = []
     for x, y in hull_pts:
-        # 格式化：去掉不必要小數點，保留精度
-        flat.append(f"{x:g}")
-        flat.append(f"{y:g}")
-    return f"PackedVector2Array({', '.join(flat)})"
+        vec_parts.append(f"Vector2({x:g}, {y:g})")
+    return f"PackedVector2Array([{', '.join(vec_parts)}])"
 
 
 def generate_gdscript(hull_map, output_path):
