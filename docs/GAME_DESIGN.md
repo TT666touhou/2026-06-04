@@ -909,7 +909,7 @@ RoomXxx (Node2D + RoomBase.gd)
 | 3. 玩家生成 | 載入 `scenes/player/player.tscn`，設 `player_prefix = "p1_"`，注入 `bullet_scene` |
 | 4. 顏色設定 | 呼叫 `apply_player_color(0)`（預設第1套顏色） |
 | 5. 生成位置 | 優先使用第一個 Portal 的 SpawnMarker（偏移 60px 向內），否則預設 (80, -80) |
-| 6. 相機注入 | 加入 Camera2D（zoom=3x，smoothing=5.0）作為 player 的子節點 |
+| 6. 相機注入 | 加入 Camera2D（zoom=**4x**，smoothing=5.0）作為 player 的子節點；縮放與 F5 MultiplayerCamera.max_zoom 一致 |
 
 #### 不干擾正常流程 [CONFIRMED]
 
@@ -939,7 +939,7 @@ RoomXxx (Node2D + RoomBase.gd)
 | Portal 不工作 | F6 模式無 GameWorld，Portal 觸發後無法換房間（正常） |
 | 單人限制 | 只生成一個 debug player（p1_） |
 | 無血量 UI | HUD 需要 GameWorld 信號，在 standalone 模式下可能顯示異常（可接受） |
-| 縮放固定 3x | 與遊戲正式顯示縮放一致 |
+| 縮放固定 4x | 與 MultiplayerCamera.max_zoom=4.0 一致（GDD §2.1：Camera2D zoom=4，等效 32px/tile 顯示）|
 
 ---
 
