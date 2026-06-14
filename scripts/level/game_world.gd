@@ -3,7 +3,7 @@ extends Node
 ## 負責：
 ##   1. 偵測啟動參數（--local-server / --local-client）
 ##   2. 自動建立 ENet 連線（本地多人）
-##   3. 玩家生成與顏色分配
+##   3. 玩家生成（顏色待 GDD §6.1 確認後實作）
 ##   4. 連接 NetworkManager 事件
 
 const PORT := 8910
@@ -26,7 +26,7 @@ const BULLET_SCENE := preload("res://scenes/player/player_bullet.tscn")
 
 var _local_player_index: int = 1  ## 本機玩家編號（1=Server, 2-4=Client）
 
-## Rogue-lite 房間生成器
+## 房間序列管理器
 @onready var _dungeon: Node = $DungeonGenerator
 
 ## 目前房間容器（存放當前已載入的房間場景）
@@ -107,7 +107,7 @@ func _start_solo() -> void:
 		player.died.connect(_on_player_died.bind(player))
 	print("[GameWorld] 單機玩家節點建立完成（隱藏中，等待房間載入）")
 
-	## 啟動 Rogue-lite 生成（房間載入後會呼叫 _reset_player_positions 顯示玩家）
+	## 啟動房間序列（對應 DungeonGenerator 固定序列模式）
 	if _dungeon:
 		_dungeon.generate_run()
 		var first_room: String = _dungeon.advance_room()
@@ -129,17 +129,17 @@ func _start_solo() -> void:
 func _on_peer_connected_server(peer_id: int) -> void:
 	if not multiplayer.is_server():
 		return
-	## 計算 skin_index（根據目前玩家數）
+	## 計算玩家新生位置偏移（依已連線玩家數分散）
 	var nm := get_node_or_null("/root/NetworkManager")
-	var skin_idx := 0
+	var player_idx := 0
 	if nm and nm.get("connected_players") != null:
-		skin_idx = nm.connected_players.size() - 1
+		player_idx = nm.connected_players.size() - 1
 	
-	print("[GameWorld] 新玩家連線：peer_id=%d, skin=%d" % [peer_id, skin_idx])
-	_spawn_player.rpc(peer_id, skin_idx)
+	print("[GameWorld] 新玩家連線：peer_id=%d, idx=%d" % [peer_id, player_idx])
+	_spawn_player.rpc(peer_id, player_idx)
 
 @rpc("authority", "call_local", "reliable")
-func _spawn_player(peer_id: int, skin_index: int) -> void:
+func _spawn_player(peer_id: int, player_idx: int) -> void:
 	## 此函式在所有端執行（call_local），Server 和 Client 各自建立玩家節點
 	var player := PLAYER_SCENE.instantiate()
 	player.name = str(peer_id)  ## 關鍵：name 必須是 peer_id 字串
@@ -149,14 +149,14 @@ func _spawn_player(peer_id: int, skin_index: int) -> void:
 		player.player_prefix = INPUT_PREFIXES[_local_player_index] if _local_player_index < INPUT_PREFIXES.size() else ""
 	
 	_players_root.add_child(player)
-	player.global_position = Vector2(80 + skin_index * 40, -50)  ## 分散生成位置
-	player.apply_player_color(skin_index)
+	player.global_position = Vector2(80 + player_idx * 40, -50)  ## 分散生成位置
+	## 玩家顏色待 GDD §6.1 確認後實作，底不套用
 	## 連接死亡信號
 	if player.has_signal("died"):
 		player.died.connect(_on_player_died.bind(player))
 	
-	print("[GameWorld] 玩家節點已建立：name=%s, skin=%d, auth=%s" % [
-		player.name, skin_index, str(player.is_multiplayer_authority())
+	print("[GameWorld] 玩家節點已建立：name=%s, idx=%d, auth=%s" % [
+		player.name, player_idx, str(player.is_multiplayer_authority())
 	])
 
 # ═══════════════════════════════════════════════════════════════

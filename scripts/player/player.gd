@@ -188,7 +188,7 @@ var _cached_floor_ramp: GradientTexture1D
 var _floor_color_timer: float = 0.0
 var _atlas_cache: Dictionary = {}
 
-var _skin_index: int = 0
+
 
 # ── 戰鬥狀態 ────────────────────────────────────────────────
 ## Combo 狀態機：0=IDLE, 1=第一擊, 2=第二擊, 3=第三擊
@@ -261,22 +261,14 @@ func _ready() -> void:
 
 ## 設定玩家皮膚 tile（基礎外觀切換）
 func set_skin(index: int) -> void:
-	_skin_index = index
 	if appearance:
 		appearance.set_cell(Vector2i(0, 0), 0, Vector2i(28 + index, 0))
 
-## 設定玩家顏色（依 VfxMix 34色調色盤區分玩家）
-## skin_index: 0=暖橙, 1=冷藍, 2=綠, 3=紫
-func apply_player_color(skin_index: int) -> void:
-	const PLAYER_COLORS: Array[Color] = [
-		Color("#FF8C42"),  # P1 暖橙
-		Color("#4CC9F0"),  # P2 冷藍
-		Color("#5DA16E"),  # P3 綠
-		Color("#9D5789"),  # P4 紫
-	]
-	var col := PLAYER_COLORS[skin_index % PLAYER_COLORS.size()]
-	if _visual_pivot:
-		_visual_pivot.modulate = col
+## 玩家顏色（待確認 — 顏色方案尚未決定，暫不套用）
+## ⚠️ 此函式保留接口以防外部呼叫，但不實際改變外觀。
+## 待 GDD §6.1 玩家顏色確認後再實作。
+func apply_player_color(_skin_index: int) -> void:
+	pass  ## [TODO §6.1] 顏色未決定，不染色
 
 
 # ═══════════════════════════════════════════════════════════════

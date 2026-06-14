@@ -1,29 +1,21 @@
 extends Node
 ## Dungeon Generator — 房間序列管理器
-## [GDD §7.1 決策 2026-06-14 v2]
 ## 設計決策：地圖不是程序化生成的，而是由設計師預先決定的手工房間。
 ## DungeonGenerator 的職責是管理「固定序列」的房間推進，而非隨機生成。
 ##
-## 舊設計（已廢棄）：
-##   - 隨機普通戰鬥房 × N → 精英房（30%機率）→ 休息房 → Boss 房
-##   - 依賴 min_combat_rooms / max_combat_rooms / elite_room_chance 等隨機化參數
-##
-## 新設計（當前）：
+## 目前設計：
 ##   - 固定序列：area_0_room_01 → area_0_room_02 → (未來 Boss 房)
 ##   - 第一間房（ENTRY_ROOM）固定，不隨機
-##   - Portal 系統直接決定下一房間（target_room_path），無需 DungeonGenerator 隨機化
+##   - Portal 系統直接決定下一房間（target_room_path），無須 DungeonGenerator 隨機化
 ##   - DungeonGenerator 僅作為「進度追蹤器」使用
 
 class_name DungeonGenerator
 
 ## ─────────────────────────────────────────────
 ## 房間類型定義
-## ─────────────────────────────────────────────
 enum RoomType {
-	COMBAT,   ## 普通戰鬥房
-	ELITE,    ## 精英房（強敵 + 更好獎勵）
-	BOSS,     ## Boss 房（最後一間，唯一）
-	REST,     ## 休息房（回血 + 補給）
+	STANDARD, ## 一般房間
+	BOSS,     ## Boss 房
 }
 
 ## 房間定義結構體
@@ -40,14 +32,8 @@ class RoomDef:
 ## ─────────────────────────────────────────────
 ## 房間場景定義（固定序列，設計師決定）
 ## ─────────────────────────────────────────────
-## [GDD §10 決策 2026-06-14]
-## - 正式局為 Area_0 以上的手動搭建房間，地圖由設計師預先決定
-## - 非程序化生成：不使用隨機化種子、不隨機挑選房間
-## - Portal 系統（target_room_path）已直接硬連結各房間的出口/入口
-## - DungeonGenerator 保留作為「進度追蹤器 + 難度標記」，不負責隨機選房
 
 ## 進入點：第一間房固定為 area_0_room_01
-## [GDD §10 決策 2026-06-14]
 const ENTRY_ROOM: String = "res://scenes/levels/area_0/area_0_room_01.tscn"
 
 ## Area_0 完整的手工房間序列（由設計師決定，依此順序推進）
@@ -57,13 +43,8 @@ const AREA_0_ROOMS: Array[String] = [
 	## 未來新增房間在此追加（保持手工決定的順序）
 ]
 
-## Boss 房（Area_0 結尾，將來實作方案：area_0_boss.tscn）
-## [Phase-7.0] boss_room.tscn 已刪除（架構不符規範）→ 目前 fallback 到 ENTRY_ROOM
+## Boss 房
 const BOSS_ROOM: String = "res://scenes/levels/area_0/area_0_boss.tscn"
-
-## 休息房（Area_0 程序中無休息房設計，Area_1+ 將使用 area_X_rest_XX.tscn 格式）
-## [Phase-7.0] rest_room.tscn 已刪除（架構不符規範）
-const REST_ROOM: String = "res://scenes/levels/area_0/area_0_rest_01.tscn"
 
 ## ─────────────────────────────────────────────
 ## 進度追蹤狀態
@@ -84,7 +65,6 @@ func _ready() -> void:
 	print("[DungeonGenerator] 初始化完成（固定序列模式，非程序化生成）")
 
 ## 建立固定的 Run 房間序列（非隨機，依設計師決定的 AREA_0_ROOMS 順序）
-## [GDD §10 決策 2026-06-14]：地圖由設計師預先決定
 func generate_run() -> Array[RoomDef]:
 	current_run.clear()
 	current_room_index = -1
@@ -92,10 +72,8 @@ func generate_run() -> Array[RoomDef]:
 	## 將 AREA_0_ROOMS 依序加入（固定序列，不隨機）
 	for i: int in range(AREA_0_ROOMS.size()):
 		var path: String = AREA_0_ROOMS[i]
-		## 第一間是 ENTRY_ROOM（COMBAT），其餘依位置推斷類型
-		var room_type := RoomType.COMBAT
 		var difficulty := i  ## 越後面越難
-		current_run.append(RoomDef.new(room_type, path, difficulty))
+		current_run.append(RoomDef.new(RoomType.STANDARD, path, difficulty))
 		print("[DungeonGenerator] 房間 ", i + 1, ": ", path)
 
 	## Boss 房固定在最後

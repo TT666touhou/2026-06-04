@@ -4,7 +4,7 @@ const PORT: int = 8910
 const MAX_CLIENTS: int = 4
 
 var peer: ENetMultiplayerPeer
-var connected_players: Dictionary = {} # format: { peer_id: { "skin_index": 0 } }
+var connected_players: Dictionary = {} # format: { peer_id: {} }
 
 signal player_connected(peer_id, player_info)
 signal player_disconnected(peer_id)
@@ -26,7 +26,7 @@ func host_game():
 	multiplayer.multiplayer_peer = peer
 	
 	# Register host locally
-	connected_players[multiplayer.get_unique_id()] = {"skin_index": 0}
+	connected_players[multiplayer.get_unique_id()] = {}
 	player_connected.emit(multiplayer.get_unique_id(), connected_players[multiplayer.get_unique_id()])
 	return OK
 
@@ -52,7 +52,7 @@ func _on_player_disconnected(id):
 func _on_connected_ok():
 	# Connected to server successfully. Register self to all peers.
 	var _peer_id = multiplayer.get_unique_id()
-	rpc("register_player", {"skin_index": connected_players.size()})
+	rpc("register_player", {})
 
 func _on_connected_fail():
 	multiplayer.multiplayer_peer = null
