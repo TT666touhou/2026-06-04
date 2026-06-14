@@ -179,13 +179,14 @@ func _get_debug_spawn_info() -> Dictionary:
 ## 靠近右邊界 → 從左方（Vector2.LEFT）進入
 func _guess_portal_entry_direction(marker_pos: Vector2) -> Vector2:
 	## 用 CameraZone 的邊界判斷（若有）
-	var cam_zone = get_node_or_null("CameraZone")
+	## ERR-030 fix: 顯式型別避免 Variant 推斷失敗
+	var cam_zone: Node2D = get_node_or_null("CameraZone") as Node2D
 	if cam_zone != null:
-		var shape_node := cam_zone.get_node_or_null("CollisionShape2D")
-		if shape_node != null and shape_node is CollisionShape2D:
-			var shape := (shape_node as CollisionShape2D).shape
+		var shape_node: CollisionShape2D = cam_zone.get_node_or_null("CollisionShape2D") as CollisionShape2D
+		if shape_node != null:
+			var shape := shape_node.shape
 			if shape is RectangleShape2D:
-				var rect_center := cam_zone.global_position + (shape_node as CollisionShape2D).position
+				var rect_center: Vector2 = cam_zone.global_position + shape_node.position
 				## marker 在中心左側 → 從右方進入（Walk-in 向右）
 				if marker_pos.x < rect_center.x:
 					return Vector2.RIGHT
