@@ -57,11 +57,13 @@ const AREA_0_ROOMS: Array[String] = [
 	## 未來新增房間在此追加（保持手工決定的順序）
 ]
 
-## Boss 房（Area_0 結尾，尚未實作時 fallback 到 ENTRY_ROOM）
-const BOSS_ROOM: String = "res://scenes/level/boss_room.tscn"
+## Boss 房（Area_0 結尾，將來實作方案：area_0_boss.tscn）
+## [Phase-7.0] boss_room.tscn 已刪除（架構不符規範）→ 目前 fallback 到 ENTRY_ROOM
+const BOSS_ROOM: String = "res://scenes/levels/area_0/area_0_boss.tscn"
 
-## 休息房（可選，Area_0 無休息房設計，保留接口供未來 Area_1+）
-const REST_ROOM: String = "res://scenes/level/rest_room.tscn"
+## 休息房（Area_0 程序中無休息房設計，Area_1+ 將使用 area_X_rest_XX.tscn 格式）
+## [Phase-7.0] rest_room.tscn 已刪除（架構不符規範）
+const REST_ROOM: String = "res://scenes/levels/area_0/area_0_rest_01.tscn"
 
 ## ─────────────────────────────────────────────
 ## 進度追蹤狀態

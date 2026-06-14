@@ -5,10 +5,13 @@
 [ext_resource type="PackedScene" uid="uid://viw24qaqo3es" path="res://scenes/modular_blocks/modular_block_1.tscn" id="3_j6w7d"]
 [ext_resource type="PackedScene" uid="uid://bfurijrxfce3v" path="res://scenes/modular_blocks/modular_block_3.tscn" id="4_x4b8f"]
 [ext_resource type="PackedScene" uid="uid://dpbw35kh7nlfa" path="res://scenes/modular_blocks/modular_block_4.tscn" id="5_tmr53"]
-[ext_resource type="Script" uid="uid://clr7hk7crisws" path="res://scripts/camera/scene_camera.gd" id="7_cam"]
+[ext_resource type="Script" uid="uid://6fqhp24b5vdq" path="res://scripts/camera/camera_zone.gd" id="7_camzone"]
 [ext_resource type="PackedScene" uid="uid://qp735yrnv0g0" path="res://scenes/enemy/Enemy1.tscn" id="8_ahbqi"]
 [ext_resource type="PackedScene" uid="uid://ckwaiokq8idid" path="res://scenes/enemy/Enemy2.tscn" id="9_4asn1"]
 [ext_resource type="PackedScene" uid="uid://dln827yoptipy" path="res://scenes/enemy/Enemy3.tscn" id="10_dw7u0"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_camzone"]
+size = Vector2(408, 232)
 
 [node name="TestLevel" type="Node2D" unique_id=162396267]
 
@@ -34,27 +37,14 @@ position = Vector2(40, -56)
 [node name="ModularBlock3" parent="." unique_id=1458859782 instance=ExtResource("5_tmr53")]
 position = Vector2(-64, -56)
 
-[node name="CamLimitBottom" type="Marker2D" parent="." unique_id=29906935]
-position = Vector2(0, 32)
+[node name="CameraZone" type="Area2D" parent="." unique_id=29906939]
+script = ExtResource("7_camzone")
+zone_id = "test_level_main"
 
-[node name="CamLimitTop" type="Marker2D" parent="." unique_id=29906936]
-position = Vector2(0, -200)
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CameraZone" unique_id=29906940]
+position = Vector2(4, -84)
+shape = SubResource("RectangleShape2D_camzone")
 
-[node name="CamLimitLeft" type="Marker2D" parent="." unique_id=29906937]
-position = Vector2(-200, 0)
-
-[node name="CamLimitRight" type="Marker2D" parent="." unique_id=29906938]
-position = Vector2(208, 0)
-
-[node name="SceneCamera" type="Camera2D" parent="." unique_id=29906939]
-script = ExtResource("7_cam")
-player_path = NodePath("../Player")
-cam_zoom = 3
-vertical_offset = 0.0
-limit_top_path = NodePath("../CamLimitTop")
-limit_bottom_path = NodePath("../CamLimitBottom")
-limit_left_path = NodePath("../CamLimitLeft")
-limit_right_path = NodePath("../CamLimitRight")
 
 [node name="CeilLayer" type="AnimatableBody2D" parent="." unique_id=1783418551]
 position = Vector2(0, -192)
