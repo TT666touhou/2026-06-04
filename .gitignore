@@ -29,3 +29,4 @@ scripts/qa_vfx_test*.gd
 scripts/qa_vfx_final.gd
 docs/qa_*.txt
 docs/final_check.log
+check_output.txt
