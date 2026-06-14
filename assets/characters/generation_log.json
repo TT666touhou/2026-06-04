@@ -1,0 +1,48 @@
+{
+    "total_consumed":  3,
+    "timestamp":  "2026-06-15T03:05:17",
+    "total_generated":  3,
+    "remaining_after":  12.9,
+    "generated":  [
+                      {
+                          "id":  "CHAR-001",
+                          "name":  "Player Base",
+                          "size":  {
+                                       "height":  32,
+                                       "width":  32
+                                   },
+                          "usage":  {
+                                        "generations":  1
+                                    },
+                          "status":  "GENERATED",
+                          "file":  "assets/characters/player_base_20260615_030333.png"
+                      },
+                      {
+                          "id":  "CHAR-002",
+                          "name":  "Enemy1 Skeleton Patrol",
+                          "size":  {
+                                       "height":  32,
+                                       "width":  32
+                                   },
+                          "usage":  {
+                                        "generations":  1
+                                    },
+                          "status":  "GENERATED",
+                          "file":  "assets/characters/enemy1_patrol_20260615_030409.png"
+                      },
+                      {
+                          "id":  "CHAR-003",
+                          "name":  "Enemy3 Ranged Archer",
+                          "size":  {
+                                       "height":  32,
+                                       "width":  32
+                                   },
+                          "usage":  {
+                                        "generations":  1
+                                    },
+                          "status":  "GENERATED",
+                          "file":  "assets/characters/enemy3_ranged_20260615_030448.png"
+                      }
+                  ],
+    "notes":  "P1-P3 priority complete. P4/P5 deferred."
+}

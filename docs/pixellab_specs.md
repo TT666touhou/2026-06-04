@@ -13,8 +13,8 @@
 | API Token | `956460ee-978e-4d60-999a-f4b0f567bb48` |
 | 訂閱方案 | Trial |
 | 初始配額 | 40 次 |
-| 已使用 | 0 次（截至 2026-06-15）|
-| 剩餘 | ~14.9 次（上次查詢 2026-06-15）|
+| 已使用 | 3 次（CHAR-001/002/003，2026-06-15）|
+| 剩餘 | ~12.9 次（上次查詢 2026-06-15 03:05）|
 | **警戒線** | **< 3 次時 → 立即通知 Designer** |
 
 > [!CAUTION]
@@ -43,7 +43,7 @@
 
 ### CHAR-001：Player Base（玩家基底）
 - **GDD 對應**：§6.1 玩家外觀
-- **狀態**：`[PIXELLAB_READY]`
+- **狀態**：`[GENERATED]` ✅ 2026-06-15 03:03
 - **優先度**：🔴 P1（最高）
 - **圖片尺寸**：32×32 px
 - **Endpoint**：`/create-image-pixflux`
@@ -69,7 +69,7 @@ retro game sprite, dark color palette
 
 ### CHAR-002：Enemy1 - 地面巡邏骷髏（Ground Patrol Skeleton）
 - **GDD 對應**：§4.3 enemy1.gd，§3.2 E-01
-- **狀態**：`[PIXELLAB_READY]`
+- **狀態**：`[GENERATED]` ✅ 2026-06-15 03:04
 - **優先度**：🔴 P2
 - **圖片尺寸**：32×32 px
 - **Endpoint**：`/create-image-pixflux`
@@ -94,7 +94,7 @@ simple clean design for game enemy
 
 ### CHAR-003：Enemy3 - 遠程射手（Ranged Archer）
 - **GDD 對應**：§4.3 enemy3.gd，射擊 bullet_enemy3.tscn
-- **狀態**：`[PIXELLAB_READY]`
+- **狀態**：`[GENERATED]` ✅ 2026-06-15 03:04
 - **優先度**：🔴 P3
 - **圖片尺寸**：32×32 px
 - **Endpoint**：`/create-image-pixflux`
