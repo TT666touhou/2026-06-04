@@ -1,29 +1,36 @@
-[gd_scene format=4 uid="uid://79ga1b8OIEi"]
+[gd_scene format=3 uid="uid://rsrm67hsrrx4"]
 
-[ext_resource type="Script" uid="uid://13RkbxpifKD" path="res://scripts/level/checkpoint.gd" id="1_checkpoint"]
+[ext_resource type="Script" uid="uid://5at6xa2ugojp" path="res://scripts/level/checkpoint.gd" id="1_checkpoint"]
+[ext_resource type="TileSet" uid="uid://do5f6wlguh7b6" path="res://assets/tilesets/dungeonmode/dungeon_world_tileset.tres" id="2_1b3wg"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
 radius = 40.0
 
-[node name="Checkpoint" type="Area2D"]
+[node name="Checkpoint" type="Area2D" unique_id=2141048019]
 collision_layer = 0
-collision_mask = 1
-monitoring = true
 monitorable = false
 script = ExtResource("1_checkpoint")
-entry_direction = "right"
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1991463533]
 shape = SubResource("CircleShape2D_interact")
 
-[node name="SpawnMarker" type="Marker2D" parent="."]
+[node name="SpawnMarker" type="Marker2D" parent="." unique_id=1479987548]
 position = Vector2(24, -16)
 
-[node name="ActivationVFX" type="AnimatedSprite2D" parent="."]
-position = Vector2(0, -24)
+[node name="ActivationVFX" type="AnimatedSprite2D" parent="." unique_id=254677563]
 modulate = Color(0.4, 0.4, 0.4, 0.8)
+position = Vector2(0, -24)
 
-[node name="InteractHint" type="Label" parent="."]
-position = Vector2(-32, -56)
-text = "[F] Activate Checkpoint"
+[node name="InteractHint" type="Label" parent="." unique_id=191851215]
 visible = false
+offset_left = -32.0
+offset_top = -56.0
+offset_right = -32.0
+offset_bottom = -56.0
+text = "[F] Activate Checkpoint"
+
+[node name="Appearance" type="TileMapLayer" parent="." unique_id=1468293490]
+texture_filter = 1
+tile_map_data = PackedByteArray()
+tile_set = ExtResource("2_1b3wg")
+rendering_quadrant_size = 8
