@@ -1,7 +1,7 @@
 # PixelLab API 全功能參考表
 
 > **維護者**：Designer ROLE
-> **Last Updated: 2026-06-15** (v2 pixen schema 確認，第二批實驗完成)
+> **Last Updated: 2026-06-15** (v3 第三批實驗完成：取消配色限制，亮紅髮盤，timeout 機制完善)
 > **操作規則**：所有 API 呼叫由用戶明確指示後才執行。AI 不主動生成。
 > **禁止瀏覽器（§O-NOBROWSER）**：所有 API 查詢（餘額、角色列表等）必須使用 PowerShell `Invoke-RestMethod`，嚴格禁止 `browser_subagent`。
 > **參考**：workflow.md §O | GDD § 3.2 角色組成架構
@@ -244,6 +244,9 @@
 | 2026-06-15 | create-image-pixen | **v2** 第二批實驗：16x16 標準原始提示詞 | ✅ `v2_16x16.png` | 1 |
 | 2026-06-15 | create-image-pixen | **v2** 第二批實驗：32x32 標準原始提示詞 | ✅ `v2_32x32.png` | 1 |
 | 2026-06-15 | create-image-pixen | **v2** 第二批實驗：32x64 Dungeon Slasher 風格（5-6頭身動漫比例） | ✅ `v2_32x64_DS.png` | 1 |
+| 2026-06-15 | create-image-pixen | **v3** 第三批：16x16 無配色限制，亮紅髮，timeout 機制 | ✅ `v3_16x16.png` | 1 |
+| 2026-06-15 | create-image-pixen | **v3** 第三批：32x32 無配色限制，亮紅髮，timeout 機制 | ✅ `v3_32x32.png` | 1 |
+| 2026-06-15 | create-image-pixen | **v3** 第三批：32x64 DS風格，無配色限制，亮紅髮，selective outline | ✅ `v3_32x64_DS.png` | 1 |
 
 ---
 
