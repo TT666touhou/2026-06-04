@@ -1,7 +1,7 @@
 # PixelLab API 全功能參考表
 
 > **維護者**：Designer ROLE
-> **Last Updated: 2026-06-15** (v3 第三批實驗完成：取消配色限制，亮紅髮盤，timeout 機制完善)
+> **Last Updated: 2026-06-16** (CHAR-007 白髮吸血鬼女孩 3色限制 × 3尺寸生成成功；pixen 端點；34色調色盤分析；3色量化後製；18.8s/27.1s/32.4s；費用 3.0 次)
 > **操作規則**：所有 API 呼叫由用戶明確指示後才執行。AI 不主動生成。
 > **禁止瀏覽器（§O-NOBROWSER）**：所有 API 查詢（餘額、角色列表等）必須使用 PowerShell `Invoke-RestMethod`，嚴格禁止 `browser_subagent`。
 > **參考**：workflow.md §O | GDD § 3.2 角色組成架構
@@ -15,7 +15,7 @@
 | 帳戶類型 | **Tier 1: Pixel Apprentice** |
 | 方案類型 | `generations`（次數制）|
 | 總額度 | **2000 次 / 月** |
-| 剩餘次數 | **~1990 次**（2026-06-15 實驗後）|
+| 剩餘次數 | **~1670 次**（2026-06-16，V8 image-to-pixelart 4次後；共消耗 ~330次）|
 | Pro 功能 | 需升級 Pro 方案才可使用 |
 
 > ✅ 帳戶正常可用，剩餘額度充足。
@@ -25,14 +25,20 @@
 ## 一、圖片生成（Create Image）
 
 ### 1. create-image-pixflux（最快，同步返回）
-- **描述**：文字 → 像素圖，最快端點
+- **描述**：文字 → 像素藝術，最快端點
 - **尺寸支援**：32x32 ~ 400x400
 - **關鍵參數**：
   - `description`：角色/物件描述（英文效果最佳）
   - `image_size`：{width, height}
   - `no_background`：bool（透明背景）
   - `init_image`：base64 參考圖（可選）
-  - `color_palette`：陣列格式 `["#FF8C42", "#2B2D42"]`（強制配色）
+
+> ⚠️ **pixflux v2 已確認禁用（2026-06-15 V4 實驗）：**
+> - ❌ `color_palette`：extra_forbidden，HTTP 422（舊文件錯誤記錄為可用）
+> - ❌ `outline`：未確認是否接受（可能也是 extra_forbidden）
+> - ❌ `shading`：未確認是否接受
+> - ❌ `view` / `direction`：未確認是否接受
+> - **結論：pixflux 目前唯一確認可用的配色控制是在 `description` 文字描述**
 
 ### 2. create-image-pixen（精細控制）
 - **端點**：`POST https://api.pixellab.ai/v2/create-image-pixen`
@@ -48,8 +54,16 @@
   - `enhance_prompt`：bool（自動優化 Prompt，+0.05 次）
 
 > ⚠️ **v2 pixen 不支援 `color_palette`**（v1 限定功能）。配色需在 Prompt 文字描述中指定。
+> ⚠️ **v2 pixen 不支援 `shading`**（2026-06-15 確認，HTTP 422 extra_forbidden）。陰影層次改在 Prompt 文字描述。
+> ⚠️ **v2 pixen 不支援 `init_image`**（2026-06-15 確認，HTTP 422 extra_forbidden）。init_image 只有 pixflux/bitforge 支援。
 
 ### 3. create-image-bitforge（風格遷移）
+
+> ⚠️ **bitforge style_image 必須與輸出同尺寸（2026-06-15 確認）**
+>   - 輸出 40×52 → style_image 必須也是 40×52（height, width order: torch.Size([52, 40])）
+>   - style_image 格式必須是 `{"type":"base64", "base64": "<raw_b64_no_data_uri>", "format":"png"}`
+>   - **⚠️ 禁止在 base64 加 `data:image/png;base64,` 前綴**，否則 HTTP 500 Incorrect padding
+>   - 對小尺寸 pixel art 輸出效果極差（全噪訊），不推薦用於 ≤64px Sprite 生成
 - **尺寸支援**：最大 200x200
 - **新增參數**：`style_image`（風格參考圖 base64）
 
@@ -211,7 +225,7 @@
 | enhance-pixen-prompt（Prompt 優化）| 0.05 次 |
 | Pro 系列 | ⚠️ 需升級 Pro 方案 |
 
-**剩餘次數（2026-06-15）**：**~1990 次**（實驗批次生成後）
+**剩餘次數（2026-06-16）**：**~1699 次**（V6 完整實驗 ~20 次後）
 
 ---
 
@@ -247,6 +261,24 @@
 | 2026-06-15 | create-image-pixen | **v3** 第三批：16x16 無配色限制，亮紅髮，timeout 機制 | ✅ `v3_16x16.png` | 1 |
 | 2026-06-15 | create-image-pixen | **v3** 第三批：32x32 無配色限制，亮紅髮，timeout 機制 | ✅ `v3_32x32.png` | 1 |
 | 2026-06-15 | create-image-pixen | **v3** 第三批：32x64 DS風格，無配色限制，亮紅髮，selective outline | ✅ `v3_32x64_DS.png` | 1 |
+| 2026-06-15 | create-image-pixen | **CHAR-006 A-1** 白髮雙馬尾忍者，40x52 DS標準尺寸 | ✅ `char006_A1_pixen_40x52_*.png` | 1 |
+| 2026-06-15 | create-image-pixen | **CHAR-006 A-2** 白髮雙馬尾忍者，48x64 大尺寸（最佳結果） | ✅ `char006_A2_pixen_48x64_*.png` | 1 |
+| 2026-06-15 | create-image-bitforge | **CHAR-006 B-1** skin sprite 作 style_image | ❌ 全噪訊輸出，不可用 | 1 |
+| 2026-06-15 | create-image-bitforge | **CHAR-006 B-2** 插畫縮小40x52 作 style_image | ❌ 全噪訊輸出，不可用 | 1 |
+| 2026-06-15 | create-image-pixen | **CHAR-006 V4 A** seed=42/100/777，48×64，V4 最小化 Prompt（26詞） | ✅ 3張，清晰雙馬尾，無武器 | 3 |
+| 2026-06-15 | create-image-pixflux | **CHAR-006 V4 B** color_palette 鎖色 | ❌ extra_forbidden 422（color_palette 禁用！文件錯誤修正）| 0 |
+| 2026-06-15 | enhance-pixen-prompt | **CHAR-006 V5** gothic 描述優化 | ✅ 成功，key=`enhanced_prompt`（⚠️ 非 `description`） | 0.05 |
+| 2026-06-15 | create-image-pixen | **CHAR-006 V5 A** seed=42/100/777，48×64，enhance 輸出（含 bug，dict 字串作描述）| ✅ 3張，gothic 風格明顯改善 | 3 |
+| 2026-06-15 | create-image-pixflux | **CHAR-006 V5 B** pixflux + init_image（Lady sprite 48×64）| ✅ 成功！init_image 確認可用，gothic 風格 | 1 |
+| 2026-06-15 | create-image-pixen | **CHAR-006 V5b** seed=42/100/777，正確 enhanced_prompt（62詞）| ✅ **最佳結果**，完整 gothic 美學，雙馬尾+紅荷葉邊清晰 | 3 |
+| 2026-06-16 | enhance-character-v3-prompt | **CHAR-006 V6 A** illus resize→1.5k enhance | ✅ 成功（需加 image_size 欄位）| 0.1 |
+| 2026-06-16 | create-character-v3 | **CHAR-006 V6 A** illus reference 256×256 | ✅ east+south 下載，深紫洋装+酒紅荷葉邊 | ~5 |
+| 2026-06-16 | create-character-v3 | **CHAR-006 V6 B**（無 image_size）| ❌ 116×116（缺少 image_size 導致小圖！）| ~5 （浪費）|
+| 2026-06-16 | enhance-character-v3-prompt | **CHAR-006 V6 B2**（加 image_size）| ✅ enhance OK，97 詞擴充 | 0.1 |
+| 2026-06-16 | create-character-v3 | **CHAR-006 V6 B2** 直接生成+image_size 256×256 | ✅ east+south，像素藝術感最強結果 | ~9 |
+| 2026-06-16 | create-image-pixen | **CHAR-007 A1** 白髮吸血鬼女孩，16×16，3色限制（黑#363232/白#F2F9F8/緋紅#E55C5C），34色調色盤選色 | ✅ `vampire_girl_16x16.png`（347 bytes）+ 3色量化版 | 1.0 |
+| 2026-06-16 | create-image-pixen | **CHAR-007 A2** 白髮吸血鬼女孩，32×32，3色限制，同上調色盤 | ✅ `vampire_girl_32x32.png`（1229 bytes）+ 3色量化版 | 1.0 |
+| 2026-06-16 | create-image-pixen | **CHAR-007 A3** 白髮吸血鬼女孩，48×48，3色限制，同上調色盤 | ✅ `vampire_girl_48x48.png`（2551 bytes）+ 3色量化版 ← **最佳結果** | 1.0 |
 
 ---
 
