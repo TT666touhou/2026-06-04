@@ -33,3 +33,9 @@ scripts/qa_vfx_final.gd
 docs/qa_*.txt
 docs/final_check.log
 check_output.txt
+
+# ˜P Visual Reference: ‹æS™Òlš¤•Ğ (—Õ, •s commit)
+assets/characters/ds_reference/
+docs/reference/**/*.png
+docs/reference/**/*.jpg
+docs/reference/**/*.gif
