@@ -1,7 +1,7 @@
 # PixelLab API 全功能參考表
 
 > **維護者**：Designer ROLE
-> **Last Updated: 2026-06-15** (v2 pixen schema 確認)
+> **Last Updated: 2026-06-15** (v2 pixen schema 確認，第二批實驗完成)
 > **操作規則**：所有 API 呼叫由用戶明確指示後才執行。AI 不主動生成。
 > **禁止瀏覽器（§O-NOBROWSER）**：所有 API 查詢（餘額、角色列表等）必須使用 PowerShell `Invoke-RestMethod`，嚴格禁止 `browser_subagent`。
 > **參考**：workflow.md §O | GDD § 3.2 角色組成架構
@@ -241,6 +241,9 @@
 | 2026-06-15 | create-image-pixen | **2A** 16×16 MRMOTEXT 1-bit 簡式 | ✅ `2A_16x16_MR.png` | 1 |
 | 2026-06-15 | create-image-pixen | **2B** 32×32 MRMOTEXT 1-bit 簡式 | ✅ `2B_32x32_MR.png` | 1 |
 | 2026-06-15 | create-image-pixen | **2C** 32×48 MRMOTEXT × Dungeon Slasher | ✅ `2C_32x48_MR_DS.png` | 1 |
+| 2026-06-15 | create-image-pixen | **v2** 第二批實驗：16x16 標準原始提示詞 | ✅ `v2_16x16.png` | 1 |
+| 2026-06-15 | create-image-pixen | **v2** 第二批實驗：32x32 標準原始提示詞 | ✅ `v2_32x32.png` | 1 |
+| 2026-06-15 | create-image-pixen | **v2** 第二批實驗：32x64 Dungeon Slasher 風格（5-6頭身動漫比例） | ✅ `v2_32x64_DS.png` | 1 |
 
 ---
 

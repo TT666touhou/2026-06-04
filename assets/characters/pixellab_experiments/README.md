@@ -1,32 +1,34 @@
-# PixelLab Experiment Characters
-> Generated: 2026-06-15 | Designer Role | §O-REF Maintained
+# PixelLab Experiment Characters v2
+> Generated: 2026-06-15 v2 | Designer Role | §O-REF Maintained
 
-## Generated Files
+## 生成說明
 
-| File | Size | Style | Description |
-|------|------|-------|-------------|
-| `1A_16x16_RPG.png` | 16×16 | RPG Anime | 雙馬尾少女，復古 RPG 風格，最小尺寸 |
-| `1B_32x32_RPG.png` | 32×32 | RPG Anime | 雙馬尾少女，復古 RPG 風格，標準尺寸 |
-| `1C_32x48_DS.png` | 32×48 | Dungeon Slasher | 2.5頭身 chibi，Dungeon Slasher 比例 |
-| `2A_16x16_MR.png` | 16×16 | MRMOTEXT 1-bit | 積木簡式風格，最小尺寸 |
-| `2B_32x32_MR.png` | 32×32 | MRMOTEXT 1-bit | 積木簡式風格，標準尺寸 |
-| `2C_32x48_MR_DS.png` | 32×48 | MRMOTEXT × DS | 1-bit 積木感 + Dungeon Slasher chibi 比例 |
+以原始提示詞：
+> "32x32 pixel art, retro anime game sprite, a cute girl with red hair in twin tails, wearing a white blouse with oversized puffy white sleeves and intricate ruffled cuffs, a black ribbon tie, a high-waisted black gothic pleated skirt with silver buckles, Japanese RPG style, pixel perfect, flat shading, crisp edges"
 
-## Common Constraints Applied
-- VfxMix 34-color palette (described in prompt text, v2 pixen has no color_palette param)
-- `outline: "lineless"` (no border)
-- `view: "side"`, `direction: "south"`
-- `no_background: true`
-- API: `POST https://api.pixellab.ai/v2/create-image-pixen`
+為基礎，針對三種尺寸/風格進行變化，同時套用 VfxMix 34色配色表限制（透過 Prompt 描述，因 v2 pixen 不支援 `color_palette` 參數）。
 
-## Account Status
-- Plan: Tier 1: Pixel Apprentice (2000 generations/month)
-- Remaining after this batch: ~1990
+## 生成結果
 
-## Notes (v2 API Discovered Parameters)
-- `outline` enum: `"single color black outline"`, `"single color outline"`, `"selective outline"`, `"lineless"`
-- `detail` enum: `"low detail"`, `"medium detail"`, `"highly detailed"`
-- `view` enum: `"side"`, `"low top-down"`, `"high top-down"`
-- `direction` enum: `"north"`, `"north-east"`, `"east"`, `"south-east"`, `"south"`, `"south-west"`, `"west"`, `"north-west"`
-- `color_palette` is NOT supported in v2 pixen (v1 only)
-- Image size must be divisible by 4, min 16px, max 768px
+| 檔案 | 尺寸 | 輪廓 | 細節 | 說明 |
+|------|------|------|------|------|
+| `v2_16x16.png` | 16×16 | lineless | medium | 最小尺寸，簡化但保有識別度 |
+| `v2_32x32.png` | 32×32 | lineless | highly detailed | 標準尺寸，原始提示詞完整呈現 |
+| `v2_32x64_DS.png` | 32×64 | selective outline | highly detailed | Dungeon Slasher 風格，5-6頭身動漫比例 |
+
+## Dungeon Slasher 風格說明
+- 基於 dungeonslasher.wiki 截圖分析
+- **非 chibi**：5-6 頭身動漫比例（直立全身）
+- 高細節度：多層陰影，服裝細節豐富
+- 使用 `selective outline`（保留適度描邊）
+- 尺寸 32×64（寬高比 1:2）
+
+## 共同限制
+- API：`POST https://api.pixellab.ai/v2/create-image-pixen`
+- view: `"side"`, direction: `"south"`, no_background: `true`
+- 配色：VfxMix 34色（Prompt 文字描述方式限制）
+  - 紅髮：#E55C5C | 白袖：#F2F9F8 / #F1E9D4 | 黑裙：#363232
+  - 肌膚：#D49C73 | 扣件：#C2C2C2 | 陰影：#AB6E7C
+
+## 帳戶狀態（本批次後）
+- 剩餘：~1987 次（已消耗 3 次）
