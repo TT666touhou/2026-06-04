@@ -1,7 +1,7 @@
 # PixelLab API 全功能參考表
 
 > **維護者**：Designer ROLE
-> **Last Updated: 2026-06-15**
+> **Last Updated: 2026-06-15** (v2 pixen schema 確認)
 > **操作規則**：所有 API 呼叫由用戶明確指示後才執行。AI 不主動生成。
 > **禁止瀏覽器（§O-NOBROWSER）**：所有 API 查詢（餘額、角色列表等）必須使用 PowerShell `Invoke-RestMethod`，嚴格禁止 `browser_subagent`。
 > **參考**：workflow.md §O | GDD § 3.2 角色組成架構
@@ -12,12 +12,13 @@
 
 | 項目 | 狀態 |
 |---|---|
-| 帳戶類型 | Trial |
-| USD 餘額 | **$0.0 USD**（2026-06-15 測定） |
-| Trial 次數餘額 | **已耗盡** |
-| Pro 功能 | 需升級方案才可使用 |
+| 帳戶類型 | **Tier 1: Pixel Apprentice** |
+| 方案類型 | `generations`（次數制）|
+| 總額度 | **2000 次 / 月** |
+| 剩餘次數 | **~1990 次**（2026-06-15 實驗後）|
+| Pro 功能 | 需升級 Pro 方案才可使用 |
 
-> ⚠️ **無法執行任何生成**，請先充值。
+> ✅ 帳戶正常可用，剩餘額度充足。
 
 ---
 
@@ -34,12 +35,19 @@
   - `color_palette`：陣列格式 `["#FF8C42", "#2B2D42"]`（強制配色）
 
 ### 2. create-image-pixen（精細控制）
-- **尺寸支援**：32x32 ~ 512x512（需整除4）
-- **新增參數**：
-  - `outline_style`：`none` / `solid` / `glow`
-  - `detail_style`：`none` / `low` / `medium` / `high`
-  - `view`：`side` / `low top-down` / `high top-down`
-  - `direction`：`south` / `north` / `east` / `west`
+- **端點**：`POST https://api.pixellab.ai/v2/create-image-pixen`
+- **尺寸支援**：16x16 ~ 768px（寬高均須整除 4，面積 ≤ 512×512）
+- **必填參數**：`description`（string）、`image_size`（{width, height}）
+- **選填參數**：
+  - `outline`：`"single color black outline"` / `"single color outline"` / `"selective outline"` / `"lineless"`
+  - `detail`：`"low detail"` / `"medium detail"` / `"highly detailed"`（預設 `"highly detailed"`）
+  - `view`：`"side"` / `"low top-down"` / `"high top-down"`
+  - `direction`：`"north"` / `"north-east"` / `"east"` / `"south-east"` / `"south"` / `"south-west"` / `"west"` / `"north-west"`
+  - `no_background`：bool（透明背景）
+  - `seed`：int（固定隨機種子）
+  - `enhance_prompt`：bool（自動優化 Prompt，+0.05 次）
+
+> ⚠️ **v2 pixen 不支援 `color_palette`**（v1 限定功能）。配色需在 Prompt 文字描述中指定。
 
 ### 3. create-image-bitforge（風格遷移）
 - **尺寸支援**：最大 200x200
@@ -171,13 +179,15 @@
 
 ## 配色控制（color_palette 參數）
 
-幾乎所有 endpoint 都支援，格式：
+> ⚠️ **v2 pixen 不支援 `color_palette`**。配色只能在 prompt 文字中描述。
+
+支援 `color_palette` 的端點：pixflux、bitforge、rotate、animate（舊版）
 ```json
 ["#FF8C42", "#2B2D42", "#8D99AE", "#EF233C"]
 ```
 
-API 會強制只使用指定顏色，確保風格一致性。
-可搭配 GDD MRMOTEXT VfxMix 34色調色盤直接指定。
+- pixen 中需在 prompt 描述：`"using restricted color palette: near-white (#F2F9F8), tomato red (#E55C5C)..."`
+- VfxMix 34 色 HEX 值定義於 `scripts/utils/palette_applicator.gd`
 
 ### 本專案調色盤（GDD § 2.1）
 
@@ -191,16 +201,17 @@ API 會強制只使用指定顏色，確保風格一致性。
 
 ---
 
-## Trial 配額消耗
+## Tier 1 配額消耗
 
 | 動作 | 消耗 |
 |---|---|
-| 生成單張圖 | 1 次 |
+| pixen / pixflux 生成單張圖 | 1 次 |
 | 動畫（任何幀數）| 1 次 |
 | 旋轉 / Resize / 去背 / 骨架偵測 | 各 1 次 |
+| enhance-pixen-prompt（Prompt 優化）| 0.05 次 |
 | Pro 系列 | ⚠️ 需升級 Pro 方案 |
 
-**剩餘次數（2026-06-15）**：**$0.0 USD — 已耗盡，需充值**
+**剩餘次數（2026-06-15）**：**~1990 次**（實驗批次生成後）
 
 ---
 
@@ -222,6 +233,14 @@ API 會強制只使用指定顏色，確保風格一致性。
 | 日期 | 端點 | 描述 | 結果 | 消耗次數 |
 |---|---|---|---|---|
 | 2026-06-14 | create-image-pixflux | 初次測試生成 | ⚠️ 未確認（AI 未授權操作，記錄存疑） | -1 |
+| 2026-06-15 | create-image-pixen | API 參數探索測試（test body 32x32） | ✅ 成功，確認 v2 schema | 1 |
+| 2026-06-15 | enhance-pixen-prompt | Prompt 優化測試 | ✅ 成功 | 0.05 |
+| 2026-06-15 | create-image-pixen | **1A** 16×16 RPG 雙馬尾少女 | ✅ `1A_16x16_RPG.png` | 1 |
+| 2026-06-15 | create-image-pixen | **1B** 32×32 RPG 雙馬尾少女 | ✅ `1B_32x32_RPG.png` | 1 |
+| 2026-06-15 | create-image-pixen | **1C** 32×48 Dungeon Slasher chibi | ✅ `1C_32x48_DS.png` | 1 |
+| 2026-06-15 | create-image-pixen | **2A** 16×16 MRMOTEXT 1-bit 簡式 | ✅ `2A_16x16_MR.png` | 1 |
+| 2026-06-15 | create-image-pixen | **2B** 32×32 MRMOTEXT 1-bit 簡式 | ✅ `2B_32x32_MR.png` | 1 |
+| 2026-06-15 | create-image-pixen | **2C** 32×48 MRMOTEXT × Dungeon Slasher | ✅ `2C_32x48_MR_DS.png` | 1 |
 
 ---
 
