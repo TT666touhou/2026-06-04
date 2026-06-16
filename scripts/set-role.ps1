@@ -1,19 +1,19 @@
 ﻿# ==============================================================
-# scripts/set-role.ps1
-# 設定目前 Antigravity Session 的 Agent 角色
+# scripts/set-role.ps1 v2
+# Set the current Antigravity Session Agent role
 #
-# 用途：在每個 Antigravity 視窗啟動時執行，宣告此視窗的角色
-# 使用：.\scripts\set-role.ps1 [architect|developer|reviewer|qa]
+# Usage: .\scripts\set-role.ps1 [designer|architect|developer|reviewer|qa|sensor|none]
+# v2: Added DOC_INDEX.md mandatory reminder + must-read file list per role
 # ==============================================================
 
-# param() 必須是腳本的第一個可執行語句（#注解不算）
+# param() must be first executable statement
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("designer","architect","developer","reviewer","qa","none")]
+    [ValidateSet("designer","architect","developer","reviewer","qa","sensor","none")]
     [string]$Role
 )
 
-# 強制 UTF-8 輸出（修正 Shift-JIS / CP932 系統的中文亂碼問題）
+# Force UTF-8 output (fixes Shift-JIS / CP932 garbled text)
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
@@ -25,6 +25,7 @@ $RoleColors = @{
     "developer" = "Green"
     "reviewer"  = "Yellow"
     "qa"        = "Magenta"
+    "sensor"    = "Red"
     "none"      = "Gray"
 }
 
@@ -34,58 +35,127 @@ $RoleEmoji = @{
     "developer" = "[DEV]    "
     "reviewer"  = "[REVIEW] "
     "qa"        = "[QA]     "
+    "sensor"    = "[SENSOR] "
     "none"      = "[NONE]   "
 }
 
 $RoleDesc = @{
-    "designer"  = "遊戲設計師 — 負責與用戶討論並維護 docs/GAME_DESIGN.md"
-    "architect" = "系統架構師 — 負責設計 implementation_plan.md"
-    "developer" = "開發者 — 負責撰寫 GDScript 代碼（在 Worktree 中）"
-    "reviewer"  = "代碼審查員 — 負責審查 PR 並留下結構化意見"
-    "qa"        = "品質保證員 — 負責黑箱測試並建立 QA 報告"
-    "none"      = "未設定角色"
+    "designer"  = "Game Designer - maintains docs/GAME_DESIGN.md"
+    "architect" = "Architect - designs implementation_plan.md"
+    "developer" = "Developer - writes GDScript code (in Worktree)"
+    "reviewer"  = "Reviewer - reviews PRs and writes structured comments"
+    "qa"        = "QA - black-box testing and QA reports"
+    "sensor"    = "Sensor Guard - monitors dangerous patterns, triggers scans"
+    "none"      = "No role set"
 }
 
-# 寫入角色文件（不含 BOM，確保 Git Hook 可正確讀取）
-[System.IO.File]::WriteAllText("$PWD\$RoleFile", $Role)
+# Must-read files per role (SS READ SOP)
+$RoleMustRead = @{
+    "designer"  = @(
+        "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
+        "[READ -1] docs/PROJECT_STATUS.md (current Phase status)",
+        "[READ  0] docs/ERROR_LOG.md (technical constraints)",
+        "[READ  1] docs/GAME_DESIGN.md (design authority)",
+        "[IF PL]   docs/pixellab_cookbook.md (PL-MANDATORY GATE Step 2)",
+        "[IF PL]   https://api.pixellab.ai/v2/llms.txt (PL-MANDATORY GATE Step 1)"
+    )
+    "architect" = @(
+        "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
+        "[READ -1] docs/PROJECT_STATUS.md (current Phase status)",
+        "[READ  0] docs/ERROR_LOG.md (architecture constraints)",
+        "[READ  1] docs/GAME_DESIGN.md (confirm latest design)",
+        "[READ  2] implementation_plan.md (if exists, check for stale design)"
+    )
+    "developer" = @(
+        "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
+        "[READ -1] docs/PROJECT_STATUS.md (current Phase task)",
+        "[READ  0] docs/ERROR_LOG.md (known errors, do NOT repeat)",
+        "[READ  1] implementation_plan.md (architect design plan)",
+        "[IF PL]   docs/pixellab_cookbook.md (ERR-041 forbidden fields)"
+    )
+    "reviewer"  = @(
+        "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
+        "[READ -1] docs/PROJECT_STATUS.md (Phase status check)",
+        "[READ  0] docs/ERROR_LOG.md (known issue regression check)",
+        "[IF PL]   docs/pixellab_cookbook.md (PIXEL-REVIEW gate basis)",
+        "[IF PL]   docs/review_reports/ (past review records)"
+    )
+    "qa"        = @(
+        "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
+        "[READ -1] docs/PROJECT_STATUS.md (tested Phase DoD)",
+        "[READ  0] docs/ERROR_LOG.md (Critical issue regression check)",
+        "[IF PL]   scripts/utils/qa_pixellab_v3b_test.py (PixelLab QA script)"
+    )
+    "sensor"    = @(
+        "[READ -2] docs/DOC_INDEX.md (which docs to monitor?)",
+        "[READ  0] docs/ERROR_LOG.md (known dangerous patterns)",
+        "[READ  1] roles/sensor.md (trigger table and scan scripts)",
+        "[SCAN]    scripts/sensor-scan.ps1 (run 9/9 scan)"
+    )
+    "none"      = @("[TIP] Run .\scripts\set-role.ps1 <role> to set a role")
+}
+
+# Write role file (no BOM, ensures Git Hook can read correctly)
+[System.IO.File]::WriteAllText("$PWD\$RoleFile", $Role, [System.Text.Encoding]::UTF8)
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor $RoleColors[$Role]
-Write-Host "$($RoleEmoji[$Role]) 角色設定完成" -ForegroundColor $RoleColors[$Role]
+Write-Host "$($RoleEmoji[$Role]) Role set" -ForegroundColor $RoleColors[$Role]
 Write-Host "============================================================" -ForegroundColor $RoleColors[$Role]
-Write-Host "  角色：$Role" -ForegroundColor White
-Write-Host "  職責：$($RoleDesc[$Role])" -ForegroundColor Gray
+Write-Host "  Role: $Role" -ForegroundColor White
+Write-Host "  Duty: $($RoleDesc[$Role])" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  角色定義文件：.\roles\$Role.md" -ForegroundColor Gray
-Write-Host "  請在 Antigravity 對話開始時，將以上文件的內容貼入作為上下文。" -ForegroundColor Gray
+Write-Host "  Role definition: .\roles\$Role.md" -ForegroundColor Gray
+Write-Host "  Please read the above file at the start of each Antigravity session." -ForegroundColor Gray
 Write-Host "============================================================" -ForegroundColor $RoleColors[$Role]
 Write-Host ""
 
-# 顯示此角色的關鍵規則提醒
-Write-Host "本角色的 Git Hook 規則：" -ForegroundColor White
+# Display must-read file list (SS READ SOP)
+Write-Host "+--- Must-Read Files (SS READ SOP) -------------------------+" -ForegroundColor $RoleColors[$Role]
+foreach ($item in $RoleMustRead[$Role]) {
+    Write-Host "|  $item" -ForegroundColor White
+}
+Write-Host "+-----------------------------------------------------------+" -ForegroundColor $RoleColors[$Role]
+Write-Host ""
+
+# Display role-specific Git Hook rules
+Write-Host "Git Hook rules for this role:" -ForegroundColor White
 switch ($Role) {
     "designer" {
-        Write-Host "  [OK]  可以修改：docs/GAME_DESIGN.md（唯一可修改者）" -ForegroundColor Green
-        Write-Host "  [NG]  禁止修改：.gd, .tscn, .tres, implementation_plan.md" -ForegroundColor Red
-        Write-Host "  [DOC] 工作文件：docs/GAME_DESIGN.md" -ForegroundColor Cyan
-        Write-Host "  [TIP] 提示：每次對話開始先讀取 GAME_DESIGN.md 了解目前進度" -ForegroundColor Gray
+        Write-Host "  [OK]  Can modify: docs/GAME_DESIGN.md (only modifier)" -ForegroundColor Green
+        Write-Host "  [NG]  Cannot modify: .gd, .tscn, .tres, implementation_plan.md" -ForegroundColor Red
+        Write-Host "  [DOC] Maintains: docs/GAME_DESIGN.md, docs/DOC_INDEX.md" -ForegroundColor Cyan
+        Write-Host "  [PL]  PixelLab: must complete PL-MANDATORY GATE 5 steps before generation" -ForegroundColor Yellow
     }
     "architect" {
-        Write-Host "  [OK]  可以提交：implementation_plan.md, docs/, roles/, RULES.md" -ForegroundColor Green
-        Write-Host "  [NG]  禁止提交：.gd, .tscn, .tres 文件" -ForegroundColor Red
+        Write-Host "  [OK]  Can commit: implementation_plan.md, docs/, roles/, RULES.md" -ForegroundColor Green
+        Write-Host "  [NG]  Cannot commit: .gd, .tscn, .tres files" -ForegroundColor Red
+        Write-Host "  [DOC] Maintains: docs/DOC_INDEX.md, roles/*.md, workflow.md" -ForegroundColor Cyan
     }
     "developer" {
-        Write-Host "  [OK]  可以提交：.gd, .tscn（需先 LFS Lock）, .tres" -ForegroundColor Green
-        Write-Host "  [NG]  禁止提交：直接 push 到 main 的 .gd 文件" -ForegroundColor Red
-        Write-Host "  [!!]  修改場景前：.\scripts\lock-scene.ps1 lock <path>" -ForegroundColor Yellow
+        Write-Host "  [OK]  Can commit: .gd, .tscn (LFS Lock first), .tres" -ForegroundColor Green
+        Write-Host "  [NG]  Cannot commit: direct git commit of code (use dev-submit.ps1)" -ForegroundColor Red
+        Write-Host "  [!!]  Before scene edit: .\scripts\lock-scene.ps1 lock <path>" -ForegroundColor Yellow
+        Write-Host "  [!!]  Before commit: run sensor-scan.ps1, confirm 9/9 PASS" -ForegroundColor Yellow
     }
-    "reviewer" {
-        Write-Host "  [OK]  可以做：PR 審查、留言、要求修改" -ForegroundColor Green
-        Write-Host "  [NG]  禁止做：自行修改代碼文件" -ForegroundColor Red
+    "reviewer"  {
+        Write-Host "  [OK]  Can do: PR review, comments, PIXEL-REVIEW gate" -ForegroundColor Green
+        Write-Host "  [NG]  Cannot do: directly modify code files" -ForegroundColor Red
+        Write-Host "  [DOC] Maintains: docs/review_reports/*.md" -ForegroundColor Cyan
+        Write-Host "  [PL]  PixelLab: run PIXEL-REVIEW gate (PL-R-NEW1, etc.)" -ForegroundColor Yellow
     }
-    "qa" {
-        Write-Host "  [OK]  可以提交：docs/qa-report-*.md" -ForegroundColor Green
-        Write-Host "  [NG]  禁止提交：任何 .gd 或 .tscn 文件" -ForegroundColor Red
+    "qa"        {
+        Write-Host "  [OK]  Can commit: docs/qa-report-*.md, and final code commit" -ForegroundColor Green
+        Write-Host "  [NG]  Cannot commit: any .gd or .tscn (except final QA commit)" -ForegroundColor Red
+        Write-Host "  [!!]  QA is the ONLY role that can git commit + push (v4 rule)" -ForegroundColor Yellow
+        Write-Host "  [PL]  PixelLab: run qa_pixellab_v3b_test.py to verify" -ForegroundColor Yellow
+    }
+    "sensor"    {
+        Write-Host "  [!!]  On trigger: immediately stop current work, run 9/9 scan" -ForegroundColor Red
+        Write-Host "  [!!]  Level 1 PixelLab violation = stop + require full Pre-Flight" -ForegroundColor Red
+        Write-Host "  [OK]  Can update: docs/ERROR_LOG.md (new ERR entries)" -ForegroundColor Green
     }
 }
+Write-Host ""
+Write-Host "  [MOD] To modify workflow: follow 5-step SOP in docs/DOC_INDEX.md (SS MOD)" -ForegroundColor DarkCyan
 Write-Host ""
