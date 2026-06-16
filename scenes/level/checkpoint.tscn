@@ -2,9 +2,13 @@
 
 [ext_resource type="Script" uid="uid://5at6xa2ugojp" path="res://scripts/level/checkpoint.gd" id="1_checkpoint"]
 [ext_resource type="TileSet" uid="uid://do5f6wlguh7b6" path="res://assets/tilesets/dungeonmode/dungeon_world_tileset.tres" id="2_1b3wg"]
+[ext_resource type="Texture2D" uid="uid://dq7236et8jwse" path="res://assets/characters/generated/v13_skin_style/v13c_A2_correct_vampire_girl_02.png" id="3_fmadm"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
 radius = 40.0
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_yx7oa"]
+load_path = "res://.godot/imported/vampire_girl_16x16.png-046ac13379c64c5da3072506d3ffb2c1.ctex"
 
 [node name="Checkpoint" type="Area2D" unique_id=2141048019]
 collision_layer = 0
@@ -34,3 +38,11 @@ position = Vector2(-4, 0)
 tile_map_data = PackedByteArray(0, 0, 0, 0, 255, 255, 27, 0, 15, 0, 14, 0, 0, 0, 0, 0, 0, 0, 24, 0, 15, 0, 15, 0, 0, 0)
 tile_set = ExtResource("2_1b3wg")
 rendering_quadrant_size = 8
+
+[node name="V13cA2CorrectVampireGirl02" type="Sprite2D" parent="." unique_id=1362816831]
+position = Vector2(-97, 214)
+texture = ExtResource("3_fmadm")
+
+[node name="VampireGirl16x16" type="Sprite2D" parent="." unique_id=2086719457]
+position = Vector2(-114, 221)
+texture = SubResource("CompressedTexture2D_yx7oa")

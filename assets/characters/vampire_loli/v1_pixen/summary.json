@@ -1,0 +1,25 @@
+{
+  "char": "CHAR-007 Vampire Loli Phase B",
+  "endpoint": "create-image-pixen",
+  "timestamp": "2026-06-15T21:06:01Z",
+  "results": [
+    {
+      "size": "16x16",
+      "path": "d:\\2026-06-04\\assets\\characters\\vampire_loli\\v1_pixen\\vampire_loli_16x16.png",
+      "preview": "d:\\2026-06-04\\assets\\characters\\vampire_loli\\v1_pixen\\previews\\vampire_loli_16x16_10x.png",
+      "file_size_bytes": 368
+    },
+    {
+      "size": "32x32",
+      "path": "d:\\2026-06-04\\assets\\characters\\vampire_loli\\v1_pixen\\vampire_loli_32x32.png",
+      "preview": "d:\\2026-06-04\\assets\\characters\\vampire_loli\\v1_pixen\\previews\\vampire_loli_32x32_8x.png",
+      "file_size_bytes": 1657
+    },
+    {
+      "size": "48x48",
+      "path": "d:\\2026-06-04\\assets\\characters\\vampire_loli\\v1_pixen\\vampire_loli_48x48.png",
+      "preview": "d:\\2026-06-04\\assets\\characters\\vampire_loli\\v1_pixen\\previews\\vampire_loli_48x48_6x.png",
+      "file_size_bytes": 2548
+    }
+  ]
+}

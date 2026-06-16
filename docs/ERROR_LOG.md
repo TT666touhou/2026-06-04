@@ -657,3 +657,75 @@ region = Rect2(0, 0, 132, 126)
 | 2026-06-14 | Portal SpawnMarker 位置 | SpawnMarker 不能放在 portal Area2D 碰撞區**正中心**，應放在邊界（門口邊緣），或在放置玩家前先禁用 portal monitoring |
 | 2026-06-14 | 新場景實例的防重入 | `_triggered` 只保護 portal 實例層面的重複，新房間加載後新 portal 實例的 `_triggered=false` 是正常的 — 保護必須在**房間載入系統（GameWorld）**層面實現 |
 | 2026-06-14 | walk-in + FadeIn 競態 | Walk-in（0.35s）＋ FadeIn（0.4s）總計 0.75s — portal cooldown 至少需要 0.65s 才能安全避開 walk-in 期間的偶發 body_entered |
+
+---
+
+## 🔴 ERR-036~040 PixelLab API 連環錯誤（2026-06-16 MRMOTEXT 生成會話）
+
+> **背景**：在試圖用 PixelLab API 生成 MRMOTEXT 風格角色時，發現一連串 API 陷阱，嚴重浪費配額。
+
+### ERR-036 | generate-with-style-v2 輪詢用 `complete` 而非 `completed`
+- **症狀**：Job 永遠輪詢，腳本無限 loop，gen 配額被消耗但圖片未下載
+- **根本原因**：輪詢 status 時用 `if status == "complete"` 但 API 回傳 `"completed"` (帶 d)
+- **修復**：`if status in ("completed", "complete")` 或 `if "complet" in status`
+- **Sensor 觸發**：🟡 Level 2 — 任何輪詢 background job 的腳本，確認使用 `"completed"` 而非 `"complete"`
+
+### ERR-037 | generate-with-style-v2 圖片在 `last_response.images[i]["base64"]`（非 `"image"`）
+- **症狀**：KeyError，圖片提取失敗
+- **根本原因**：`images[i]["image"]["base64"]` 路徑不存在。正確路徑是 `images[i]["base64"]` 直接在頂層
+- **修復**：`b64 = img_data["base64"]`（直接頂層，非嵌套）
+- **正確結構**：`{"type": "base64", "width": N, "height": N, "base64": "..."}`
+
+### ERR-038 | bitforge `style_strength` 預設值為 **0.0**（等於無 style）
+- **症狀**：生成結果完全無視 style_image，等同於純文字生成
+- **根本原因**：bitforge 的 `style_strength` 預設是 `0.0`，不設定等於把 style 影響降為零
+- **修復**：**必須明確設定** `style_strength = 70~90`（推薦 85）
+- **Sensor 觸發**：🔴 Level 1 — bitforge payload 中無明確 `style_strength` → 立即退回 Developer
+
+### ERR-039 | generate-with-style-v2 `image_size` 格式錯誤（頂層 width/height vs size 子欄位）
+- **症狀**：HTTP 422
+- **根本原因**：`generate-with-style-v2` 的 `style_images` 用**頂層** `width/height`，而 `generate-image-v2` 的 `style_image/reference_images` 用 **`size` 子欄位**。兩個端點格式不一致，是 PixelLab API 的設計問題。
+- **修復**：嚴格區分兩端點的格式（見 workflow §O11-2 和 §O11-5）
+
+### ERR-040 | bitforge `style_image` 尺寸必須與輸出完全相同（且不能是場景截圖）
+- **症狀 A**：HTTP 500 `style_image must be size (H, W), not torch.Size([H2, W2])`
+- **症狀 B**：生成全部是噪訊（即使修正尺寸後）
+- **根本原因 A**：style_image 沒有精確 resize 到輸出尺寸。`thumbnail()` 不保證精確尺寸，必須用 `img.resize((W, H), Image.LANCZOS)`
+- **根本原因 B**：style_image 是複雜場景截圖（如 MRMOTEXT 建築場景）而非角色圖。複雜場景色彩混亂，bitforge 將其作為 style 引導後，輸出為全噪訊
+- **修復 A**：`img.resize((OUTPUT_W, OUTPUT_H), Image.LANCZOS)` 精確縮放
+- **修復 B**：bitforge 的 style_image **必須是角色 sprite 或 skin 圖**，不能是背景/場景截圖
+- **建議替代**：用 MRMOTEXT 截圖做 style 時，改用 `generate-with-style-v2`（最多 4 張）
+
+---
+
+## 🟢 新增 PATTERN（2026-06-16 PixelLab MRMOTEXT 會話）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------| 
+| 2026-06-16 | bitforge style_strength | 永遠明確設定，推薦 70~90。不設 = 0.0 = 純文字生成，浪費配額 |
+| 2026-06-16 | bitforge style_image 素材 | 必須是角色 sprite/skin 圖，不能是場景截圖或複雜背景 |
+| 2026-06-16 | bitforge style_image 尺寸 | 用 `img.resize((W, H), Image.LANCZOS)` 精確縮放，非 thumbnail |
+| 2026-06-16 | gen-with-style-v2 圖片提取 | `images[i]["base64"]` 直接頂層，非 `images[i]["image"]["base64"]` |
+| 2026-06-16 | 輪詢 job 完成狀態 | 用 `"completed"` 而非 `"complete"`（帶 d）|
+
+---
+
+### ERR-041 | create-character-v3 不支援 `shading` 和 `direction` 參數（2026-06-16）
+
+- **症狀**：HTTP 422 `{"detail": [{"type": "extra_forbidden", "loc": ["body", "shading"]...}, {"type": "extra_forbidden", "loc": ["body", "direction"]...}]}`
+- **根本原因**：`create-character-v3` 端點不接受 `shading` 或 `direction` 欄位。這兩個欄位屬於 `create-image-pixen`/`create-image-bitforge`，不能用在 `create-character-v3`。
+- **修復**：
+  - 移除 `create-character-v3` payload 中的 `shading` 和 `direction` 欄位
+  - `create-character-v3` 只支援 `view`（非 `direction`）
+  - Shading 需求改用文字描述（在 `description` 中寫 "flat shading" 等描述詞）
+- **Sensor 觸發**：🟡 Level 2 — 任何 `create-character-v3` payload 出現 `shading`/`direction` → 退回 Developer
+- **PIXEL-REVIEW 新增規則（PL-R-NEW1）**：
+  ```
+  create-character-v3 允許欄位：
+  ✅ description, image_size, outline, view, no_background, reference_image
+  ❌ 禁止：shading, direction, detail, color_image, init_image, style_strength
+  ```
+
+---
+
+*ERROR_LOG.md 最後更新：2026-06-16（ERR-041 補充）*

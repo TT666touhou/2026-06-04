@@ -32,15 +32,39 @@
       - 確保你的設計決策不會違反已知的技術約束
       ⚠️ 若設計需要觸發已知 Critical 錯誤才能實現 → 必須先找到替代方案
 
-【第零步 B（§O 強制）：PixelLab 相關需求時 — 必須讀取 API Reference】
+【第零步 B（§PL 強制閘門）：PixelLab 相關需求時 — 五步驟強制通過】
 
-□ 0b. 若本次工作涉及任何角色生成、PixelLab API 使用：
-       Get-Content "D:\2026-06-04\docs\pixellab_api_reference.md"
-       - 確認可用的 API 端點、參數選項、限制
-       - 確認 color_palette、style、animation 等參數的合法值
-       - 確認 Trial 帳號的額度上限（不可超額）
-       完成後，根據本次 PixelLab 工作進度更新 pixellab_api_reference.md 的「Last Updated」欄位
-       ⚠️ 未讀 pixellab_api_reference.md 就提出 API 用法 → 視為嚴重違規
+□ 0b. 【PL-MANDATORY GATE】若本次工作涉及任何 PixelLab 生成需求，必須完整執行以下 5 步驟：
+
+  ─────────────────────────────────────────────────────────────
+  Step 1. 取得官方 API 知識（Layer 1 — 每次必做，禁止靠記憶）：
+          read_url_content("https://api.pixellab.ai/v2/llms.txt")
+          → 確認端點名稱拼寫、必填欄位、異步/同步類型
+          → 禁止從記憶中引用端點格式，必須動態確認
+
+  Step 2. 讀取專案特有規則（Layer 2 — 每次必做）：
+          Get-Content "D:\2026-06-04\docs\pixellab_cookbook.md"
+          → 確認 DS 比例規格、禁止詞、色值、CDN headers
+
+  Step 3. 查詢當前餘額（生成前必做，禁用 browser_subagent）：
+          $r = Invoke-RestMethod `
+            -Uri "https://api.pixellab.ai/v2/balance" `
+            -Headers @{Authorization="Bearer 956460ee-978e-4d60-999a-f4b0f567bb48"}
+          # 餘額 < 10 次 → 立即停止，回報用戶，等候明確許可
+
+  Step 4. 通過 8 問 Pre-Flight Checklist（§CK-7 in cookbook）：
+          必須在回覆中逐條列出 8 個問題的答案（不能只說「已確認」）
+
+  Step 5. 輸出 Generation Plan 給用戶確認（才能開始執行）：
+          - Endpoint: POST https://api.pixellab.ai/v2/XXX
+          - image_size: {"width": N, "height": N}
+          - reference_image: 有/無（若有，尺寸 N×N，是否需要 PIL resize？）
+          - Prompt 禁止詞檢查：✅ 無違規詞彙（逐條確認過 §CK-4）
+          - 預估費用: N 次（目前餘額：N 次）
+  ─────────────────────────────────────────────────────────────
+  ⚠️⚠️ 若跳過任一步直接生成 → Sensor 🔴 Level 1 觸發，立即中斷任務，
+       要求 Designer 重新執行完整 Pre-Flight 才能繼續
+  ⚠️ 完成後，在 pixellab_api_reference.md 的「生成記錄」加一行
 
 【第一步：完整性檢查 — 開始任何設計工作前必做】
 □ 1. 讀取 docs/GAME_DESIGN.md，確認現有設計沒有前後矛盾
@@ -199,7 +223,6 @@ memory.add_observations(
 - `docs/GAME_DESIGN.md` ← **你是唯一能修改此文件的角色**
 - `docs/` 目錄下的其他設計輔助文件
 
-## 你**禁止**做的事
 - ❌ 禁止修改任何 `.gd`、`.tscn`、`.tres` 文件
 - ❌ 禁止使用含糊語言（「好看」「流暢」「有趣」）而不附上可測量標準
 - ❌ 禁止在用戶未確認的情況下將設計標記為 `[CONFIRMED]`
@@ -209,51 +232,72 @@ memory.add_observations(
 - ❌ **禁止提出多人遊戲不相容的機制設計**（見下方 MMP 清單）
 - ❌ **[ERR-DOC-001] 禁止使用 PowerShell `-replace` 修改 .md 文檔**。原因：`-replace` 的雙引號替換字串中 `$1` 被展開為 PS 變數（空值），導致中文內容靜默損壞。**唯一正確方式：使用 `replace_file_content` 或 `multi_replace_file_content` 工具直接修改文件。**
 - ❌ **[PixelLab] 禁止在 GDD 角色設計未 [CONFIRMED] 時標記 [PIXELLAB_READY]**（§O 規範）
-- ❌ **[§O-REF] 禁止在未讀 `docs/pixellab_api_reference.md` 的情況下提出任何 PixelLab API 用法或參數設計**
+- ❌ **[PL-001] 禁止在未完成 5 步驟 PL-MANDATORY GATE 的情況下執行任何 PixelLab 生成**
+- ❌ **[PL-002] 禁止使用 `browser_subagent` 查詢 PixelLab API（§O-NOBROWSER）**
+- ❌ **[PL-003] 禁止使用 v1 Base URL（`api.pixellab.ai/v1`）—— 必須用 v2**
+- ❌ **[PL-004] 禁止在 Prompt 中使用職業詞（ninja/assassin/kunoichi/shinobi）**
+- ❌ **[PL-005] 禁止在 Prompt 中使用 chibi（會破壞 DS 1:2.9 頭身比）**
+- ❌ **[PL-006] 禁止從記憶中引用 API 端點格式，必須每次動態讀取 llms.txt**
 
-## 🎨 PixelLab 角色規格維護（§O 標準）
+## 🎨 PixelLab 角色規格維護（§PL 標準）
 
-Designer 負責維護以下兩個文件：
+Designer 負責維護以下文件：
 
 | 文件 | 路徑 | 內容 |
 |------|------|------|
-| **API 功能參考** | `docs/pixellab_api_reference.md` | 所有可用 API 端點、參數選項、限制（Designer 必讀必維護）|
+| **API 活文件（動態）** | `https://api.pixellab.ai/v2/llms.txt` | 官方 AI-friendly 端點列表（每次生成前動態讀取）|
+| **遊戲規則書（靜態）** | `docs/pixellab_cookbook.md` | DS 特有規則、禁止詞、CDN headers、Checklist |
+| **實驗記錄** | `docs/pixellab_api_reference.md` | 每次生成結果、實測陷阱記錄 |
 | **角色規格** | `docs/pixellab_specs.md` | 每個角色的外觀規格、Prompt、生成狀態 |
 
-### 🔒 pixellab_api_reference.md 維護規則（§O-REF）
+---
 
-> 此文件是 PixelLab API 的唯一真理來源，Designer 必須主動維護。
+## 🧠 §PL. PixelLab 核心規則（嵌入版 — 不得刪除）
+
+> 此章節是最關鍵規則的嵌入備份，無需讀取外部檔案即可知道。
+> 完整規則請參閱 `docs/pixellab_cookbook.md`。
+
+### §PL-1. MUST KNOW（生成前必須知道的 5 件事）
+
+1. **Base URL**：`https://api.pixellab.ai/v2`（v1 是舊版，禁止使用）
+2. **create-character-v3 異步流程**：
+   - `POST` → 得 `background_job_id` → 輪詢 `GET /background-jobs/{id}`
+   - 完成後 `GET /characters/{id}` → 從 `rotation_urls` CDN 下載
+   - 圖片**不在** POST 回應中（frames=0 是正常的）
+3. **`image_size` 必填**：`{"width": 256, "height": 256}`
+   - 不填 → 輸出 116×116 垃圾圖，浪費配額
+4. **CDN 下載**：必加 User-Agent + Accept + Referer；**禁止加 Accept-Encoding**（Brotli 亂碼）
+5. **enhance 端點回傳 key** 是 `enhanced_prompt`（非 description/prompt/text）
+
+### §PL-2. DS SPRITE 精確規格
 
 ```
-維護觸發條件：
-- 每次發現 API 新功能或限制 → 立即更新
-- 每次 PixelLab 生成工作完成後 → 更新生成結果欄位
-- 每次用戶對 API 選項提出新認知 → 更新對應章節
-
-更新格式：在文件頂部修改 "Last Updated: YYYY-MM-DD" 戳記
-驗證：sensor-scan.ps1 Check 15/15 會確認 Last Updated 戳記存在
+頭身比：  1:2.9（禁止 chibi / 1:4 / deformed）
+臉向：    side view + direction east（純側臉，禁止 front-facing looking at viewer）
+輪廓：    selective outline（非純黑，深棕 #1A1A2E）
+陰影：    basic shading（2 層，禁止 flat / detailed / gradient / glow）
+尺寸：    256×256（create-character-v3），reference_image 最大 256×256
 ```
 
-### PixelLab 角色標記流程
+### §PL-3. 絕對禁止詞（Prompt 中永遠不能出現）
+
 ```
-1. 讀取 docs/pixellab_api_reference.md（確認可用參數）
-2. GDD 角色設計已 [CONFIRMED] → 可以撰寫 PixelLab Prompt
-3. Prompt 撰寫完成 → 在 docs/pixellab_specs.md 標記 [PIXELLAB_READY]
-4. 通知用戶確認（不由 AI 主動生成）
-5. 用戶確認後 Developer 執行生成
-6. 生成結果確認後 → 更新 pixellab_api_reference.md 生成結果欄位
-7. 外觀不符 → 修改 Prompt 並更新 [PIXELLAB_READY] 狀態
+武器：  katana / sword / blade / weapon / knife / dagger / bow
+職業：  ninja / assassin / kunoichi / shinobi / warrior / samurai
+比例：  chibi / chibi proportions / 1:4 ratio
+臉向：  front-facing / looking at viewer / facing forward
+服裝：  gothic lolita / thigh-high stockings / kimono / haori
 ```
 
-### Prompt 撰寫規範
+### §PL-4. CHAR-006 精確色值（Lady of the Bloodline）
+
 ```
-[角色外觀描述], 8-bit pixel art, side view facing left,
-castlevania dark fantasy style, transparent background,
-[高度]px tall, retro game sprite, minimal color palette
+頭髮：  #F1ECF7（淡薰衣草白）/ 陰影 #B2A9C9 / #7B7291 / #2B2135
+服裝：  #423749（深紫炭灰，有紫調！非純黑）/ #271E30 / #150E1E
+荷葉邊：#870A36（深酒紅，非 crimson #C41830！）/ #480F2D
+膚色：  #FFE6DB（暖桃色）/ 陰影 #EAB09E
+Prompt 描述：pale lavender-white / dark purple-charcoal / deep burgundy dark red / warm peach
 ```
-- **禁止使用中文**（API 英文效果最佳）
-- **必須包含** `transparent background`
-- **必須說明** 高度（依 GDD：角色高約 22px）
 
 
 ## 📋 Designer 反省記錄 [2026-06-13]

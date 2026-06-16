@@ -133,6 +133,61 @@ dark castlevania dungeon style, transparent background,
 
 ---
 
+### CHAR-006：哥德蘿莉女孩（Gothic Lady — Lady of the Bloodline 風格）[實驗]
+- **GDD 對應**：新角色原型測試（尚未整合）
+- **狀態**：`[IN PROGRESS]` ⚠️ V6 已完成，用戶對結果不滿意，2026-06-16 重新評估方向
+- **優先度**：🟡 P2
+- **設計目標**：複現 Dungeon Slasher Lady of the Bloodline 的哥德蘿莉風格
+- **參考素材**：
+  - `assets/characters/ds_reference/by_character/Assassin/illustrations/Lady_of_the_Bloodline.png`
+  - `assets/characters/ds_reference/by_character/Assassin/skins/Lady_of_the_Bloodline.png`
+- **圖片尺寸**：40×52 px（DS 標準）/ 256×256 px（create-character-v3 原始輸出）
+
+**設計規格（Lady of the Bloodline 分析）：**
+
+| 項目 | 規格 |
+|------|------|
+| 髮色 | 淡紫白色（灰白帶紫調）雙馬尾 |
+| 蝴蝶結 | 黑色，高位 |
+| 膚色 | 瓷白 |
+| 眼色 | 深紅色 |
+| 服裝 | 深紫炭灰哥德洋裝（`#423749`） |
+| 荷葉邊 | 深酒紅（`#870A36`），多層裙擺 |
+| 配飾 | 黑色腰帶，無武器 |
+| 比例 | 頭身比 1:2.9（禁止使用 chibi 詞彙，會導致 1:4） |
+
+**生成歷程與最佳結果：**
+
+| 版本 | 方法 | 評分 | 主要問題 | 輸出 |
+|------|------|------|----------|------|
+| V4 pixen | create-image-pixen 最小提示詞 | ⭐⭐ | 比例/細節不足 | `char006_v4_*.png` |
+| V5b pixen | enhance-pixen-prompt + pixen | ⭐⭐⭐ | 風格接近但比例仍偏差 | `char006_v5b_*.png` |
+| **V6A cv3** | illus reference → create-character-v3 | ⭐⭐⭐ | 真側面但偏 anime smooth | `V6A_256_east_215834.png` |
+| **V6B2 cv3** | enhance + create-character-v3 直接 | **⭐⭐⭐⭐** | 3/4角度非正側面 | `V6B2_256_east_220119.png` |
+
+**V6 關鍵 API 發現（2026-06-16 驗證）：**
+```python
+# create-character-v3 完整呼叫（必填欄位）
+{
+    "description": "...",                          # ✅ 必填
+    "image_size": {"width": 256, "height": 256},   # ✅ 必填！不填 → 116×116
+    "reference_image": {                           # 可選，提供插畫參考
+        "type": "base64", "base64": "...", "format": "png"
+    }
+}
+
+# CDN 下載必須用瀏覽器 Headers（Cloudflare CF 1010 防護）
+# 禁止加 Accept-Encoding（導致 Brotli 壓縮亂碼）
+```
+
+**V6 最佳結果目錄**：`assets/characters/pixellab_experiments/char006_v6/`
+- `V6B2_256_east_220119.png` ← 像素藝術感最強 ⭐
+- `V6A_256_south_215834.png` ← 正面最接近 Lady 風格 ⭐
+
+**用戶反饋**：風格仍與原版 Lady of the Bloodline 有差距，2026-06-16 重新規劃方向。
+
+---
+
 ### CHAR-005：Boss Preview（Boss 預覽）[可選]
 - **GDD 對應**：§4.5 Boss 設計（DRAFT 狀態）
 - **狀態**：`[DRAFT]`（GDD Boss 章節仍是 DRAFT，暫緩）

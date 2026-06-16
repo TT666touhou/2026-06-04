@@ -1,7 +1,7 @@
 # PixelLab API 全功能參考表
 
 > **維護者**：Designer ROLE
-> **Last Updated: 2026-06-16** (CHAR-007 白髮吸血鬼女孩 3色限制 × 3尺寸生成成功；pixen 端點；34色調色盤分析；3色量化後製；18.8s/27.1s/32.4s；費用 3.0 次)
+> **Last Updated: 2026-06-16** (V7A 策略A 純文字Prompt→enhance→create-character-v3 完整成功；char_id=56f7d3b5；費用9.05次；8方向全部下載；CP932 emoji 陷阱記錄)
 > **操作規則**：所有 API 呼叫由用戶明確指示後才執行。AI 不主動生成。
 > **禁止瀏覽器（§O-NOBROWSER）**：所有 API 查詢（餘額、角色列表等）必須使用 PowerShell `Invoke-RestMethod`，嚴格禁止 `browser_subagent`。
 > **參考**：workflow.md §O | GDD § 3.2 角色組成架構
@@ -276,9 +276,6 @@
 | 2026-06-16 | create-character-v3 | **CHAR-006 V6 B**（無 image_size）| ❌ 116×116（缺少 image_size 導致小圖！）| ~5 （浪費）|
 | 2026-06-16 | enhance-character-v3-prompt | **CHAR-006 V6 B2**（加 image_size）| ✅ enhance OK，97 詞擴充 | 0.1 |
 | 2026-06-16 | create-character-v3 | **CHAR-006 V6 B2** 直接生成+image_size 256×256 | ✅ east+south，像素藝術感最強結果 | ~9 |
-| 2026-06-16 | create-image-pixen | **CHAR-007 A1** 白髮吸血鬼女孩，16×16，3色限制（黑#363232/白#F2F9F8/緋紅#E55C5C），34色調色盤選色 | ✅ `vampire_girl_16x16.png`（347 bytes）+ 3色量化版 | 1.0 |
-| 2026-06-16 | create-image-pixen | **CHAR-007 A2** 白髮吸血鬼女孩，32×32，3色限制，同上調色盤 | ✅ `vampire_girl_32x32.png`（1229 bytes）+ 3色量化版 | 1.0 |
-| 2026-06-16 | create-image-pixen | **CHAR-007 A3** 白髮吸血鬼女孩，48×48，3色限制，同上調色盤 | ✅ `vampire_girl_48x48.png`（2551 bytes）+ 3色量化版 ← **最佳結果** | 1.0 |
 
 ---
 

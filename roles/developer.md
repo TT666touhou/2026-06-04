@@ -190,6 +190,53 @@
                cam.make_current()     # 再呼叫依賴樹的 API
              受影響 API：make_current() / set_as_top_level() / connect() (on tree signals) / get_viewport()
 
+          x. 【ERR-035 後】PixelLab API direction 必須用羅盤方向（2026-06-16）：
+             ❌ 絕對禁止（HTTP 422）：
+               "direction": "left"   ← 不存在的值
+               "direction": "right"  ← 不存在的值
+             ✅ 唯一合法的 direction 值（8方向）：
+               'north', 'north-east', 'east', 'south-east',
+               'south', 'south-west', 'west', 'north-west'
+             映射關係：
+               朝左 → "west" | 朝右 → "east" | 朝下 → "south" | 朝上 → "north"
+             適用端點：create-image-pixen / create-image-bitforge / create-image-pixflux（有 direction 欄位時）
+             同步更新：pixellab_cookbook.md §ERR-025
+
+           y. 【ERR-036 後】generate-with-style-v2 style_images 格式（2026-06-16）：
+              ❌ 絕對禁止（HTTP 422 "Field required: image"）：
+                {"type": "base64", "base64": "..."}  ← 舊格式，image 欄位缺失
+              ✅ 正確格式（嵌套 image 物件）：
+                {"image": {"base64": "..."}, "width": W, "height": H}
+              同步更新：pixellab_cookbook.md ERR-036
+
+           z. 【ERR-037 後】create-image-bitforge style_image 格式（2026-06-16）：
+              ❌ 絕對禁止（HTTP 422 "extra_forbidden"）：
+                {"base64": "...", "width": 128, "height": 128}  ← width/height 不被允許
+              ✅ 正確格式（直接 Base64Image）：
+                {"base64": "..."}
+              注：style_image 不需要與輸出尺寸相同（先前文件錯誤，已更正）
+              同步更新：pixellab_cookbook.md ERR-037
+
+           aa. 【ERR-038 後】generate-with-style-v2 頂層 image_size（2026-06-16）：
+               ❌ 絕對禁止（HTTP 422 "Field required: image_size"）：
+                 頂層直接放 "width": W, "height": H
+               ✅ 正確格式（必須用 image_size 物件）：
+                 "image_size": {"width": W, "height": H}
+               ⚠️ 此端點回傳 HTTP 202 + background_job_id（非同步！）
+                 必須 poll GET /background-jobs/{job_id} 直到 status == 'complete'
+               同步更新：pixellab_cookbook.md ERR-038
+
+           bb. 【ERR-039 後】generate-with-style-v2 非同步輪詢正確方式（2026-06-16）：
+               ❌ 陷阱 1：status 值是 "completed"（非 "complete"！）
+               ❌ 陷阱 2：圖片在 last_response.images[]（非 result.images[] - result 為空！）
+               ❌ 陷阱 3：圖片物件格式是 {"type": "base64", "width": W, "base64": "..."}
+               ✅ 正確 poll 邏輯：
+                 status = data["status"]  # == "completed"（非 "complete"）
+                 imgs = data["last_response"]["images"]
+                 b64 = imgs[i]["base64"]
+               ✅ 回傳多張候選圖（通常 4 張），都在 last_response.images[]
+               同步更新：pixellab_cookbook.md ERR-039
+
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：
       memory.search_nodes("arch_decision_[功能名稱]")
       memory.search_nodes("task_[功能名稱]")
