@@ -498,8 +498,10 @@ if [ "$ROLE" = "qa" ]; then
 
     echo "[QA/4] 掃描 GAME_DESIGN.md 中未解決的 [GDD TODO]（GAP-008 修復）..."
     if [ -f "docs/GAME_DESIGN.md" ]; then
-        GDD_TODO_COUNT=$(grep -c '\[GDD TODO\]' docs/GAME_DESIGN.md 2>/dev/null || echo 0)
-        if [ "$GDD_TODO_COUNT" -gt 0 ]; then
+        # 注意：grep -c 在無匹配時 exit code=1，在 set -e 環境下需要防護
+        GDD_TODO_COUNT=$(grep -c '\[GDD TODO\]' docs/GAME_DESIGN.md 2>/dev/null || true)
+        GDD_TODO_COUNT="${GDD_TODO_COUNT:-0}"
+        if [ "${GDD_TODO_COUNT}" -gt 0 ] 2>/dev/null; then
             echo "❌ [QA 規則違反] GAME_DESIGN.md 有 $GDD_TODO_COUNT 個未解決的 [GDD TODO]！"
             echo "   QA 不能通過！必須先請 Designer 更新對應章節。"
             echo "   未解決項目位置："
