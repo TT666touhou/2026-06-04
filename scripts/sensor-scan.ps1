@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v8
+## sensor-scan.ps1 -- Sensor Automated Scan Script v9
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
@@ -32,7 +32,7 @@ function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Re
 function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v7] Godot Project Integrity Scan"                    -ForegroundColor Cyan
+Write-Host " [Sensor v9] Godot Project Integrity Scan"                    -ForegroundColor Cyan
 Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 

@@ -1,6 +1,6 @@
 # DOC_INDEX.md — 專案文件總索引
 # ============================================================
-# 版本：v1 (2026-06-16)
+# 版本：v2 (2026-06-16 — §A 步驟重排、sensor DOC_INDEX 觸發器、Bootstrap §D4.5)
 # 維護者：所有 ROLE（每次新增文件時必須更新此索引）
 # 讀取時機：每個 ROLE 工作開場 MUST-DO 清單「第 -2 步」
 # ============================================================
@@ -85,9 +85,9 @@
 | `roles/designer.md` | v3 | 2026-06-16 | PL-MANDATORY GATE §0b，GDD 三項紀律 |
 | `roles/architect.md` | v3 | 2026-06-16 | 物理 callback 架構約束，ERR-001/006/007 |
 | `roles/developer.md` | v4 | 2026-06-16 | 禁止直接 commit，dev-submit.ps1，Sensor 前置 |
-| `roles/reviewer.md` | v3 | 2026-06-16 | PIXEL-REVIEW 閘門，PL-R-NEW1（ERR-041） |
-| `roles/qa.md` | v4 | 2026-06-16 | 唯一 commit 角色，45分鐘測試流程 |
-| `roles/sensor.md` | v3 | 2026-06-16 | 9/9 掃描，§PL PixelLab 違規觸發器 |
+| `roles/reviewer.md` | v4 | 2026-06-16 | PIXEL-REVIEW 閘門 + BRANCH 任務分支、PL-R-NEW1 |
+| `roles/qa.md` | v5 | 2026-06-16 | 唯一 commit 角色、PL-QA-GATE、45分鐘測試流程 |
+| `roles/sensor.md` | v4 | 2026-06-16 | §PL PixelLab 觸發器 + DOC_INDEX 同步掃描 Level 2 |
 
 ### 🔧 自動化腳本（KEY Scripts）
 
@@ -204,5 +204,5 @@ Sensor 監控以下文件的結構完整性：
 
 ---
 
-*DOC_INDEX.md v1 建立於 2026-06-16*
+*DOC_INDEX.md v1 建立於 2026-06-16 / v2 更新於 2026-06-16（全面 SOP 審計後）*
 *由 Architect 角色首次建立，後由所有 ROLE 共同維護*

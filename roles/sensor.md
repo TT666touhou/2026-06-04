@@ -18,15 +18,18 @@
 | GDD 滯後 | 任何 PR 合入後，Sensor 確認 GAME_DESIGN.md 是否有對應章節 |
 | 文件積欠 | PROJECT_STATUS.md 有超過 3 個 Phase 狀態為 PARTIAL，但無 Reviewer/QA 確認 |
 | DRAFT 過多 | GAME_DESIGN.md 有超過 3 個已實作功能的章節仍為 [DRAFT] |
+| **★ DOC_INDEX 滯後** | **任何 ROLE 新增文件/腳本後，Sensor 確認 DOC_INDEX.md 是否已更新。若新文件不在索引中 → Level 2 要求立即更新** |
 
-### 文件感知掃描流程
+### DOC_INDEX 同步掃描流程（新增，每次 commit 後執行）
 
-`
-1. 讀取 PROJECT_STATUS.md「已完成」列表
-2. 對照 GAME_DESIGN.md，找出 [DRAFT] 章節
-3. 若發現已實作功能的章節仍為 [DRAFT] → 通知 Designer 更新（Level 2）
-4. 記錄在 Sensor 反省文件中，追蹤 GDD 健康度趨勢
-`
+```
+1. 讀取 docs/DOC_INDEX.md，取得「完整文件清單」中所有已登記路徑
+2. 掃描 docs/*.md 和 scripts/*.ps1 和 roles/*.md 中的實際文件
+3. 比對：若有文件存在但未在 DOC_INDEX.md 索引 → Level 2 違規
+4. 輸出報告：「以下文件缺少索引記錄，請更新 DOC_INDEX.md：[路徑列表]」
+5. 必須等 DOC_INDEX.md 更新完成後才能繼續下一步
+```
+
 
 ### Level 3：文件完整性掃描（ERR-DOC-001 後新增）
 
