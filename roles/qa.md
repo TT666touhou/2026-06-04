@@ -256,6 +256,48 @@ if ($json.player_count -ge 2) {
 
 ---
 
+## 🎨 PixelLab 生成任務 QA 驗收（若本次含 PixelLab 生成）
+
+> **觸發條件**：本次任務包含任何 PixelLab API 呼叫結果時，QA 必須執行本節全部步驟。
+> **禁止跳過**：若 Reviewer 已 APPROVE 但 QA 未執行本節 → 不得 git commit。
+
+### 🔴 PL-QA-GATE（PixelLab QA 閘門，不可跳過）
+
+```powershell
+# Step 1：執行自動化 QA 腳本
+python "D:\2026-06-04\scripts\utils\qa_pixellab_v3b_test.py"
+# 目標：23/23 PASS — 任何 FAIL → 退回 Designer 重做
+
+# Step 2：確認生成圖片存在且格式正確
+$imgDir = "D:\2026-06-04\assets\characters\generated"
+Get-ChildItem $imgDir -Recurse -Filter "*.png" | Sort-Object LastWriteTime -Descending | Select-Object -First 5
+# → 確認今日生成的圖片存在
+
+# Step 3：確認 pixellab_api_reference.md 已更新
+$ref = Get-Content "D:\2026-06-04\docs\pixellab_api_reference.md" -Raw
+if ($ref -match (Get-Date -Format "yyyy-MM-dd")) {
+    Write-Host "✅ API Reference 已更新（今日）"
+} else {
+    Write-Host "❌ API Reference 未更新 → 退回 Designer 補充記錄"
+}
+
+# Step 4：確認 PL-MANDATORY GATE 5步驟的執行記錄
+# → 在對話歷史中確認 Designer 有執行 GATE-1（llms.txt）到 GATE-5（Generation Plan）
+# → 若記錄不完整 → 退回 Designer 補記錄
+```
+
+### PixelLab QA 驗收標準
+
+| 項目 | 標準 | 失敗處理 |
+|------|------|----------|
+| qa_pixellab_v3b_test.py | 23/23 PASS | 退回 Designer 修復 |
+| 生成圖片數量 | ≥ 用戶指定數量 | 退回 Designer 補生成 |
+| PNG 格式驗證 | data[:4] == b'\x89PNG' | 退回 Designer 重新下載 |
+| API Reference 更新 | Last Updated == 今日 | Designer 補充後繼續 |
+| PL-MANDATORY GATE 執行記錄 | 5步驟可見 | 退回 Designer 重做 |
+
+---
+
 ## 📋 測試案例格式（每個 DoD 對應一個測試）
 
 ```

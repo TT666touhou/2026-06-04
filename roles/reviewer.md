@@ -87,6 +87,14 @@
 【審查發現新問題 → 更新 docs/ERROR_LOG.md】
 □ 審查中發現的新型態問題或架構偏差，必須加入 ERROR_LOG.md
 
+【任務類型分支 — 確認要走哪條審查路徑】
+
+□ BRANCH. 確認本次任務類型：
+  - 若是 Godot 代碼/場景 PR → 繼續以下正常審查流程
+  - 若是 PixelLab 生成結果 → 跳轉到 ★ PIXEL-REVIEW 閘門章節執行 PL-R1~R22
+  - 若是文件/規則修改 → 確認 DOC_INDEX.md 已更新，走 §MOD 審查
+  ⚠️ 不可把 PixelLab 任務當 Godot PR 審查 → 缺 PL-R 清單 = 審查無效
+
 ⚠️ 若發現靜態錯誤 → 立即退回 Developer，不進行審查
 ```
 
