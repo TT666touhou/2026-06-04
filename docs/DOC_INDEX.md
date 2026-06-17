@@ -93,7 +93,7 @@
 | 腳本路徑 | 負責角色 | 說明 |
 |---------|---------|------|
 | `scripts/set-role.ps1` | Architect | **每次切換角色必用** — 設定 .agent-role 文件 |
-| `scripts/sensor-scan.ps1` | Sensor | **每次 commit 前必跑** — 14/14 掃描項目 |
+| `scripts/sensor-scan.ps1` | Sensor | **每次 commit 前必跑** — 全部 15 項掃描 |
 | `scripts/dev-submit.ps1` | Developer | 代碼提交前置流程 |
 | `scripts/assert-clean.ps1` | Developer | 工作區清潔確認 |
 

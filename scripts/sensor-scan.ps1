@@ -580,7 +580,7 @@ foreach ($f in $gdFiles) {
 if ($err033Count -eq 0) { Write-Pass "No ERR-033: No func param shadowing base class properties" }
 
 ## ============================================================
-## 14/14  make_current() before add_child (ERR-034)
+## 14/15  make_current() before add_child (ERR-034)
 ##
 ##  Camera2D.make_current() requires is_inside_tree() == true.
 ##  Detects: make_current() on the line BEFORE add_child() for same var.

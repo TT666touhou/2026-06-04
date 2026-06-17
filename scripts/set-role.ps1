@@ -84,7 +84,7 @@ $RoleMustRead = @{
         "[READ -2] docs/DOC_INDEX.md (which docs to monitor?)",
         "[READ  0] docs/ERROR_LOG.md (known dangerous patterns)",
         "[READ  1] roles/sensor.md (trigger table and scan scripts)",
-        "[SCAN]    scripts/sensor-scan.ps1 (run 14/14 scan)"
+        "[SCAN]    scripts/sensor-scan.ps1 (run all 15 checks)"
     )
     "none"      = @("[TIP] Run .\scripts\set-role.ps1 <role> to set a role")
 }
@@ -142,7 +142,7 @@ switch ($Role) {
         Write-Host "  [!!]  QA is the ONLY role that can git commit + push (v4 rule)" -ForegroundColor Yellow
     }
     "sensor"    {
-        Write-Host "  [!!]  On trigger: immediately stop current work, run 14/14 scan" -ForegroundColor Red
+        Write-Host "  [!!]  On trigger: immediately stop current work, run sensor-scan.ps1" -ForegroundColor Red
         Write-Host "  [OK]  Can update: docs/ERROR_LOG.md (new ERR entries)" -ForegroundColor Green
     }
 }
