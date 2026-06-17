@@ -461,12 +461,12 @@ Every valid Godot 4 @export was a false positive. Sensor had zero credibility fo
 ```
 ⚠️ 從 Sensor v5 開始，以下是強制要求：
 
-1. sensor-scan.ps1 9/9 PASS 才能 commit
+1. sensor-scan.ps1 14/14 PASS 才能 commit
 2. QA 腳本可以使用 extends Node 或 extends SceneTree：
    - extends Node: 可用 get_tree()、await get_tree().process_frame
    - extends SceneTree: 直接用 await process_frame，禁用 get_tree()
-3. 任何 QA 腳本建立後，必須先執行 sensor-scan.ps1 確認 9/9 PASS
-4. Reviewer 在批准 PR 前必須確認 sensor-scan.ps1 9/9 PASS
+3. 任何 QA 腳本建立後，必須先執行 sensor-scan.ps1 確認 14/14 PASS
+4. Reviewer 在批准 PR 前必須確認 sensor-scan.ps1 14/14 PASS
 ```
 
 ### 給 Architect 的建議

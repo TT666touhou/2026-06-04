@@ -622,7 +622,7 @@ STEP 6：執行驗證
 | GAP-010 | sensor-scan 不掃 .md 文件 | ✅ 已修復 | sensor-scan v6 Check 10/10 |
 | ERR-029 | Portal Walk-in 重觸發黑屏（新場景實例 _triggered=false 競態！） | ✅ 已修復 | game_world.gd entry portal monitoring 禁用 + 計時器重啟；developer.md rule w；gap-audit 驗證 |
 | ERR-030 | get_node_or_null 回傳 Variant，:= 屬性推斷失敗（Parser Error） | ✅ 已修復 | room_base.gd 顯式型別修正；Sensor v10 Check 11/14 自動偵測；ERROR_LOG 新增；workflow §I rule 18 |
-| ERR-031 | TileSet .tres 缺 tile_size，編輯器格線 16px vs 實際 8px tile 對不上 | ✅ 已修復 | dungeon_world_tileset.tres + monochrome_packed.tres 加入 tile_size；Sensor v7 Check 12/12；ERROR_LOG 新增；workflow §I rule 19 |
+| ERR-031 | TileSet .tres 缺 tile_size，編輯器格線 16px vs 實際 8px tile 對不上 | ✅ 已修復 | dungeon_world_tileset.tres + monochrome_packed.tres 加入 tile_size；Sensor v10 Check 12/14；ERROR_LOG 新增；workflow §I rule 19 |
 | ERR-032 | for-loop 同 block 變數同名（marker shadow） | ✅ 已修復 | room_base.gd:169 var marker → var root_marker；ERROR_LOG 新增；workflow §I rule 20 |
 | ERR-033 | 函式參數遮蔽基底類別屬性（visible shadows CanvasItem.visible） | ✅ 已修復 | checkpoint.gd:142 visible → show_hint；ERROR_LOG 新增；workflow §I rule 21 |
 | ERR-034 | Camera2D.make_current() 在 add_child 前呼叫（is_inside_tree() 失敗） | ✅ 已修復 | room_base.gd:208 移至 player.add_child(cam) 後；ERROR_LOG 新增；workflow §I rule 22 |
