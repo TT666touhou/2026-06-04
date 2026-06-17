@@ -380,6 +380,9 @@ github.add_issue_comment(
        失敗退回時：將 Phase 將標記為 ⚠️ PARTIAL，加入常見失敗原因
        變更「對應已完成內容」（測試日期、測試方式、機器讀取結果）
        在「更新日誌」加入一行記錄
+□ 11. 【§AUDIT 新增】sensor-scan.ps1 全部 PASS（機器層最終確認）
+       .\scripts\sensor-scan.ps1
+       → 任何 FAIL → 退回 Developer 修復後才能 Merge
 
 通過 → 通知可以 Merge
 失敗 → 退回 Developer，附上完整的 qa_game.log + qa_gut.log
@@ -458,6 +461,11 @@ Start-Process $godot -ArgumentList @("--headless","--path","D:\2026-06-04","--ch
 $errors = Select-String -Path "qa_final_check.log" -Pattern "error" -CaseSensitive:$false
 if ($errors) { Write-Error "❌ 靜態驗證失敗！禁止提交。"; Get-Content "qa_final_check.log"; exit 1 }
 Write-Host "✅ 靜態驗證通過（0 error）"
+
+## Step 3.5: 執行 sensor-scan.ps1 全部 PASS（機器層最終確認）
+& "D:\2026-06-04\scripts\sensor-scan.ps1"
+if ($LASTEXITCODE -ne 0) { Write-Error "❌ sensor-scan.ps1 未全部 PASS！禁止提交。"; exit 1 }
+Write-Host "✅ sensor-scan.ps1 全部 PASS"
 
 ## Step 4: 確認 QA 報告已建立
 $report = Get-ChildItem "D:\2026-06-04\docs" -Filter "qa-report-*.md" | Sort-Object LastWriteTime -Descending | Select-Object -First 1

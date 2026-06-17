@@ -855,37 +855,58 @@ $md | Where-Object { $_.Name -ne "architect.md" } | ForEach-Object {
 
 **目標**：找出任何相互矛盾的規則描述。
 
-```
-必查清單：
-□ DOC_INDEX.md 職責矩陣 vs roles/*.md 的讀/寫權限描述 vs hooks/pre-commit 實際限制
-□ workflow.md §B 角色速查表 vs roles/*.md 的 MUST-DO/禁止事項
-□ workflow.md §I 規則 vs 角色 MUST-DO 清單中對應的描述
-□ pre-commit hook 自述版本（顯示 v3）vs 頂部註解版本（v4）
-□ sensor-scan.ps1 標頭 Check X/15 vs §I 規則中引用的 "Check X/14"
+```powershell
+# 必查清單（可執行）
+$root = "D:\2026-06-04"
 
-偵測方法：
-1. 列出 DOC_INDEX.md 職責矩陣中每個角色的讀/寫欄位
-2. 在對應 roles/*.md 中找到對應的允許/禁止描述
-3. 用 grep 找出 pre-commit hook 對該角色的實際限制
-4. 三者必須一致 → 不一致 = 矛盾，記錄並修復
+# CONTR-A：DOC_INDEX 職責矩陣 vs roles/*.md 讀/寫權限 vs pre-commit 實際限制
+# 手動對照：DOC_INDEX.md 職責矩陣每個角色 → roles/<role>.md 允許/禁止 → hooks/pre-commit 限制
+# 三者必須一致 → 不一致 = 矛盾
+
+# CONTR-B：workflow.md §B 速查表 vs roles/*.md MUST-DO
+# 手動對照：§B 表格「禁止」欄 vs 各 role file 的「你禁止做的事」
+
+# CONTR-C：pre-commit echo 版本 vs 頂部註解版本（§LESSON-2026-06-18 發現，機器可偵測）
+$hookLines = Get-Content "$root\hooks\pre-commit"
+$echoVer = ($hookLines | Select-String '\[Pre-Commit Hook v(\d+)\]' | Select-Object -First 1).Matches[0].Groups[1].Value
+$commentVer = ($hookLines | Select-String '^\# hooks/pre-commit.*\(v(\d+)' | Select-Object -First 1).Matches[0].Groups[1].Value
+if ($echoVer -ne $commentVer) { "[CONTRADICTION] pre-commit echo=v$echoVer ≠ header=v$commentVer" }
+else { "[OK] pre-commit echo v$echoVer matches header" }
+
+# CONTR-D：sensor-scan banner vs 實際 [X/Y] 標頭數（已由 Check 15/15 自動偵測，此處僅說明）
+# → 自動：sensor-scan.ps1 Check 15/15 self-consistency 已覆蓋此項
 ```
 
 ### AUDIT.4 死代碼偵測（Dead Rule Detection）
 
 **目標**：找出廢棄、無法執行、或已被取代的規則。
 
-```
-掃描模式：
-□ 過時外部工具引用：
-  Select-String "PixelLab|PIXEL-REVIEW|G-2|browser_subagent.*allowed" `
-    -Path "D:\2026-06-04\**\*.md","D:\2026-06-04\**\*.ps1" -Recurse
-□ 引用不存在路徑（test_room_a/b、review_reports/ 等已移除目錄）
-□ 明確標記「已廢棄 / 舊規則 v3」但未從流程文件移除的段落
-□ [DOC] 強度的規則，且已有同等效果的 [HOOK] 或 [SENSOR] 規則存在
+```powershell
+$root = "D:\2026-06-04"
+$md = Get-ChildItem $root -Recurse -Filter "*.md" | Where-Object { $_.FullName -notmatch "\\archive\\" }
+$all = Get-ChildItem $root -Recurse | Where-Object { $_.Extension -in ".md",".ps1" -and $_.FullName -notmatch "\\archive\\" }
 
-判斷標準：
-  若某 [DOC] 規則所保護的行為已被 [HOOK] 強制阻斷，該 [DOC] 規則降級為「歷史說明」
-  → 在規則後標記 [已由 HOOK/SENSOR 覆蓋]，縮短文字，保留在 §I 供參考
+# DEAD-A：過時外部工具引用
+$all | ForEach-Object {
+  $h = Select-String "PixelLab|PIXEL-REVIEW|browser_subagent.*allow" $_.FullName
+  if ($h) { $h | ForEach-Object { "[DEAD-A] $($_.Filename) L$($_.LineNumber): $($_.Line.Trim())" } }
+}
+
+# DEAD-B：文件中引用的目錄路徑不存在（§LESSON-2026-06-18 發現）
+$knownDirRefs = @("docs/review_reports","docs/archive","scripts/utils","hooks","roles","docs")
+$knownDirRefs | ForEach-Object {
+  $status = if (Test-Path "$root\$_") {"✅"} else {"[DEAD-B] 路徑不存在：$_"}
+  $status
+}
+
+# DEAD-C：明確標記「已廢棄」但未移除的段落
+$md | ForEach-Object {
+  $h = Select-String "已廢棄|DEPRECATED|舊規則|舊版本" $_.FullName
+  if ($h) { $h | ForEach-Object { "[DEAD-C] $($_.Filename) L$($_.LineNumber): $($_.Line.Trim())" } }
+}
+
+# 判斷標準：
+# 若某 [DOC] 規則已被 [HOOK] 強制阻斷 → 在規則後標記 [已由 HOOK/SENSOR 覆蓋]，縮短文字
 ```
 
 ### AUDIT.5 版本與數字一致性
