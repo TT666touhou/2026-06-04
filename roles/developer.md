@@ -141,7 +141,7 @@
                var cam: Node2D = get_node_or_null("CameraZone") as Node2D
                var pos: Vector2 = cam.global_position
              角則：任何 get_node_or_null() 的返回値在存取屬性前，必須加 `: NodeType = ... as NodeType`
-             Sensor v10 Check 11/14 自動偵測。
+             Sensor v10 Check 11/15 自動偵測。
 
           t. 【ERR-031 後】TileSet .tres 必須顯式聲明 tile_size：
              ❌ 危險：[resource] 區塊中沒有 tile_size = Vector2i(W, H) → Godot 預設 16×16
@@ -150,7 +150,7 @@
                tile_size = Vector2i(8, 8)  ## 或 Vector2i(16, 16) 依圖片調查
                sources/0 = SubResource("...")
              檢查方式：圖片尺寸 ÷ tile 數量 = 實際 tile 尺寸
-             Sensor v10 Check 12/14 自動偵測。
+             Sensor v10 Check 12/15 自動偵測。
 
           u. 【ERR-032 後】for-loop 嵌套禁止同名變數（shadow 警告）：
              ❌ 危險（inner/outer 同名）：

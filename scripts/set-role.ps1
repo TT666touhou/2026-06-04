@@ -129,12 +129,12 @@ switch ($Role) {
         Write-Host "  [OK]  Can commit: .gd, .tscn (LFS Lock first), .tres" -ForegroundColor Green
         Write-Host "  [NG]  Cannot commit: direct git commit of code (use dev-submit.ps1)" -ForegroundColor Red
         Write-Host "  [!!]  Before scene edit: .\scripts\lock-scene.ps1 lock <path>" -ForegroundColor Yellow
-        Write-Host "  [!!]  Before commit: run sensor-scan.ps1, confirm 14/14 PASS" -ForegroundColor Yellow
+        Write-Host "  [!!]  Before commit: run sensor-scan.ps1, confirm all checks PASS" -ForegroundColor Yellow
     }
     "reviewer"  {
         Write-Host "  [OK]  Can do: PR review, comments, audit code + docs" -ForegroundColor Green
         Write-Host "  [NG]  Cannot do: directly modify code files" -ForegroundColor Red
-        Write-Host "  [DOC] Maintains: docs/review_reports/*.md" -ForegroundColor Cyan
+        Write-Host "  [DOC] Maintains: docs/qa-report-*.md (QA writes these)" -ForegroundColor Cyan
     }
     "qa"        {
         Write-Host "  [OK]  Can commit: docs/qa-report-*.md, and final code commit" -ForegroundColor Green

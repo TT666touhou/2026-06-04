@@ -29,7 +29,6 @@
 | scripts/set-role.ps1 | - | **讀/寫** | 讀 | 讀 | - | 監控 |
 | scripts/sensor-scan.ps1 | - | 讀 | **必讀** | **讀** | **讀** | **讀/寫** |
 | scripts/dev-submit.ps1 | - | - | **讀** | 讀 | - | - |
-| docs/review_reports/ | - | - | - | **寫** | 讀 | - |
 | docs/qa-report-*.md | - | - | - | 讀 | **寫** | - |
 
 **圖例**：

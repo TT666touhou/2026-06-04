@@ -391,10 +391,10 @@ memory.add_observations(
 □ 8. 【新增必要】若審查發現「 Developer 未完成的項目」或「新技術倫务」：
       - 在 docs/PROJECT_STATUS.md 的「尚未開始（TODO）」加入對應次項目
       - 在「更新日誌」加入一行記錄
-□ 9. 【GAP-005 修復 — 強制執行】sensor-scan.ps1 14/14 PASS：
+□ 9. 【GAP-005 修復 — 強制執行】sensor-scan.ps1 全部 PASS：
       .\scripts\sensor-scan.ps1
       → 若任何 Check FAIL → 退回 Developer 修復後才能批准
-      → 包含 Check 10/14：GDD 亂碼 + 關鍵字存在性 + [GDD TODO] 掃描
+      → 包含 Check 10/15：GDD 亂碼 + 關鍵字存在性 + [GDD TODO] 掃描
       → 此步驟不可跳過，它是 Sensor 掃描的機器落地點
 □ 10. ★ v4 強制：F6 場景驗證已完成：
         對所有改動的 .tscn 執行 F6 驗證，確認：
