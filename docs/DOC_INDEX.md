@@ -128,36 +128,12 @@
 
 ---
 
-## 📖 WORKFLOW 修改 SOP（§MOD — 5步驟流程）
+## 📖 WORKFLOW 修改 SOP（§MOD）
 
-> **觸發時機**：用戶要求「修改 workflow / 強化規則 / 反省文檔」時
-
-```
-步驟 1（Sensor）：現狀掃描
-  - 執行 scripts/sensor-scan.ps1，記錄當前掃描結果
-  - 讀取 docs/ERROR_LOG.md 確認相關 ERR 條目
-  - 確認 DOC_INDEX.md 是否需要更新
-
-步驟 2（Architect）：差距分析
-  - 分析現有規則與用戶需求的差距
-  - 確定需修改的文件清單（更新 DOC_INDEX.md）
-  - 輸出「修改計畫」給用戶確認
-
-步驟 3（Developer）：實施修改
-  - 依照計畫修改對應文件
-  - 每次修改後確認文件落地（用 grep/Select-String 驗證）
-  - 更新 DOC_INDEX.md 的「最後更新」
-
-步驟 4（Reviewer）：審查新規則
-  - 確認新規則不與現有規則衝突
-  - 確認相關的 ERROR_LOG.md 條目已更新
-  - 確認所有角色的 MUST-DO 清單已同步
-
-步驟 5（QA）：測試驗證
-  - 執行模擬測試（用假場景觸發新規則）
-  - 確認規則在 pre-commit hook 和 sensor-scan.ps1 中有效
-  - Git commit 並記錄在 docs/review_reports/
-```
+> **完整 5 步驟流程詳見：`workflow.md §MOD`（SAS 權威來源）**
+> 觸發時機：用戶要求「修改 workflow / 強化規則 / 反省文件」時
+> 步驟摘要：① Sensor 掃描 → ② Architect 計畫 → ③ Developer 實施 → ④ Reviewer 審查 → ⑤ QA 驗證
+> 修改任何文件前必須先走 `workflow.md §EDIT`（下游影響掃描 + Cascade Update Matrix）
 
 ---
 

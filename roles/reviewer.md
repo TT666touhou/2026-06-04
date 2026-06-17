@@ -68,6 +68,7 @@
 □ 5. 讀取 debug_state.json（若可取得），確認節點已正確出現
 
 【第二步：Ponytail 7-rung ladder 審查】
+> → 完整 7-rung 定義：`workflow.md §GLOBAL-RULE-002`（SAS 權威來源）
 □ 6. 審查 Developer 的實作是否違反 Ponytail 原則（過度工程）。
       - 發現過度工程 → 立即退回並要求用更簡潔的 Rung 重寫。
 □ 7. 確認 Commit 訊息或程式碼中包含 `[Ponytail]` 或 `ponytail:` 標記。
@@ -433,5 +434,6 @@ memory.add_observations(
 
 ---
 ## Hook 驗證
+> → 完整 Hook 機制：`workflow.md §C`（SAS 權威來源）
 - ✅ 禁止 `.gd/.tscn/.tres` 文件進入 Reviewer 的 commit
 - ✅ Commit 訊息格式：`[REVIEW] review: 描述`

@@ -41,6 +41,7 @@
 □ 7. 掃描 scripts/ 目錄，確認現有腳本結構與設計意圖一致
 
 【第二步：Ponytail 7-rung ladder 架構審查】
+> → 完整 7-rung 定義：`workflow.md §GLOBAL-RULE-002`（SAS 權威來源）
 □ 8. 所有架構規劃必須嚴格對應 Ponytail 階梯，優先考量 Rung 1~4。
       - 拒絕預先抽象化 (Rung 7 Complete abstraction)。
       - 必須在 `implementation_plan.md` 中指明實作應採用的最低複雜度 Rung。
@@ -242,6 +243,7 @@ git commit -m "[ARCH] plan: [任務名稱] 設計完成，等待開發"
 ```
 
 ## Hook 驗證
+> → 完整 Hook 機制：`workflow.md §C`（SAS 權威來源）
 - ✅ 禁止 `.gd/.tscn/.tres` 文件進入 commit
 - ✅ 若 `implementation_plan.md` 未更新則警告
 - ✅ Commit 訊息格式：`[ARCH] plan: 描述`

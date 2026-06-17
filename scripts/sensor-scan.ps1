@@ -4,20 +4,21 @@
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
 ## Checks:
-##   1/14  BOM scan (.gd files must be UTF-8 without BOM)
-##   2/14  .tscn ext_resource UID self-reference (ERR-013)
-##   3/14  Physics callback dangerous patterns (ERR-001)
-##   4/14  int() narrowing conversion (ERR-002)
-##   5/14  Godot 3 deprecated API (ERR-014)
-##   6/14  .tscn header first byte validity (ERR-023)
-##   7/14  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
-##   8/14  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
-##   9/14  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
-##   10/14 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
-##   11/14 Variant node property access with := (ERR-030) - use explicit type: var x: Node2D = node as Node2D
-##   12/14 TileSet .tres missing tile_size (ERR-031) - every TileSet must have explicit tile_size in [resource]
-##   13/14 Func param shadowing base class property (ERR-033) - visible/position/name etc. as param names
-##   14/14 make_current() before add_child (ERR-034) - node must be in tree before calling tree-dependent API
+##   1/15  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/15  .tscn ext_resource UID self-reference (ERR-013)
+##   3/15  Physics callback dangerous patterns (ERR-001)
+##   4/15  int() narrowing conversion (ERR-002)
+##   5/15  Godot 3 deprecated API (ERR-014)
+##   6/15  .tscn header first byte validity (ERR-023)
+##   7/15  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   8/15  Godot --check-only GDScript validation (ERR-015) ← CRITICAL: catches Variant/type errors
+##   9/15  SceneTree script calling get_tree() (ERR-028) - extends SceneTree cannot call Node methods
+##   10/15 GAME_DESIGN.md content integrity (ERR-DOC-001) - GDD corruption + TODO scan [GAP-001/004/010]
+##   11/15 Variant node property access with := (ERR-030) - use explicit type: var x: Node2D = node as Node2D
+##   12/15 TileSet .tres missing tile_size (ERR-031) - every TileSet must have explicit tile_size in [resource]
+##   13/15 Func param shadowing base class property (ERR-033) - visible/position/name etc. as param names
+##   14/15 make_current() before add_child (ERR-034) - node must be in tree before calling tree-dependent API
+##   15/15 Self-consistency: banner check count == actual headers; commit-msg no early exit (§SAS guard)
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -53,7 +54,7 @@ if ($null -eq $scriptFiles) { $scriptFiles = @() }
 ## ============================================================
 ## 1/9  BOM Scan -- all .gd files must be UTF-8 without BOM
 ## ============================================================
-Write-Host "`n[1/14] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
+Write-Host "`n[1/15] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
 $bomCount = 0
 
 foreach ($f in $gdFiles) {
@@ -80,7 +81,7 @@ else { Write-Fail "Found $bomCount BOM issues in .gd files" }
 ## 2/9  .tscn ext_resource UID self-reference scan (ERR-013)
 ##      Detects scenes where an ext_resource uid equals the scene's own uid
 ## ============================================================
-Write-Host "`n[2/14] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
+Write-Host "`n[2/15] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
 $uidSelfRefCount = 0
 
 foreach ($f in $tscnFiles) {
@@ -103,7 +104,7 @@ if ($uidSelfRefCount -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files ha
 ## 3/9  Physics callback dangerous pattern scan (ERR-001)
 ##      queue_free/add_child/change_scene called directly inside body_entered etc.
 ## ============================================================
-Write-Host "`n[3/14] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
+Write-Host "`n[3/15] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
 $physicsIssues  = 0
 $dangerCalls    = @("add_child(", "queue_free(", "change_scene_to_file(")
 $callbackFuncs  = @("func _on_body_entered", "func _on_area_entered", "func _on_body_exited", "func _on_area_exited")
@@ -146,7 +147,7 @@ if ($physicsIssues -eq 0) { Write-Pass "No physics callback dangerous patterns f
 ## 4/9  Narrowing conversion scan (ERR-002)
 ##      int(node.x) or int(node.y) should be roundi()
 ## ============================================================
-Write-Host "`n[4/14] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
+Write-Host "`n[4/15] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
 $narrowingCount = 0
 
 foreach ($f in $scriptFiles) {
@@ -163,7 +164,7 @@ if ($narrowingCount -eq 0) { Write-Pass "No int() narrowing conversion issues fo
 ##      BAD (Godot 3): export var, onready var, setget, old stretch constants
 ##      GOOD (Godot 4): @export var, @onready var  <-- must NOT be flagged
 ## ============================================================
-Write-Host "`n[5/14] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
+Write-Host "`n[5/15] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
 $deprecatedCount = 0
 
 foreach ($f in $gdFiles) {
@@ -207,7 +208,7 @@ if ($deprecatedCount -eq 0) { Write-Pass "No Godot 3 deprecated API found" }
 ##      Every .tscn must begin with '[' (0x5B) after optional BOM
 ##      PowerShell Get-Content/Set-Content pipelines can silently strip it
 ## ============================================================
-Write-Host "`n[6/14] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
+Write-Host "`n[6/15] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
 $headerIssues = 0
 
 foreach ($f in $tscnFiles) {
@@ -254,7 +255,7 @@ if ($headerIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files have 
 ##  is using the wrong format.
 ##  Note: correct AtlasTexture files have 'atlas = ExtResource(' (no quotes, different key name)
 ## ============================================================
-Write-Host "`n[7/14] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
+Write-Host "`n[7/15] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
 $spriteFramesIssues = 0
 
 # Exact byte strings to search for (quoted keys only appear in the wrong format)
@@ -286,7 +287,7 @@ if ($spriteFramesIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files
 ##      name the file and line. The DEVELOPER role MUST fix it.
 ##      Reviewer MUST verify this passes before approving PR.
 ## ============================================================
-Write-Host "`n[8/14] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
+Write-Host "`n[8/15] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
 
 ## Locate Godot executable
 $godotPathFile = "C:\Users\88698\.gemini\antigravity-ide\knowledge\godot_executable\artifacts\godot_path.txt"
@@ -343,7 +344,7 @@ if (-not (Test-Path $godotExe)) {
 ##      'extends SceneTree' scripts cannot call get_tree() (that is a Node method).
 ##      Self IS the SceneTree. Use: await process_frame, not await get_tree().process_frame
 ## ============================================================
-Write-Host "`n[9/14] Scanning for ERR-028 (extends SceneTree using get_tree())..." -ForegroundColor Yellow
+Write-Host "`n[9/15] Scanning for ERR-028 (extends SceneTree using get_tree())..." -ForegroundColor Yellow
 $err028Count = 0
 
 foreach ($f in $gdFiles) {
@@ -385,7 +386,7 @@ if ($err028Count -eq 0) { Write-Pass "No ERR-028: No SceneTree scripts incorrect
 ##     - If MISSING_KEYWORDS: Designer must verify the section was not accidentally erased
 ##     - If GDD_TODO: QA must require Designer to resolve before signing off
 ## ============================================================
-Write-Host "`n[10/14] Scanning GAME_DESIGN.md content integrity (ERR-DOC-001 / GAP-001/004/010)..." -ForegroundColor Yellow
+Write-Host "`n[10/15] Scanning GAME_DESIGN.md content integrity (ERR-DOC-001 / GAP-001/004/010)..." -ForegroundColor Yellow
 $gddIssues = 0
 
 $gddPath = Join-Path $Root "docs\GAME_DESIGN.md"
@@ -480,7 +481,7 @@ if ($gddIssues -eq 0) { if (Test-Path $gddPath) { Write-Pass "GDD content integr
 ##  Detection: pattern  var X = get_node_or_null(  (no colon-type)
 ##             followed by: var Y := <X>.   (property on untyped var)
 ## ============================================================
-Write-Host "`n[11/14] Scanning for ERR-030 (Variant := property access on get_node_or_null)..." -ForegroundColor Yellow
+Write-Host "`n[11/15] Scanning for ERR-030 (Variant := property access on get_node_or_null)..." -ForegroundColor Yellow
 $err030Count = 0
 
 foreach ($f in $scriptFiles) {
@@ -519,7 +520,7 @@ if ($err030Count -eq 0) { Write-Pass "No ERR-030: No untyped Variant property ac
 ##  Detection: file has type="TileSet" header AND [resource] block
 ##             but [resource] block does NOT contain 'tile_size ='
 ## ============================================================
-Write-Host "`n[12/14] Scanning TileSet .tres for missing tile_size (ERR-031)..." -ForegroundColor Yellow
+Write-Host "`n[12/15] Scanning TileSet .tres for missing tile_size (ERR-031)..." -ForegroundColor Yellow
 $err031Count = 0
 
 $tresFiles = [array](Get-ChildItem $Root -Recurse -Filter "*.tres" -ErrorAction SilentlyContinue |
@@ -552,7 +553,7 @@ if ($err031Count -eq 0) { Write-Pass "All TileSet .tres have explicit tile_size 
 ##  has the same name as an inherited property (visible, position, etc.)
 ##  Detects: func xxx(visible:), func xxx(position:), etc.
 ## ============================================================
-Write-Host "`n[13/14] Scanning for ERR-033 (func param shadowing base class property)..." -ForegroundColor Yellow
+Write-Host "`n[13/15] Scanning for ERR-033 (func param shadowing base class property)..." -ForegroundColor Yellow
 $shadowProps  = @('visible','position','rotation','scale','modulate','name','owner','process_mode','transform','z_index')
 $err033Count  = 0
 foreach ($f in $gdFiles) {
@@ -586,7 +587,7 @@ if ($err033Count -eq 0) { Write-Pass "No ERR-033: No func param shadowing base c
 ##  Heuristic: 'make_current' appears before 'add_child' within 5 lines
 ##  in the same function body.
 ## ============================================================
-Write-Host "`n[14/14] Scanning for ERR-034 (make_current() before add_child())..." -ForegroundColor Yellow
+Write-Host "`n[14/15] Scanning for ERR-034 (make_current() before add_child())..." -ForegroundColor Yellow
 $err034Count = 0
 foreach ($f in $gdFiles) {
     try {
@@ -619,6 +620,59 @@ foreach ($f in $gdFiles) {
 if ($err034Count -eq 0) { Write-Pass "No ERR-034: No make_current() before add_child() patterns" }
 
 ## ============================================================
+## 15/15  Self-consistency check (§SAS guard)
+##
+##  Verifies two meta-level invariants:
+##  1. Banner check count == actual [X/Y] Write-Host check headers in this file.
+##     Catches stale banners after check additions/removals.
+##  2. hooks/commit-msg has no bare 'exit 0' before the PONYTAIL section.
+##     Guards against a re-occurrence of the Ponytail bypass bug (fixed 2026-06-17).
+## ============================================================
+Write-Host "`n[15/15] Self-consistency + hook integrity check (§SAS)..." -ForegroundColor Yellow
+
+## --- 1. Banner vs actual check count ---
+$selfPath = $PSCommandPath
+if ([string]::IsNullOrEmpty($selfPath)) { $selfPath = Join-Path $Root "scripts\sensor-scan.ps1" }
+try {
+    $selfLines = [System.IO.File]::ReadAllLines($selfPath, [System.Text.Encoding]::UTF8)
+    $actualCount = ($selfLines | Where-Object { $_ -match 'n\[\d+/\d+\]' }).Count
+    $bannerLine  = $selfLines | Where-Object { $_ -match 'PASSED \(\d+/\d+\)' } | Select-Object -First 1
+    if ($bannerLine -match 'PASSED \((\d+)/(\d+)\)') {
+        $bannerTotal = [int]$Matches[1]
+        if ($actualCount -ne $bannerTotal) {
+            Write-Fail "SELF-CHECK: Banner says $bannerTotal checks but file has $actualCount [X/Y] headers. Update banner and header comment after adding/removing checks."
+        } else {
+            Write-Pass "Check count consistent: banner=$bannerTotal, actual headers=$actualCount"
+        }
+    } else {
+        Write-Warn "Cannot parse PASSED (X/X) banner — skipping count verification"
+    }
+} catch {
+    Write-Warn "Cannot read sensor-scan.ps1 for self-check: $_"
+}
+
+## --- 2. commit-msg: no bare exit 0 before PONYTAIL section ---
+$hookPath = Join-Path $Root "hooks\commit-msg"
+if (Test-Path $hookPath) {
+    $hookLines = [System.IO.File]::ReadAllLines($hookPath, [System.Text.Encoding]::UTF8)
+    $ponytailIdx = -1
+    $i = 0
+    foreach ($line in $hookLines) {
+        if ($line -match 'PONYTAIL' -and $ponytailIdx -eq -1) { $ponytailIdx = $i }
+        if ($ponytailIdx -eq -1 -and $line -match '^\s*exit 0\s*$') {
+            $prevLine = if ($i -gt 0) { $hookLines[$i - 1] } else { '' }
+            if ($prevLine -notmatch 'Merge|Revert') {
+                Write-Fail "HOOK INTEGRITY: hooks/commit-msg has bare 'exit 0' at line $($i+1) before PONYTAIL section. This bypasses Ponytail enforcement (§SAS violation). Fix immediately."
+            }
+        }
+        $i++
+    }
+    if (-not $hasError) { Write-Pass "hooks/commit-msg: no premature exit 0 before PONYTAIL section" }
+} else {
+    Write-Warn "hooks/commit-msg not found at $hookPath — skipping hook integrity check"
+}
+
+## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
@@ -630,6 +684,6 @@ if ($hasError) {
     Write-Host " [Sensor v10] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v10] PASSED (14/14) -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v10] PASSED (15/15) -- No issues found." -ForegroundColor Green
     exit 0
 }

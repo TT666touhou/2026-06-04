@@ -78,6 +78,7 @@
 □ 若確認某個已知錯誤完全修復且無回歸，在 ERROR_LOG.md 中標記 ✅VERIFIED
 
 【第二步：Ponytail 7-rung ladder 最終驗證】
+> → 完整 7-rung 定義：`workflow.md §GLOBAL-RULE-002`（SAS 權威來源）
 □ 5. 確認 Commit 訊息或程式碼中包含 `[Ponytail]` 或 `ponytail:` 標記。
 
 ⚠️ 靜態驗證失敗 → 立即退回 Developer，不繼續進行任何測試
@@ -473,6 +474,7 @@ Write-Host "✅ QA 最終提交完成！"
 
 ---
 ## Hook 驗證
+> → 完整 Hook 機制：`workflow.md §C`（SAS 權威來源）
 - ✅ QA 是 v4 唯一允許提交 `.gd/.tscn/.tres` 的角色
 - ✅ 必須附上 `docs/qa-report-*.md`
 - ✅ Commit 訊息格式：`[QA] test: 描述`

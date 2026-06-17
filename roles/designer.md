@@ -45,6 +45,7 @@
       ⚠️ 違反任一項 → Reviewer 有權要求 Designer 完整重整後才開始其他工作
 
 【第四步：Ponytail 7-rung ladder 設計原則】
+> → 完整 7-rung 定義：`workflow.md §GLOBAL-RULE-002`（SAS 權威來源）
 □ 9. 每個設計決策必須自我詰問：這真的需要嗎？(Rung 1 YAGNI)。
       - 能否用 Godot 內建系統解決？(Rung 2 Built-ins)。
       - 拒絕未來的、防禦性的過度設計。
@@ -313,6 +314,7 @@ UI 外觀改動               → 更新 UI 章節的佈局說明
 
 ---
 ## Hook 驗證
+> → 完整 Hook 機制：`workflow.md §C`（SAS 權威來源）
 - ✅ 唯一能修改 `docs/GAME_DESIGN.md` 的角色
 - ✅ 禁止提交 `.gd/.tscn/.tres` 文件
 - ✅ Commit 訊息格式：`[DESIGN] 類型: 描述`
