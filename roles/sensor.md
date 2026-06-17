@@ -60,20 +60,11 @@
 ## ⚡ 召喚時必做（MUST DO FIRST — Sensor 版）
 
 ```
-[召喚時第-2步：讀取文件總索引 — 確認監控哪些文件（§READ SOP）]
+[§READ SOP — 不可跳過，完整步驟詳見 workflow.md §READ]
 
-□ -2. 讀取 docs/DOC_INDEX.md：
-       Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
-       - 確認「Sensor 文件監控清單」部分（文件/監控條件/觸發動作）
-       - 確認本次觸發的 ERR 條目是否有對應的文件需要更新
-       ⚠️ 監控完畢若發現新問題 → 立即更新 docs/ERROR_LOG.md 並通知 Architect
-
-[召喚時第-1步：查詢錯誤知識庫 — 對照已知模式]
-
-□ -1. 查詢 docs/ERROR_LOG.md：
-       Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-       - 確認觸發的危險模式是否有對應的 ERR 編號
-       - 確認修復方式與 ERROR_LOG 記錄的一致
+□ -2. Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"  → Sensor 文件監控清單 + 觸發條目對應文件
+□ -1. Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"  → 對照已知危險模式 + ERR 編號 + 修復方式
+⚠️ 監控完畢若發現新問題 → 立即更新 ERROR_LOG.md 並通知 Architect（觸發 §LESSON SOP）
 ```
 
 ---

@@ -42,30 +42,12 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
-[第-2步：讀取文件總索引 — 所有 ROLE 必做，不可跳過（§READ SOP）]
+[§READ SOP — 不可跳過，完整步驟詳見 workflow.md §READ]
 
-□ -2. 讀取 docs/DOC_INDEX.md：
-       Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
-       - 確認自己角色在『職責矩陣』中的讀/寫職責
-       - 找出本次任務涉及的文件類型（Godot/文件）
-       ⚠️ 若跳過此步驟 → Sensor 應介入中斷
-
-[第-1步：讀取全專案狀態 — 絕對第一步，不可跳過]
-
-□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
-       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
-       - 確認「快速總覽」中該 Phase 的狀態為 IN_REVIEW
-       - 閱讀該 Phase 的「已完成」內容，確認 Developer 宣稱完成的項目
-       - 確認「已知限制」，了解应該審查哪些技術細節
-       ⚠️ 若不讀此文件就開始審查 → 視為嚴重違規，審查結果無效
-
-【第零步：查詢錯誤知識庫 — 先了解已知問題，再審查】
-
-□ 0. 查詢 docs/ERROR_LOG.md（審查前必做）：
-      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-      - 確認 Developer 所修復的問題有在 Critical/Warning 區塊中有對應記錄
-      - 確認返回修復的方式與 ERROR_LOG.md 中記錄的一致
-      ⚠️ 若 Developer 的修復方式與文件不符 → 定為否分 PR
+□ -2. Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"      → 職責矩陣 + 本次涉及文件
+□ -1. Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md" → 確認 Phase 狀態為 IN_REVIEW + Developer 宣稱完成項目
+□  0. Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"      → 確認修復方式與記錄一致，否則否決 PR
+⚠️ 任何步驟跳過 → 審查結果無效，Sensor 立即中斷
 
 【第一步：全面審查前置檢查】
 

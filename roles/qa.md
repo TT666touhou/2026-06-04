@@ -41,31 +41,12 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
-[第-2步：讀取文件總索引 — 所有 ROLE 必做，不可跳過（§READ SOP）]
+[§READ SOP — 不可跳過，完整步驟詳見 workflow.md §READ]
 
-□ -2. 讀取 docs/DOC_INDEX.md：
-       Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
-       - 確認自己角色在『職責矩陣』中的讀/寫職責
-       - 找出本次任務涉及的文件類型（Godot/文件）
-       ⚠️ 若跳過此步驟 → Sensor 應介入中斷
-
-【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
-
-□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
-       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
-       - 確認「快速總覽」中該 Phase 的狀態，渺認需測試項目
-       - 閱讀「已完成」區塊，明確 Developer 宣稱完成了什麼
-       - 確認「尚未開始（TODO）」區塊，種入類似求
-       - 確認「📁 關鍵檔案索引」，確認將測試正確的場景和腳本
-       ⚠️ 若不讀此文件就開始測試 → 視為嚴重違規，測試結果無效
-
-【第零步：查詢錯誤知識庫 — 先學已知問題，再測試】
-
-□ 0. 查詢 docs/ERROR_LOG.md（測試前必做）：
-      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-      - 確認所有 🔴 Critical 錯誤已無回歸（重新出現）
-      - 查看 🟢 Pattern 區塊，確認已知最佳做法被遵循
-      ⚠️ 若發現 Critical 錯誤回歸 → 立即退回 Developer，更新 ERROR_LOG.md
+□ -2. Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"      → 職責矩陣 + 本次涉及文件
+□ -1. Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md" → Phase 狀態 + 需測試項目 + 關鍵檔案索引
+□  0. Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"      → Critical 錯誤無回歸 + Pattern 遵循
+⚠️ 任何步驟跳過 → 測試結果無效，Sensor 立即中斷
 
 【第一步：全面前置驗證 — 任何測試前必做】
 

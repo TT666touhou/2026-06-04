@@ -1,4 +1,4 @@
-# Godot Multi-Agent 開發工作流（完整規範）v4 (2026-06-16)
+# Godot Multi-Agent 開發工作流（完整規範）v5 (2026-06-17)
 
 > **讀取指示（給 AI）**: 進入任何 Godot 遊戲開發對話時，必須優先讀取此文件。
 > 讀完後，立刻執行「A. 對話開始時的第一步」。
@@ -816,6 +816,7 @@ e. Developer 從下一個已知良好狀態重新開始
   - 確認新規則不與現有規則衝突
   - 確認相關的 ERROR_LOG.md 條目已更新
   - 確認所有角色的 MUST-DO 清單已同步
+  - 【§LESSON 新增】確認 enforcement 機制（hook/script）的邏輯在此次修改後仍然正確：人工觸發一次，眼見為憑觀察輸出
 
 步驟⑤（QA）：測試驗證
   - 執行模擬測試（用假場景觸發新規則）
@@ -864,3 +865,143 @@ e. Developer 從下一個已知良好狀態重新開始
 | Godot 場景/腳本修改 | implementation_plan.md；對應 roles/*.md |
 | 文件/規則修改 | docs/DOC_INDEX.md（更新職責矩陣） |
 | 混合任務 | 上述全部必讀（從各類型已讀文件開始） |
+
+---
+
+## §EDIT. 文件與腳本編輯守護 SOP
+
+> **觸發時機**：任何 ROLE 對 `.md`、`hooks/`、`scripts/` 進行任何修改前。
+> **禁止**：跳過此 SOP 直接修改，即使只是改一個數字。此 SOP 是 §MOD 的**前置步驟**。
+
+### EDIT.1 下游影響掃描（修改前必做）
+
+```
+1. 識別你要修改的術語/數字/規則名稱
+2. 執行掃描，找出所有引用該術語的文件：
+   Select-String -Path "D:\2026-06-04\**\*.md","D:\2026-06-04\**\*.ps1","D:\2026-06-04\hooks\*" `
+     -Pattern "被修改的術語" -Recurse
+3. 查閱 §EDIT.3 Cascade Update Matrix，確認聯動文件
+4. 列出完整的需更新文件清單 → 這就是你的 commit 範圍
+```
+
+### EDIT.2 Hook 邏輯驗證（修改 hooks/ 時額外必做）
+
+```
+修改任何 hooks/ 文件後，在 commit 之前：
+1. 逐行驗證所有 exit 路徑 — 確認關鍵檢查未被提前 exit 繞過
+   特別確認：Ponytail check 區塊前沒有任何裸 exit 0
+2. 手動測試三個場景，確認 hook 實際阻斷：
+   ❌ 測試1: commit 訊息不含 [Ponytail] 且代碼無 ponytail: → 必須 exit 1
+   ❌ 測試2: commit 訊息格式不符 [ROLE] type: → 必須 exit 1
+   ❌ 測試3: Designer 嘗試 commit .gd 文件 → 必須 exit 1
+3. 全部測試通過後才能 commit hook 修改
+```
+
+### EDIT.3 Cascade Update Matrix
+
+| ★ 若修改這個 | 必須同步更新以下文件 |
+|---|---|
+| `sensor-scan.ps1` check 數量（如 15→16） | `workflow.md §E` 工具表 · `roles/developer.md` · `roles/sensor.md`（Sensor v4/v5 承諾兩處） · `roles/reviewer.md` 交接閘門 · `scripts/set-role.ps1` |
+| `sensor-scan.ps1` version banner | 同上，以及 `sensor-scan.ps1` 自身標頭 `## Checks:` 區塊 |
+| `hooks/commit-msg` 任何 exit 邏輯 | 執行 EDIT.2 驗證；`workflow.md §C` |
+| `hooks/pre-commit` 角色規則 | 對應 `roles/<role>.md §Hook 驗證`；`docs/DOC_INDEX.md` 職責矩陣 |
+| 任何 role 的讀/寫權限 | `docs/DOC_INDEX.md` 職責矩陣 |
+| `GLOBAL-RULE-001/002` 規則內容 | 各 `roles/*.md` 中引用該規則的段落 |
+| `§READ SOP` 步驟 | `docs/DOC_INDEX.md §READ`；`scripts/set-role.ps1` 必讀清單 |
+| `§MOD SOP` 步驟 | `docs/DOC_INDEX.md §MOD`（引用格式） |
+
+### EDIT.4 Ponytail 評估與提交
+
+```
+1. 新增/修改內容：在 Ponytail 7-rung 中選最低可用 Rung（→ workflow.md §GLOBAL-RULE-002）
+2. Commit 訊息含 [Ponytail] 標記
+3. 執行 sensor-scan.ps1 確認全部 PASS（含 Check 15/15 自洽檢查）
+4. 若新增規則/SOP/文件 → 更新 docs/DOC_INDEX.md 版本欄位
+```
+
+---
+
+## §SAS. 單一權威來源政策（Single Authoritative Source）
+
+> **核心原則**：每類規則只在一個「權威來源（SAS）」中保有完整內容。
+> 其他文件只保留摘要行 + `→ 詳見 [SAS文件 §章節]`。
+> **違反此原則 = 知識同步失效 = 這次審計所有版本號漏洞的根源。**
+
+### SAS.1 權威來源對照表
+
+| 內容類別 | 權威來源（SAS） | 其他文件的正確處理 |
+|---------|--------------|----------------|
+| GLOBAL-RULE-001（browser 禁令） | `workflow.md §GLOBAL-RULE-001` | Role files：1 行摘要 + `→ workflow.md §GLOBAL-RULE-001` |
+| GLOBAL-RULE-002（Ponytail 完整定義） | `workflow.md §GLOBAL-RULE-002` | Role files：保留角色專屬 commit 要求 + `→ workflow.md §GLOBAL-RULE-002` |
+| Git Hook 機制完整說明 | `workflow.md §C` | `roles/<role>.md §Hook 驗證`：只保留角色專屬限制 + `→ workflow.md §C` |
+| §READ SOP 完整步驟 | `docs/DOC_INDEX.md §READ` | `workflow.md §READ`：保留摘要表格（現況正確） |
+| §MOD SOP 完整 5 步驟 | `workflow.md §MOD` | `docs/DOC_INDEX.md §MOD`：已精簡為 1 行摘要 + 引用 |
+| Sensor Level 1/2 觸發表詳細清單 | `roles/sensor.md §觸發條件` | `workflow.md §H`：保留摘要 + `→ sensor.md §觸發條件` |
+| ERR-001 物理回呼架構詳細說明 | `roles/architect.md §物理系統` | 其他 roles：1 行摘要 + `→ architect.md §物理系統` |
+| sensor-scan check 數字（當前值） | `scripts/sensor-scan.ps1`（腳本自身） | 所有 .md 引用：必須與腳本一致；sensor-scan Check 15/15 自動驗證 |
+| 角色禁止事項完整說明 | `roles/<role>.md §禁止` | `workflow.md §B`：摘要表格 |
+| 交接閘門詳細清單 | `roles/<role>.md §交接閘門` | `workflow.md §K`：摘要矩陣 |
+
+### SAS.2 新增規則強制流程
+
+```
+1. 查 SAS.1 確定規則屬於哪個類別 → 找到對應的 SAS 文件
+2. 在 SAS 文件寫入完整版本（complete content here only）
+3. 在其他引用文件寫入：「[規則名稱]：→ 詳見 [SAS文件 §章節]」
+4. 更新 docs/DOC_INDEX.md 版本欄位
+5. 走 §EDIT SOP 驗證 cascade update 完整
+6. 若為影響多角色行為的重大規則 → 同時走 §MOD SOP
+```
+
+---
+
+## §LESSON. 問題捕捉與強化 SOP（Lesson Propagation Protocol）
+
+> **觸發時機**（任何一條）：發現 hook/script 行為與文件描述不符；新增 ERROR_LOG 條目；規則在執行中被發現無效或有歧義；跨文件的同一資訊出現不一致。
+> 由發現者立即觸發，切換 Sensor → Architect → Developer 接力執行。
+
+### LESSON.1 根本原因分類（Root Cause Taxonomy）
+
+| 類型 | 定義 | 本次審計實例 |
+|------|------|------------|
+| **(A) 實作 Bug** | Enforcement 機制程式碼有邏輯錯誤 | commit-msg hook 格式驗證通過後直接 exit 0，Ponytail 驗證被完全繞過 |
+| **(B) 文件漂移** | 同一資訊存在於 N 個地方，更新時未同步 | sensor-scan.ps1 版本號硬編碼在 8+ 個檔案，版本升級後只更新腳本本身 |
+| **(C) 設計缺陷** | SOP 遺漏了必要的驗證步驟 | §MOD SOP 沒有「驗證 enforcement 機制本身正確運作」的步驟 |
+| **(D) 流程空白** | 規則存在但無任何機制確保其有效性 | sensor-scan.ps1 手動執行要求在任何 hook 或 SOP 中都沒有強制點 |
+
+### LESSON.2 執行步驟
+
+```
+Step 1【RECORD — Sensor 執行】
+  → ERROR_LOG.md 新增或更新條目，標記類型 (A/B/C/D)
+  → 描述：什麼被發現、在哪被發現、哪個 SOP 步驟沒有攔截它
+
+Step 2【CROSS-REF — Architect 執行】
+  → 找出所有引用同一資訊的位置：
+     Select-String -Path "roles\*.md","workflow.md","docs\*.md","scripts\*.ps1" -Pattern "關鍵詞"
+  → 建立「需同步更新清單」（每一個引用位置）
+
+Step 3【PROPAGATE — Developer 執行】
+  → 更新清單中所有位置
+  → 若為版本號/計數 → 改為不含硬編碼數字的描述
+    （正確寫法：「sensor-scan.ps1 全部 PASS」，禁止寫「14/14 PASS」）
+  → 若為規則文字 → workflow.md 為 canonical source，其他檔案用一行引用
+
+Step 4【ENFORCE — Architect 判斷】
+  → 此問題能被自動偵測？
+    YES → 新增 sensor-scan.ps1 check 或 hook 邏輯
+    NO  → 在對應角色的 MUST-DO 清單加入手動驗證步驟
+  → 任何 enforcement 機制修改後：必須人工觸發一次，確認實際行為符合預期
+
+Step 5【VERIFY — QA 執行】
+  → 執行 sensor-scan.ps1 全部 PASS
+  → 人工確認修復後的 enforcement 機制按預期工作（眼見為憑）
+
+Step 6【COMMIT — 遵循 §MOD SOP Step 4–5，加 [Ponytail]】
+```
+
+### LESSON.3 防止重犯規則（永久有效）
+
+- **禁止在文件中硬編碼計數型資訊**：文件只寫「sensor-scan.ps1 全部 PASS」，具體數字只存在於腳本本身
+- **任何 enforcement 機制修改後必須人工驗證**：不能假設「寫了規則 = 規則生效」
+- **§MOD SOP 第④步**已新增：確認相關 enforcement 機制的邏輯在修改後仍然正確（人工觸發）

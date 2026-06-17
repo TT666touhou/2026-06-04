@@ -16,31 +16,12 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
-[第-2步：讀取文件總索引 — 所有 ROLE 必做，不可跳過（§READ SOP）]
+[§READ SOP — 不可跳過，完整步驟詳見 workflow.md §READ]
 
-□ -2. 讀取 docs/DOC_INDEX.md：
-       Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
-       - 確認自己角色在『職責矩陣』中的讀/寫職責
-       - 找出本次任務涉及的文件類型（Godot/文件）
-       ⚠️ 若跳過此步驟 → Sensor 應介入中斷
-
-【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
-
-□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
-       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
-       - 確認「快速總覽」中各 Phase 的當前狀態
-       - 找到你今次要實作的 Phase，閱讀「關鍵檔案」和「已知限制」
-       - 確認「尚未開始（TODO）」和「部分完成（PARTIAL）」區塊，明確目前任務範圍
-       - 確認「已鎖定設計決策」，不得修改已鎖定內容
-       ⚠️ 若不讀此文件就開始實作 → 視為嚴重違規，開發成果無效
-
-【第零步：查詢錯誤知識庫 — 先學，再做】
-
-□ 0. 查詢 docs/ERROR_LOG.md（所有錯誤前必做）：
-      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-      - 查找與當前任務相關的已知錯誤
-      - 遵循對應的「修復方法」或「最佳做法」
-      ⚠️ 已知錯誤不得重蹈，違者視為嚴重失職
+□ -2. Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"      → 職責矩陣 + 本次涉及文件
+□ -1. Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md" → Phase 狀態 + 任務範圍 + 已鎖定決策
+□  0. Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"      → 已知錯誤，不得重蹈
+⚠️ 任何步驟跳過 → 工作成果無效，Sensor 立即中斷
 
 【第一步：全面靜態錯誤清除 — 任何新代碼都不能建立在錯誤上】
 

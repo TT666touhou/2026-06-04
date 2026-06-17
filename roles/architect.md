@@ -24,30 +24,12 @@
 ## ⚡ 每次工作的開場強制清單（MUST DO FIRST）
 
 ```
-[第-2步：讀取文件總索引 — 所有 ROLE 必做，不可跳過（§READ SOP）]
+[§READ SOP — 不可跳過，完整步驟詳見 workflow.md §READ]
 
-□ -2. 讀取 docs/DOC_INDEX.md：
-       Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
-       - 確認自己角色在『職責矩陣』中的讀/寫職責
-       - 找出本次任務涉及的文件類型（Godot/文件）
-       ⚠️ 若跳過此步驟 → Sensor 應介入中斷
-
-[第-1步：讀取全專案狀態 — 絕對第一步，不可跳過]
-
-□ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
-       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
-       - 確認「快速總覽」中各 Phase 的當前狀態（哪些 DONE / PARTIAL / TODO）
-       - 閱讀你今次要設計的 Phase 的「關鍵檔案」和「已知限制」
-       - 確認「已鎖定設計決策」，架構設計不得違反
-       - 確認「📁 關鍵檔案索引」，了解現有腳本結構
-       ⚠️ 若不讀此文件就開始設計 → 視為嚴重違規，架構計畫無效
-
-【第零步：查詢錯誤知識庫 — 先學，再做】
-□ 0. 查詢 docs/ERROR_LOG.md（所有工作前必做）：
-      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-      - 確認沒有已知架構層面的根本問題尚未解決
-      - 若架構設計需要調整，須在此步驟先記錄
-      ⚠️ 若你的設計決策會觸發已知錯誤 → 必須在計畫中標注並提供迴避方案
+□ -2. Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"      → 職責矩陣 + 本次涉及文件
+□ -1. Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md" → Phase 狀態 + 已鎖定決策 + 關鍵檔案索引
+□  0. Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"      → 確認無未解決的架構層問題
+⚠️ 任何步驟跳過 → 工作成果無效，Sensor 立即中斷
 
 【第一步：全面靜態依賴檢查 — 開始任何架構工作前必做】
 □ 1. 執行靜態錯誤掃描（IDE 問題面板 / PowerShell lint 腳本）
