@@ -31,7 +31,7 @@ function Write-Fail { param($msg) Write-Host "  [FAIL] $msg" -ForegroundColor Re
 function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow; $script:hasWarning = $true }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v9] Godot Project Integrity Scan"                    -ForegroundColor Cyan
+Write-Host " [Sensor v10] Godot Project Integrity Scan"                   -ForegroundColor Cyan
 Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
@@ -53,7 +53,7 @@ if ($null -eq $scriptFiles) { $scriptFiles = @() }
 ## ============================================================
 ## 1/9  BOM Scan -- all .gd files must be UTF-8 without BOM
 ## ============================================================
-Write-Host "`n[1/9] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
+Write-Host "`n[1/14] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
 $bomCount = 0
 
 foreach ($f in $gdFiles) {
@@ -80,7 +80,7 @@ else { Write-Fail "Found $bomCount BOM issues in .gd files" }
 ## 2/9  .tscn ext_resource UID self-reference scan (ERR-013)
 ##      Detects scenes where an ext_resource uid equals the scene's own uid
 ## ============================================================
-Write-Host "`n[2/9] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
+Write-Host "`n[2/14] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
 $uidSelfRefCount = 0
 
 foreach ($f in $tscnFiles) {
@@ -103,7 +103,7 @@ if ($uidSelfRefCount -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files ha
 ## 3/9  Physics callback dangerous pattern scan (ERR-001)
 ##      queue_free/add_child/change_scene called directly inside body_entered etc.
 ## ============================================================
-Write-Host "`n[3/9] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
+Write-Host "`n[3/14] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
 $physicsIssues  = 0
 $dangerCalls    = @("add_child(", "queue_free(", "change_scene_to_file(")
 $callbackFuncs  = @("func _on_body_entered", "func _on_area_entered", "func _on_body_exited", "func _on_area_exited")
@@ -146,7 +146,7 @@ if ($physicsIssues -eq 0) { Write-Pass "No physics callback dangerous patterns f
 ## 4/9  Narrowing conversion scan (ERR-002)
 ##      int(node.x) or int(node.y) should be roundi()
 ## ============================================================
-Write-Host "`n[4/9] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
+Write-Host "`n[4/14] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
 $narrowingCount = 0
 
 foreach ($f in $scriptFiles) {
@@ -163,7 +163,7 @@ if ($narrowingCount -eq 0) { Write-Pass "No int() narrowing conversion issues fo
 ##      BAD (Godot 3): export var, onready var, setget, old stretch constants
 ##      GOOD (Godot 4): @export var, @onready var  <-- must NOT be flagged
 ## ============================================================
-Write-Host "`n[5/9] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
+Write-Host "`n[5/14] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
 $deprecatedCount = 0
 
 foreach ($f in $gdFiles) {
@@ -207,7 +207,7 @@ if ($deprecatedCount -eq 0) { Write-Pass "No Godot 3 deprecated API found" }
 ##      Every .tscn must begin with '[' (0x5B) after optional BOM
 ##      PowerShell Get-Content/Set-Content pipelines can silently strip it
 ## ============================================================
-Write-Host "`n[6/9] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
+Write-Host "`n[6/14] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
 $headerIssues = 0
 
 foreach ($f in $tscnFiles) {
@@ -254,7 +254,7 @@ if ($headerIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files have 
 ##  is using the wrong format.
 ##  Note: correct AtlasTexture files have 'atlas = ExtResource(' (no quotes, different key name)
 ## ============================================================
-Write-Host "`n[7/9] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
+Write-Host "`n[7/14] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
 $spriteFramesIssues = 0
 
 # Exact byte strings to search for (quoted keys only appear in the wrong format)
@@ -286,7 +286,7 @@ if ($spriteFramesIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files
 ##      name the file and line. The DEVELOPER role MUST fix it.
 ##      Reviewer MUST verify this passes before approving PR.
 ## ============================================================
-Write-Host "`n[8/9] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
+Write-Host "`n[8/14] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
 
 ## Locate Godot executable
 $godotPathFile = "C:\Users\88698\.gemini\antigravity-ide\knowledge\godot_executable\artifacts\godot_path.txt"
@@ -343,7 +343,7 @@ if (-not (Test-Path $godotExe)) {
 ##      'extends SceneTree' scripts cannot call get_tree() (that is a Node method).
 ##      Self IS the SceneTree. Use: await process_frame, not await get_tree().process_frame
 ## ============================================================
-Write-Host "`n[9/9] Scanning for ERR-028 (extends SceneTree using get_tree())..." -ForegroundColor Yellow
+Write-Host "`n[9/14] Scanning for ERR-028 (extends SceneTree using get_tree())..." -ForegroundColor Yellow
 $err028Count = 0
 
 foreach ($f in $gdFiles) {
@@ -385,7 +385,7 @@ if ($err028Count -eq 0) { Write-Pass "No ERR-028: No SceneTree scripts incorrect
 ##     - If MISSING_KEYWORDS: Designer must verify the section was not accidentally erased
 ##     - If GDD_TODO: QA must require Designer to resolve before signing off
 ## ============================================================
-Write-Host "`n[10/10] Scanning GAME_DESIGN.md content integrity (ERR-DOC-001 / GAP-001/004/010)..." -ForegroundColor Yellow
+Write-Host "`n[10/14] Scanning GAME_DESIGN.md content integrity (ERR-DOC-001 / GAP-001/004/010)..." -ForegroundColor Yellow
 $gddIssues = 0
 
 $gddPath = Join-Path $Root "docs\GAME_DESIGN.md"
@@ -480,7 +480,7 @@ if ($gddIssues -eq 0) { if (Test-Path $gddPath) { Write-Pass "GDD content integr
 ##  Detection: pattern  var X = get_node_or_null(  (no colon-type)
 ##             followed by: var Y := <X>.   (property on untyped var)
 ## ============================================================
-Write-Host "`n[11/12] Scanning for ERR-030 (Variant := property access on get_node_or_null)..." -ForegroundColor Yellow
+Write-Host "`n[11/14] Scanning for ERR-030 (Variant := property access on get_node_or_null)..." -ForegroundColor Yellow
 $err030Count = 0
 
 foreach ($f in $scriptFiles) {
@@ -519,7 +519,7 @@ if ($err030Count -eq 0) { Write-Pass "No ERR-030: No untyped Variant property ac
 ##  Detection: file has type="TileSet" header AND [resource] block
 ##             but [resource] block does NOT contain 'tile_size ='
 ## ============================================================
-Write-Host "`n[12/12] Scanning TileSet .tres for missing tile_size (ERR-031)..." -ForegroundColor Yellow
+Write-Host "`n[12/14] Scanning TileSet .tres for missing tile_size (ERR-031)..." -ForegroundColor Yellow
 $err031Count = 0
 
 $tresFiles = [array](Get-ChildItem $Root -Recurse -Filter "*.tres" -ErrorAction SilentlyContinue |

@@ -31,16 +31,15 @@ VALID_TYPES="feat|fix|plan|review|test|docs|refactor|chore|style|perf|ci"
 PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA|DESIGN)\] ($VALID_TYPES): .{3,}"
 PATTERN_WITHOUT_ROLE="^($VALID_TYPES): .{3,}"
 
+FORMAT_OK=0
 if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITH_ROLE"; then
-    exit 0
-fi
-
-if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITHOUT_ROLE"; then
+    FORMAT_OK=1
+elif echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITHOUT_ROLE"; then
     FORMAT_OK=1
 fi
 
 # 格式不符合
-if [ -z "$FORMAT_OK" ]; then
+if [ "$FORMAT_OK" -eq 0 ]; then
     echo ""
     echo "❌ [commit-msg] Commit 訊息格式不正確！"
     echo ""

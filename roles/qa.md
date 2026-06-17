@@ -12,12 +12,12 @@
 
 ### 文件驗收核查清單
 
-`
+```
 □ QA-DOC1. 確認被測功能有對應的 GAME_DESIGN.md 章節（非 [DRAFT]）
 □ QA-DOC2. 確認 PROJECT_STATUS.md 狀態與實際代碼一致
 □ QA-DOC3. 驗收通過後更新 PROJECT_STATUS.md Phase 狀態為 DONE
 □ QA-DOC4. 若發現新 BUG → 立即在 ERROR_LOG.md 新增 ERR 記錄
-`
+```
 
 ---
 ## 你的身分
@@ -176,16 +176,16 @@ Start-Sleep -Seconds 5
    ⚠️ ERR-027 教訓：QA 不能只驗證 VFX 場景本身，必須從玩家場景出發驗證完整攻擊流程。
    
    1. 使用 headless 測試確認「玩家場景包含完整 VFX 配置」：
-   `powershell
+   ```powershell
    # 確認 player.tscn（基底）和 player1/2/3/4.tscn 都有 VFX 配置
-   \ = Get-ChildItem "D:\2026-06-04\scenes\player" -Filter "*.tscn"
-   foreach (\ in \) {
-       \ = [IO.File]::ReadAllText(\.FullName)
-       \ = \ -match "melee_slash_scene"
-       \ = \ -match "MeleeVFXPivots"
-       Write-Host "\: melee_slash=\, MeleeVFXPivots=\"
+   $files = Get-ChildItem "D:\2026-06-04\scenes\player" -Filter "*.tscn"
+   foreach ($f in $files) {
+       $content = [IO.File]::ReadAllText($f.FullName)
+       $hasSlash = $content -match "melee_slash_scene"
+       $hasPivots = $content -match "MeleeVFXPivots"
+       Write-Host "$($f.Name): melee_slash=$hasSlash, MeleeVFXPivots=$hasPivots"
    }
-   `
+   ```
    2. 確認 F6 場景（area_0_room_01.tscn）使用的 player 場景版本（grep ext_resource；test_room_a/b 已從專案移除）
    3. 確認該 player 場景有完整 VFX 配置（非只驗證 player1.tscn）
    → 若基底 player.tscn 缺少 VFX 配置 → 立即退回 Developer（ERR-027 觸發）
