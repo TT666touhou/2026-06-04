@@ -418,8 +418,8 @@ Every valid Godot 4 @export was a false positive. Sensor had zero credibility fo
 1. sensor-scan.ps1 每次修改後必須執行 PSParser 驗證
 2. sensor-scan.ps1 的 Check 8/8（--check-only）是不可跳過的最終閘門
 3. 任何 --check-only 錯誤 → sensor 輸出 "DEVELOPER must fix" 並 exit 1
-4. Reviewer 在批准 PR 前必須確認 sensor-scan.ps1 8/8 PASS
-5. Developer 在 commit 前必須確認 sensor-scan.ps1 8/8 PASS
+4. Reviewer 在批准 PR 前必須確認 sensor-scan.ps1 14/14 PASS
+5. Developer 在 commit 前必須確認 sensor-scan.ps1 14/14 PASS
 
 記住：靜態文字 regex 只能偵測模式，不能驗證型別系統。
 只有 Godot compiler 才能驗證 GDScript 型別正確性。
