@@ -1,4 +1,4 @@
-﻿# ==============================================================
+# ==============================================================
 # scripts/set-role.ps1 v2
 # Set the current Antigravity Session Agent role
 #
@@ -55,9 +55,7 @@ $RoleMustRead = @{
         "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
         "[READ -1] docs/PROJECT_STATUS.md (current Phase status)",
         "[READ  0] docs/ERROR_LOG.md (technical constraints)",
-        "[READ  1] docs/GAME_DESIGN.md (design authority)",
-        "[IF PL]   docs/pixellab_cookbook.md (PL-MANDATORY GATE Step 2)",
-        "[IF PL]   https://api.pixellab.ai/v2/llms.txt (PL-MANDATORY GATE Step 1)"
+        "[READ  1] docs/GAME_DESIGN.md (design authority)"
     )
     "architect" = @(
         "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
@@ -70,21 +68,17 @@ $RoleMustRead = @{
         "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
         "[READ -1] docs/PROJECT_STATUS.md (current Phase task)",
         "[READ  0] docs/ERROR_LOG.md (known errors, do NOT repeat)",
-        "[READ  1] implementation_plan.md (architect design plan)",
-        "[IF PL]   docs/pixellab_cookbook.md (ERR-041 forbidden fields)"
+        "[READ  1] implementation_plan.md (architect design plan)"
     )
     "reviewer"  = @(
         "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
         "[READ -1] docs/PROJECT_STATUS.md (Phase status check)",
-        "[READ  0] docs/ERROR_LOG.md (known issue regression check)",
-        "[IF PL]   docs/pixellab_cookbook.md (PIXEL-REVIEW gate basis)",
-        "[IF PL]   docs/review_reports/ (past review records)"
+        "[READ  0] docs/ERROR_LOG.md (known issue regression check)"
     )
     "qa"        = @(
         "[READ -2] docs/DOC_INDEX.md (which docs are involved?)",
         "[READ -1] docs/PROJECT_STATUS.md (tested Phase DoD)",
-        "[READ  0] docs/ERROR_LOG.md (Critical issue regression check)",
-        "[IF PL]   scripts/utils/qa_pixellab_v3b_test.py (PixelLab QA script)"
+        "[READ  0] docs/ERROR_LOG.md (Critical issue regression check)"
     )
     "sensor"    = @(
         "[READ -2] docs/DOC_INDEX.md (which docs to monitor?)",
@@ -125,7 +119,6 @@ switch ($Role) {
         Write-Host "  [OK]  Can modify: docs/GAME_DESIGN.md (only modifier)" -ForegroundColor Green
         Write-Host "  [NG]  Cannot modify: .gd, .tscn, .tres, implementation_plan.md" -ForegroundColor Red
         Write-Host "  [DOC] Maintains: docs/GAME_DESIGN.md, docs/DOC_INDEX.md" -ForegroundColor Cyan
-        Write-Host "  [PL]  PixelLab: must complete PL-MANDATORY GATE 5 steps before generation" -ForegroundColor Yellow
     }
     "architect" {
         Write-Host "  [OK]  Can commit: implementation_plan.md, docs/, roles/, RULES.md" -ForegroundColor Green
@@ -142,17 +135,14 @@ switch ($Role) {
         Write-Host "  [OK]  Can do: PR review, comments, PIXEL-REVIEW gate" -ForegroundColor Green
         Write-Host "  [NG]  Cannot do: directly modify code files" -ForegroundColor Red
         Write-Host "  [DOC] Maintains: docs/review_reports/*.md" -ForegroundColor Cyan
-        Write-Host "  [PL]  PixelLab: run PIXEL-REVIEW gate (PL-R-NEW1, etc.)" -ForegroundColor Yellow
     }
     "qa"        {
         Write-Host "  [OK]  Can commit: docs/qa-report-*.md, and final code commit" -ForegroundColor Green
         Write-Host "  [NG]  Cannot commit: any .gd or .tscn (except final QA commit)" -ForegroundColor Red
         Write-Host "  [!!]  QA is the ONLY role that can git commit + push (v4 rule)" -ForegroundColor Yellow
-        Write-Host "  [PL]  PixelLab: run qa_pixellab_v3b_test.py to verify" -ForegroundColor Yellow
     }
     "sensor"    {
         Write-Host "  [!!]  On trigger: immediately stop current work, run 9/9 scan" -ForegroundColor Red
-        Write-Host "  [!!]  Level 1 PixelLab violation = stop + require full Pre-Flight" -ForegroundColor Red
         Write-Host "  [OK]  Can update: docs/ERROR_LOG.md (new ERR entries)" -ForegroundColor Green
     }
 }

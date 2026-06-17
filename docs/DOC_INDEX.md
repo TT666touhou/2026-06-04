@@ -1,6 +1,6 @@
 # DOC_INDEX.md — 專案文件總索引
 # ============================================================
-# 版本：v2 (2026-06-16 — §A 步驟重排、sensor DOC_INDEX 觸發器、Bootstrap §D4.5)
+# 版本：v3 (2026-06-17 — 清理 PixelLab 相關實驗，回歸純 Godot 開發)
 # 維護者：所有 ROLE（每次新增文件時必須更新此索引）
 # 讀取時機：每個 ROLE 工作開場 MUST-DO 清單「第 -2 步」
 # ============================================================
@@ -17,11 +17,6 @@
 | docs/GAME_DESIGN.md | **寫/讀** | 讀 | 讀 | 讀 | 讀 | 監控 |
 | docs/PROJECT_STATUS.md | 讀 | **讀/寫** | **讀/寫** | **讀/寫** | **讀/寫** | 讀 |
 | docs/ERROR_LOG.md | 讀 | **讀/寫** | **讀/寫** | **讀/寫** | **讀/寫** | **讀/寫** |
-| docs/pixellab_cookbook.md | **讀/寫** | 讀 | **讀/寫** | **讀** | 讀 | 監控 |
-| docs/pixellab_api_reference.md | **讀/寫** | 讀 | **讀/寫** | 讀 | 讀 | - |
-| docs/pixellab_specs.md | **讀/寫** | 讀 | 讀 | 讀 | 讀 | - |
-| docs/mrmotext_research/mrmotext_generation_log.md | **讀/寫** | 讀 | **讀/寫** | 讀 | 讀 | - |
-| docs/mrmotext_research/mrmotext_palette.md | **讀/寫** | 讀 | 讀 | 讀 | 讀 | - |
 | implementation_plan.md | 讀 | **寫** | 讀 | 讀 | 讀 | - |
 | docs/DOC_INDEX.md（本文件） | **讀/寫** | **讀/寫** | **讀/寫** | **讀/寫** | **讀/寫** | **讀/寫** |
 | workflow.md（KI） | 讀 | **讀/寫** | 讀 | **讀/寫** | 讀 | 監控 |
@@ -67,40 +62,31 @@
 |---------|---------|---------|------|
 | `docs/ERROR_LOG.md` | 所有 ROLE | 2026-06-16 | **每次工作必讀** — 65KB，包含 ERR-001~041 |
 
-### 🎨 PixelLab 文件（所有 PixelLab 相關工作前必讀）
+### 🎨 美術資源研究
 
 | 文件路徑 | 負責角色 | 最後更新 | 說明 |
 |---------|---------|---------|------|
-| `docs/pixellab_cookbook.md` | Designer/Developer | 2026-06-16 | **PL-MANDATORY GATE Step 2 必讀** — 所有規則、ERR-036~041 修復 |
-| `docs/pixellab_api_reference.md` | Designer | 2026-06-16 | API 端點清單與生成記錄 |
-| `docs/pixellab_specs.md` | Designer | 2026-06-16 | 規格需求文件 |
-| `docs/mrmotext_research/mrmotext_generation_log.md` | Designer | 2026-06-16 | MRMOTEXT 生成歷史與 V3b 結果 |
-| `docs/mrmotext_research/mrmotext_palette.md` | Designer | 2026-06-16 | 34色色盤（已採樣 HEX） |
 | `docs/research-asset-sourcing.md` | Designer | - | 素材資源研究 |
 
 ### 👥 角色文件（6 個 ROLE 的工作規範）
 
 | 文件路徑 | 角色版本 | 最後更新 | 關鍵特性 |
 |---------|---------|---------|---------|
-| `roles/designer.md` | v3 | 2026-06-16 | PL-MANDATORY GATE §0b，GDD 三項紀律 |
-| `roles/architect.md` | v3 | 2026-06-16 | 物理 callback 架構約束，ERR-001/006/007 |
-| `roles/developer.md` | v4 | 2026-06-16 | 禁止直接 commit，dev-submit.ps1，Sensor 前置 |
-| `roles/reviewer.md` | v4 | 2026-06-16 | PIXEL-REVIEW 閘門 + BRANCH 任務分支、PL-R-NEW1 |
-| `roles/qa.md` | v5 | 2026-06-16 | 唯一 commit 角色、PL-QA-GATE、45分鐘測試流程 |
-| `roles/sensor.md` | v4 | 2026-06-16 | §PL PixelLab 觸發器 + DOC_INDEX 同步掃描 Level 2 |
+| `roles/designer.md` | v4 | 2026-06-17 | GDD 三項紀律，移除 PixelLab |
+| `roles/architect.md` | v4 | 2026-06-17 | 物理 callback 架構約束，移除 PixelLab，ERR-001/006/007 |
+| `roles/developer.md` | v5 | 2026-06-17 | 禁止直接 commit，dev-submit.ps1，Sensor 前置，移除 PixelLab |
+| `roles/reviewer.md` | v5 | 2026-06-17 | 分支任務，移除 PixelLab |
+| `roles/qa.md` | v6 | 2026-06-17 | 唯一 commit 角色，45分鐘測試流程，移除 PixelLab |
+| `roles/sensor.md` | v5 | 2026-06-17 | DOC_INDEX 同步掃描 Level 2，移除 PixelLab |
 
 ### 🔧 自動化腳本（KEY Scripts）
 
 | 腳本路徑 | 負責角色 | 說明 |
 |---------|---------|------|
 | `scripts/set-role.ps1` | Architect | **每次切換角色必用** — 設定 .agent-role 文件 |
-| `scripts/sensor-scan.ps1` | Sensor | **每次 commit 前必跑** — 9/9 掃描項目 |
+| `scripts/sensor-scan.ps1` | Sensor | **每次 commit 前必跑** — 14/14 掃描項目 |
 | `scripts/dev-submit.ps1` | Developer | 代碼提交前置流程 |
 | `scripts/assert-clean.ps1` | Developer | 工作區清潔確認 |
-| `scripts/validate_pl_docs.ps1` | Sensor | PixelLab 文件落地驗證 |
-| `scripts/utils/qa_pixellab_v3b_test.py` | QA | PixelLab API 與 V3b 輸出驗證（23/23） |
-| `scripts/utils/remove_dark_bg.py` | Developer | §R-5 黑背景後處理 |
-| `scripts/utils/sample_tileset_colors.py` | Developer | §R-6 34色色盤採樣 |
 
 ### 📊 QA 報告（歸 QA 管理）
 
@@ -109,7 +95,6 @@
 | `docs/qa-report-phase-7.0.md` | Phase 7.0 | Phase 7 QA 驗收報告 |
 | `docs/qa-report-f6-walkin-fix.md` | F6 Walk-in | F6 場景 Walk-in 修復報告 |
 | `docs/qa-report-playerdust-vfx.md` | PlayerDust VFX | 玩家塵埃特效 QA |
-| `docs/review_reports/REVIEW_v3b_20260616.md` | V3b PIXEL-REVIEW | Reviewer 正式審查報告 |
 
 ---
 
@@ -204,5 +189,5 @@ Sensor 監控以下文件的結構完整性：
 
 ---
 
-*DOC_INDEX.md v1 建立於 2026-06-16 / v2 更新於 2026-06-16（全面 SOP 審計後）*
+*DOC_INDEX.md v1 建立於 2026-06-16 / v2 更新於 2026-06-16 / v3 更新於 2026-06-17（清理 PixelLab API 實驗）*
 *由 Architect 角色首次建立，後由所有 ROLE 共同維護*

@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v9
+## sensor-scan.ps1 -- Sensor Automated Scan Script v10
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
@@ -18,7 +18,6 @@
 ##   12/14 TileSet .tres missing tile_size (ERR-031) - every TileSet must have explicit tile_size in [resource]
 ##   13/14 Func param shadowing base class property (ERR-033) - visible/position/name etc. as param names
 ##   14/14 make_current() before add_child (ERR-034) - node must be in tree before calling tree-dependent API
-##   15/15 pixellab_api_reference.md existence + Last Updated stamp (§O-REF) - Designer must maintain API ref doc
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -620,71 +619,17 @@ foreach ($f in $gdFiles) {
 if ($err034Count -eq 0) { Write-Pass "No ERR-034: No make_current() before add_child() patterns" }
 
 ## ============================================================
-## 15/15  pixellab_api_reference.md existence + Last Updated stamp (§O-REF)
-##
-##  Designer 强制維護規則（§O-REF）要求：
-##  (a) docs/pixellab_api_reference.md 必須存在
-##  (b) 文件內必須有 "Last Updated:" 戳記（讀性檢查）
-##
-##  ⚠️ ROLE ENFORCEMENT:
-##     - 若文件不存在 → DESIGNER 必須從 artifact 複製到 docs/
-##     - 若沒有 Last Updated 戳記 → DESIGNER 必須在文件頂部加入 "Last Updated: YYYY-MM-DD"
-## ============================================================
-Write-Host "`n[15/15] Checking pixellab_api_reference.md existence + Last Updated stamp (§O-REF)..." -ForegroundColor Yellow
-
-$pixellabRefPath = Join-Path $Root "docs\pixellab_api_reference.md"
-$pixellabRefIssues = 0
-
-if (-not (Test-Path $pixellabRefPath)) {
-    Write-Fail "§O-REF: docs/pixellab_api_reference.md NOT FOUND. Designer must create/copy this file to the docs/ directory. Source: brain artifact or run workflow.md §O to recreate."
-    $pixellabRefIssues++
-} else {
-    $refContent = [System.IO.File]::ReadAllText($pixellabRefPath, [System.Text.Encoding]::UTF8)
-
-    ## Check for Last Updated stamp
-    if (-not ($refContent -match 'Last Updated:')) {
-        Write-Fail "§O-REF: docs/pixellab_api_reference.md missing 'Last Updated:' timestamp. Designer must add 'Last Updated: YYYY-MM-DD' at the top of the file."
-        $pixellabRefIssues++
-    } else {
-        ## Extract the date and check it's not too stale (>30 days = warning)
-        $dateMatch = [regex]::Match($refContent, 'Last Updated:\s*(\d{4}-\d{2}-\d{2})')
-        if ($dateMatch.Success) {
-            try {
-                $lastDate = [datetime]::ParseExact($dateMatch.Groups[1].Value, 'yyyy-MM-dd', $null)
-                $daysSince = ([datetime]::Today - $lastDate).Days
-                if ($daysSince -gt 30) {
-                    Write-Warn "§O-REF: pixellab_api_reference.md last updated $($daysSince) days ago ($($dateMatch.Groups[1].Value)). Designer should review and update if new API features are available."
-                } else {
-                    Write-Pass "pixellab_api_reference.md exists with valid Last Updated stamp ($($dateMatch.Groups[1].Value), ${daysSince}d ago)"
-                }
-            } catch {
-                Write-Warn "§O-REF: Could not parse date from Last Updated stamp. Expected format: YYYY-MM-DD"
-            }
-        } else {
-            Write-Warn "§O-REF: 'Last Updated:' found but date format not recognized. Use 'Last Updated: YYYY-MM-DD'"
-        }
-    }
-}
-if ($pixellabRefIssues -eq 0 -and (Test-Path $pixellabRefPath)) {
-    ## Check basic structure: must have at least one API endpoint section
-    $refContent = [System.IO.File]::ReadAllText($pixellabRefPath, [System.Text.Encoding]::UTF8)
-    if (-not ($refContent -match 'create-image|animate-with|rotate|inpaint|create-character')) {
-        Write-Warn "§O-REF: pixellab_api_reference.md seems incomplete -- no API endpoint names found (create-image, animate-with, rotate, inpaint, create-character). Designer should verify content."
-    }
-}
-
-## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v9] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v10] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
     Write-Host " Role action: DEVELOPER must fix GDScript errors; Sensor will re-verify." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v9] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v10] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v9] PASSED (15/15) -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v10] PASSED (14/14) -- No issues found." -ForegroundColor Green
     exit 0
 }

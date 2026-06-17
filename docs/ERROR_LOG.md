@@ -660,34 +660,34 @@ region = Rect2(0, 0, 132, 126)
 
 ---
 
-## 🔴 ERR-036~040 PixelLab API 連環錯誤（2026-06-16 MRMOTEXT 生成會話）
+## 🔴 ERR-036~040 PixelLab API 連環錯誤（2026-06-16 MRMOTEXT 生成會話）【DEPRECATED / EXPERIMENT ABANDONED】
 
-> **背景**：在試圖用 PixelLab API 生成 MRMOTEXT 風格角色時，發現一連串 API 陷阱，嚴重浪費配額。
+> **背景**：在試圖用 PixelLab API 生成 MRMOTEXT 風格角色時，發現一連串 API 陷阱，嚴重浪費配額。本實驗目前已打消且相關檔案已清理，以下條目僅作為歷史記錄。
 
-### ERR-036 | generate-with-style-v2 輪詢用 `complete` 而非 `completed`
+### ERR-036 | [DEPRECATED / EXPERIMENT ABANDONED] generate-with-style-v2 輪詢用 `complete` 而非 `completed`
 - **症狀**：Job 永遠輪詢，腳本無限 loop，gen 配額被消耗但圖片未下載
 - **根本原因**：輪詢 status 時用 `if status == "complete"` 但 API 回傳 `"completed"` (帶 d)
 - **修復**：`if status in ("completed", "complete")` 或 `if "complet" in status`
 - **Sensor 觸發**：🟡 Level 2 — 任何輪詢 background job 的腳本，確認使用 `"completed"` 而非 `"complete"`
 
-### ERR-037 | generate-with-style-v2 圖片在 `last_response.images[i]["base64"]`（非 `"image"`）
+### ERR-037 | [DEPRECATED / EXPERIMENT ABANDONED] generate-with-style-v2 圖片在 `last_response.images[i]["base64"]`（非 `"image"`）
 - **症狀**：KeyError，圖片提取失敗
 - **根本原因**：`images[i]["image"]["base64"]` 路徑不存在。正確路徑是 `images[i]["base64"]` 直接在頂層
 - **修復**：`b64 = img_data["base64"]`（直接頂層，非嵌套）
 - **正確結構**：`{"type": "base64", "width": N, "height": N, "base64": "..."}`
 
-### ERR-038 | bitforge `style_strength` 預設值為 **0.0**（等於無 style）
+### ERR-038 | [DEPRECATED / EXPERIMENT ABANDONED] bitforge `style_strength` 預設值為 **0.0**（等於無 style）
 - **症狀**：生成結果完全無視 style_image，等同於純文字生成
 - **根本原因**：bitforge 的 `style_strength` 預設是 `0.0`，不設定等於把 style 影響降為零
 - **修復**：**必須明確設定** `style_strength = 70~90`（推薦 85）
 - **Sensor 觸發**：🔴 Level 1 — bitforge payload 中無明確 `style_strength` → 立即退回 Developer
 
-### ERR-039 | generate-with-style-v2 `image_size` 格式錯誤（頂層 width/height vs size 子欄位）
+### ERR-039 | [DEPRECATED / EXPERIMENT ABANDONED] generate-with-style-v2 `image_size` 格式錯誤（頂層 width/height vs size 子欄位）
 - **症狀**：HTTP 422
 - **根本原因**：`generate-with-style-v2` 的 `style_images` 用**頂層** `width/height`，而 `generate-image-v2` 的 `style_image/reference_images` 用 **`size` 子欄位**。兩個端點格式不一致，是 PixelLab API 的設計問題。
 - **修復**：嚴格區分兩端點的格式（見 workflow §O11-2 和 §O11-5）
 
-### ERR-040 | bitforge `style_image` 尺寸必須與輸出完全相同（且不能是場景截圖）
+### ERR-040 | [DEPRECATED / EXPERIMENT ABANDONED] bitforge `style_image` 尺寸必須與輸出完全相同（且不能是場景截圖）
 - **症狀 A**：HTTP 500 `style_image must be size (H, W), not torch.Size([H2, W2])`
 - **症狀 B**：生成全部是噪訊（即使修正尺寸後）
 - **根本原因 A**：style_image 沒有精確 resize 到輸出尺寸。`thumbnail()` 不保證精確尺寸，必須用 `img.resize((W, H), Image.LANCZOS)`
@@ -698,7 +698,7 @@ region = Rect2(0, 0, 132, 126)
 
 ---
 
-## 🟢 新增 PATTERN（2026-06-16 PixelLab MRMOTEXT 會話）
+## 🟢 新增 PATTERN（2026-06-16 PixelLab MRMOTEXT 會話）【DEPRECATED / EXPERIMENT ABANDONED】
 
 | 日期 | 場景 | 正確做法 |
 |------|------|---------| 
@@ -710,7 +710,7 @@ region = Rect2(0, 0, 132, 126)
 
 ---
 
-### ERR-041 | create-character-v3 不支援 `shading` 和 `direction` 參數（2026-06-16）
+### ERR-041 | [DEPRECATED / EXPERIMENT ABANDONED] create-character-v3 不支援 `shading` 和 `direction` 參數（2026-06-16）
 
 - **症狀**：HTTP 422 `{"detail": [{"type": "extra_forbidden", "loc": ["body", "shading"]...}, {"type": "extra_forbidden", "loc": ["body", "direction"]...}]}`
 - **根本原因**：`create-character-v3` 端點不接受 `shading` 或 `direction` 欄位。這兩個欄位屬於 `create-image-pixen`/`create-image-bitforge`，不能用在 `create-character-v3`。
@@ -728,4 +728,4 @@ region = Rect2(0, 0, 132, 126)
 
 ---
 
-*ERROR_LOG.md 最後更新：2026-06-16（ERR-041 補充）*
+*ERROR_LOG.md 最後更新：2026-06-17（標記 PixelLab 實驗廢棄）*

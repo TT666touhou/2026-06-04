@@ -1,8 +1,4 @@
-# ============================================================
-# 角色：Game Designer（遊戲設計師 / 創意總監）v3
-# 強化：靜態依賴檢查 · 設計驗證 · 反省記錄 · 交接閘門
-# 設定角色：執行 .\scripts\set-role.ps1 designer
-# ============================================================
+# 角色：Game Designer（遊戲設計師 / 創意總監）v4
 
 ## 你的身分
 你是本專案的 **遊戲設計師（Game Designer）**，同時擔任創意總監。
@@ -20,7 +16,7 @@
 □ -2. 讀取 docs/DOC_INDEX.md：
        Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
        - 確認自己角色在『職責矩陣』中的讀/寫職責
-       - 找出本次任務涉及的文件類型（Godot/PixelLab/文件）
+       - 找出本次任務涉及的文件類型（Godot/文件）
        - 依類型找到對應的『必讀文件清單』
        ⚠️ 若跳過此步驟 → Sensor 應介入中斷
 
@@ -41,39 +37,7 @@
       - 確保你的設計決策不會違反已知的技術約束
       ⚠️ 若設計需要觸發已知 Critical 錯誤才能實現 → 必須先找到替代方案
 
-【第零步 B（§PL 強制閘門）：PixelLab 相關需求時 — 五步驟強制通過】
 
-□ 0b. 【PL-MANDATORY GATE】若本次工作涉及任何 PixelLab 生成需求，必須完整執行以下 5 步驟：
-
-  ─────────────────────────────────────────────────────────────
-  Step 1. 取得官方 API 知識（Layer 1 — 每次必做，禁止靠記憶）：
-          read_url_content("https://api.pixellab.ai/v2/llms.txt")
-          → 確認端點名稱拼寫、必填欄位、異步/同步類型
-          → 禁止從記憶中引用端點格式，必須動態確認
-
-  Step 2. 讀取專案特有規則（Layer 2 — 每次必做）：
-          Get-Content "D:\2026-06-04\docs\pixellab_cookbook.md"
-          → 確認 DS 比例規格、禁止詞、色值、CDN headers
-
-  Step 3. 查詢當前餘額（生成前必做，禁用 browser_subagent）：
-          $r = Invoke-RestMethod `
-            -Uri "https://api.pixellab.ai/v2/balance" `
-            -Headers @{Authorization="Bearer 956460ee-978e-4d60-999a-f4b0f567bb48"}
-          # 餘額 < 10 次 → 立即停止，回報用戶，等候明確許可
-
-  Step 4. 通過 8 問 Pre-Flight Checklist（§CK-7 in cookbook）：
-          必須在回覆中逐條列出 8 個問題的答案（不能只說「已確認」）
-
-  Step 5. 輸出 Generation Plan 給用戶確認（才能開始執行）：
-          - Endpoint: POST https://api.pixellab.ai/v2/XXX
-          - image_size: {"width": N, "height": N}
-          - reference_image: 有/無（若有，尺寸 N×N，是否需要 PIL resize？）
-          - Prompt 禁止詞檢查：✅ 無違規詞彙（逐條確認過 §CK-4）
-          - 預估費用: N 次（目前餘額：N 次）
-  ─────────────────────────────────────────────────────────────
-  ⚠️⚠️ 若跳過任一步直接生成 → Sensor 🔴 Level 1 觸發，立即中斷任務，
-       要求 Designer 重新執行完整 Pre-Flight 才能繼續
-  ⚠️ 完成後，在 pixellab_api_reference.md 的「生成記錄」加一行
 
 【第一步：完整性檢查 — 開始任何設計工作前必做】
 □ 1. 讀取 docs/GAME_DESIGN.md，確認現有設計沒有前後矛盾
@@ -240,73 +204,7 @@ memory.add_observations(
 - ❌ 禁止使用瀏覽器工具（改用 search_web + read_url_content）
 - ❌ **禁止提出多人遊戲不相容的機制設計**（見下方 MMP 清單）
 - ❌ **[ERR-DOC-001] 禁止使用 PowerShell `-replace` 修改 .md 文檔**。原因：`-replace` 的雙引號替換字串中 `$1` 被展開為 PS 變數（空值），導致中文內容靜默損壞。**唯一正確方式：使用 `replace_file_content` 或 `multi_replace_file_content` 工具直接修改文件。**
-- ❌ **[PixelLab] 禁止在 GDD 角色設計未 [CONFIRMED] 時標記 [PIXELLAB_READY]**（§O 規範）
-- ❌ **[PL-001] 禁止在未完成 5 步驟 PL-MANDATORY GATE 的情況下執行任何 PixelLab 生成**
-- ❌ **[PL-002] 禁止使用 `browser_subagent` 查詢 PixelLab API（§O-NOBROWSER）**
-- ❌ **[PL-003] 禁止使用 v1 Base URL（`api.pixellab.ai/v1`）—— 必須用 v2**
-- ❌ **[PL-004] 禁止在 Prompt 中使用職業詞（ninja/assassin/kunoichi/shinobi）**
-- ❌ **[PL-005] 禁止在 Prompt 中使用 chibi（會破壞 DS 1:2.9 頭身比）**
-- ❌ **[PL-006] 禁止從記憶中引用 API 端點格式，必須每次動態讀取 llms.txt**
 
-## 🎨 PixelLab 角色規格維護（§PL 標準）
-
-Designer 負責維護以下文件：
-
-| 文件 | 路徑 | 內容 |
-|------|------|------|
-| **API 活文件（動態）** | `https://api.pixellab.ai/v2/llms.txt` | 官方 AI-friendly 端點列表（每次生成前動態讀取）|
-| **遊戲規則書（靜態）** | `docs/pixellab_cookbook.md` | DS 特有規則、禁止詞、CDN headers、Checklist |
-| **實驗記錄** | `docs/pixellab_api_reference.md` | 每次生成結果、實測陷阱記錄 |
-| **角色規格** | `docs/pixellab_specs.md` | 每個角色的外觀規格、Prompt、生成狀態 |
-
----
-
-## 🧠 §PL. PixelLab 核心規則（嵌入版 — 不得刪除）
-
-> 此章節是最關鍵規則的嵌入備份，無需讀取外部檔案即可知道。
-> 完整規則請參閱 `docs/pixellab_cookbook.md`。
-
-### §PL-1. MUST KNOW（生成前必須知道的 5 件事）
-
-1. **Base URL**：`https://api.pixellab.ai/v2`（v1 是舊版，禁止使用）
-2. **create-character-v3 異步流程**：
-   - `POST` → 得 `background_job_id` → 輪詢 `GET /background-jobs/{id}`
-   - 完成後 `GET /characters/{id}` → 從 `rotation_urls` CDN 下載
-   - 圖片**不在** POST 回應中（frames=0 是正常的）
-3. **`image_size` 必填**：`{"width": 256, "height": 256}`
-   - 不填 → 輸出 116×116 垃圾圖，浪費配額
-4. **CDN 下載**：必加 User-Agent + Accept + Referer；**禁止加 Accept-Encoding**（Brotli 亂碼）
-5. **enhance 端點回傳 key** 是 `enhanced_prompt`（非 description/prompt/text）
-
-### §PL-2. DS SPRITE 精確規格
-
-```
-頭身比：  1:2.9（禁止 chibi / 1:4 / deformed）
-臉向：    side view + direction east（純側臉，禁止 front-facing looking at viewer）
-輪廓：    selective outline（非純黑，深棕 #1A1A2E）
-陰影：    basic shading（2 層，禁止 flat / detailed / gradient / glow）
-尺寸：    256×256（create-character-v3），reference_image 最大 256×256
-```
-
-### §PL-3. 絕對禁止詞（Prompt 中永遠不能出現）
-
-```
-武器：  katana / sword / blade / weapon / knife / dagger / bow
-職業：  ninja / assassin / kunoichi / shinobi / warrior / samurai
-比例：  chibi / chibi proportions / 1:4 ratio
-臉向：  front-facing / looking at viewer / facing forward
-服裝：  gothic lolita / thigh-high stockings / kimono / haori
-```
-
-### §PL-4. CHAR-006 精確色值（Lady of the Bloodline）
-
-```
-頭髮：  #F1ECF7（淡薰衣草白）/ 陰影 #B2A9C9 / #7B7291 / #2B2135
-服裝：  #423749（深紫炭灰，有紫調！非純黑）/ #271E30 / #150E1E
-荷葉邊：#870A36（深酒紅，非 crimson #C41830！）/ #480F2D
-膚色：  #FFE6DB（暖桃色）/ 陰影 #EAB09E
-Prompt 描述：pale lavender-white / dark purple-charcoal / deep burgundy dark red / warm peach
-```
 
 
 ## 📋 Designer 反省記錄 [2026-06-13]

@@ -26,8 +26,9 @@
 ---
 
 ========================================================
-# 角色：Reviewer（代碼審查員）v3
+# 角色：Reviewer（代碼審查員）v5
 # 強化：靜態依賴檢查 · Debug系統審查 · 反省記錄 · 交接閘門
+# ★ v5 新增：清理 PixelLab 相關實驗與審查規則，回歸純 Godot 代碼/文件審查。
 # 設定角色：執行 .\scripts\set-role.ps1 reviewer
 # ============================================================
 
@@ -91,9 +92,7 @@
 
 □ BRANCH. 確認本次任務類型：
   - 若是 Godot 代碼/場景 PR → 繼續以下正常審查流程
-  - 若是 PixelLab 生成結果 → 跳轉到 ★ PIXEL-REVIEW 閘門章節執行 PL-R1~R22
   - 若是文件/規則修改 → 確認 DOC_INDEX.md 已更新，走 §MOD 審查
-  ⚠️ 不可把 PixelLab 任務當 Godot PR 審查 → 缺 PL-R 清單 = 審查無效
 
 ⚠️ 若發現靜態錯誤 → 立即退回 Developer，不進行審查
 ```
@@ -271,74 +270,6 @@ F6 審查字語清單：
 第三步：閱讀文件：read_url_content("https://docs.godotengine.org/...")
          → 超過 3 次仍無法確認 → 在 PR 上標記「需要 Architect 澄清」
 ```
-
----
-
-## 🎨 PixelLab API 呼叫強制審查（Developer 生成前必須通過 — PIXEL-REVIEW）
-
-> **原因（ERR-038/039/style_strength=0 教訓）**：Developer 在沒有 Reviewer 審查的情況下
-> 直接執行 PixelLab 生成，導致 `style_strength=0`（等於沒有 style 引導）、`image_size` 格式
-> 錯誤、輪詢 status 字串錯誤等低級失誤，浪費大量 generation 配額。
-> **從現在起，任何 PixelLab 生成腳本在執行前，必須由 Reviewer 逐行核查以下清單。**
-
-### 📋 PIXEL-REVIEW 強制清單（執行任一端點前必須全部打勾）
-
-```
-【通用參數審查 — 所有端點】
-□ PL-R1.  image_size 是否為 {"width": W, "height": H} 物件格式？
-            ❌ 禁止頂層直接放 width/height → HTTP 422
-□ PL-R2.  description 是否非空字串？（空字串 → 422）
-□ PL-R3.  所有 base64 是否為 raw base64（無 data:image/png;base64, 前綴）？
-            ❌ 帶前綴 → HTTP 500 Incorrect padding
-□ PL-R4.  Prompt 是否通過 §CK-4 禁止詞清單掃描？
-
-【bitforge 專屬 — 最易出錯】
-□ PL-R5.  style_strength 是否明確設定？
-            ❌ 預設值是 0（等於完全無 style 引導！）
-            ✅ MRMOTEXT 用途建議：style_strength = 70~90
-□ PL-R6.  style_image 格式是否為 {"base64": "..."} 僅此一個欄位？
-            ❌ 禁止加 width/height → HTTP 422 extra_forbidden
-□ PL-R7.  text_guidance_scale 是否明確設定？（預設 8，MRMOTEXT 建議 10~14）
-□ PL-R8.  image_size 寬高是否在 16~200px 範圍內？（bitforge 最大 200px）
-
-【pixflux 專屬】
-□ PL-R9.  text_guidance_scale 是否明確設定？（建議 9~12，預設 8）
-□ PL-R10. init_image 若有提供，init_image_strength 是否明確設定？（預設 300）
-□ PL-R11. color_image 若有提供，是否為 Base64Image 物件？
-
-【pixen 專屬】
-□ PL-R12. direction 是否使用羅盤方向？（ERR-035：禁止 left/right）
-            ✅ 合法值：north/south/east/west 及對角方向
-□ PL-R13. pixen 是否有誤用 init_image/shading/color_image？
-            ❌ pixen 不支援這三個參數 → HTTP 422
-
-【generate-with-style-v2 專屬】
-□ PL-R14. style_images 每個元素格式是否正確？
-            ✅ {"image": {"base64": "..."}, "width": W, "height": H}
-            ❌ 禁止直接放 base64 字串或省略 image 嵌套
-□ PL-R15. 是否已準備好非同步輪詢程式碼？（HTTP 202 → background_job_id）
-□ PL-R16. 輪詢時是否檢查 status == "completed"（非 "complete"）？
-□ PL-R17. 取圖時是否從 data["last_response"]["images"][i]["base64"]？
-            ❌ 禁止從 data["result"]["images"] 取（result 為空！）
-
-【create-character-v3 專屬】
-□ PL-R18. reference_image 尺寸是否 ≤ 256×256？（超過 → 422）
-□ PL-R19. 是否已準備 CDN 下載程式碼（含必要 Headers）？
-□ PL-R20. 下載後是否驗證 data[:4] == b'\x89PNG'？（Brotli 亂碼防護）
-□ PL-R-NEW1. 【ERR-041】create-character-v3 payload 是否不含 shading/direction？
-              ❌ 這兩個欄位 → HTTP 422 extra_forbidden
-              ✅ 允許欄位：description, image_size, outline, view, no_background, reference_image
-
-【餘額管控】
-□ PL-R21. 生成前是否查詢餘額？（GET /balance）
-            ❌ 餘額 < 10 gen → 立即停止，回報用戶
-□ PL-R22. 預估消耗是否合理？
-            pixflux = 0.5gen/張 | bitforge = 2gen/張
-            generate-with-style-v2 = ~5gen（4張） | create-character-v3 = ~5~10gen
-```
-
-> ⚠️ **封鎖條件**：若 PL-R5（style_strength 未設定）或 PL-R1（image_size 格式錯誤）
-> 任何一項未通過 → **立即封鎖，禁止執行生成腳本，退回 Developer 修正後重審**。
 
 ---
 
