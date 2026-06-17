@@ -49,12 +49,22 @@
 |---------|---------|---------|------|
 | `docs/GAME_DESIGN.md` | Designer | 2026-06-16 | 唯一設計依據，所有角色遵循 |
 | `docs/PROJECT_STATUS.md` | Architect/QA | 2026-06-16 | 各 Phase 進度，每次工作必讀 |
-| `docs/arch_log.md` | Architect | 2026-06-16 | 架構決策日誌 |
-| `docs/design_log.md` | Designer | 2026-06-16 | 設計決策日誌 |
-| `docs/dev_log.md` | Developer | 2026-06-16 | 開發日誌 |
-| `docs/review_log.md` | Reviewer | 2026-06-16 | 審查日誌 |
-| `docs/qa_log.md` | QA | 2026-06-16 | QA 日誌 |
 | `implementation_plan.md` | Architect | - | 當前開發計畫（動態） |
+
+### 📦 封存日誌（docs/archive/）
+
+以下日誌已移入 `docs/archive/`（2026-06-17 整理）：
+
+| 文件路徑 | 負責角色 | 說明 |
+|---------|---------|------|
+| `docs/archive/arch_log.md` | Architect | 架構決策日誌（封存） |
+| `docs/archive/design_log.md` | Designer | 設計決策日誌（封存） |
+| `docs/archive/dev_log.md` | Developer | 開發日誌（封存） |
+| `docs/archive/review_log.md` | Reviewer | 審查日誌（封存） |
+| `docs/archive/qa_log.md` | QA | QA 日誌（封存） |
+| `docs/archive/vfx-playerdust-arch.md` | Architect | PlayerDust VFX 架構（封存） |
+| `docs/archive/research-asset-sourcing.md` | Designer | 素材資源研究（封存） |
+| `docs/archive/research-coop-game-design.md` | Designer | 合作遊戲設計研究（封存） |
 
 ### 🔴 錯誤知識庫
 
@@ -88,13 +98,13 @@
 | `scripts/dev-submit.ps1` | Developer | 代碼提交前置流程 |
 | `scripts/assert-clean.ps1` | Developer | 工作區清潔確認 |
 
-### 📊 QA 報告（歸 QA 管理）
+### 📊 QA 報告（封存於 docs/archive/）
 
 | 文件路徑 | 對應功能 | 說明 |
 |---------|---------|------|
-| `docs/qa-report-phase-7.0.md` | Phase 7.0 | Phase 7 QA 驗收報告 |
-| `docs/qa-report-f6-walkin-fix.md` | F6 Walk-in | F6 場景 Walk-in 修復報告 |
-| `docs/qa-report-playerdust-vfx.md` | PlayerDust VFX | 玩家塵埃特效 QA |
+| `docs/archive/qa-report-phase-7.0.md` | Phase 7.0 | Phase 7 QA 驗收報告（封存） |
+| `docs/archive/qa-report-f6-walkin-fix.md` | F6 Walk-in | F6 場景 Walk-in 修復報告（封存） |
+| `docs/archive/qa-report-playerdust-vfx.md` | PlayerDust VFX | 玩家塵埃特效 QA（封存） |
 
 ---
 
@@ -188,5 +198,5 @@ Sensor 監控以下文件的結構完整性：
 
 ---
 
-*DOC_INDEX.md v1 建立於 2026-06-16 / v2 更新於 2026-06-16 / v3 更新於 2026-06-17（清理 PixelLab API 實驗）*
+*DOC_INDEX.md v1 建立於 2026-06-16 / v2 更新於 2026-06-16 / v3 更新於 2026-06-17（清理 PixelLab API 實驗）/ v4 更新於 2026-06-17（反映 docs/archive/ 封存結構）*
 *由 Architect 角色首次建立，後由所有 ROLE 共同維護*
