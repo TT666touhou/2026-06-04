@@ -96,6 +96,9 @@
 □ 若發現任何新錯誤或回歸問題，立即加入 ERROR_LOG.md 對應區塊
 □ 若確認某個已知錯誤完全修復且無回歸，在 ERROR_LOG.md 中標記 ✅VERIFIED
 
+【第二步：Ponytail 7-rung ladder 最終驗證】
+□ 5. 確認 Commit 訊息或程式碼中包含 `[Ponytail]` 或 `ponytail:` 標記。
+
 ⚠️ 靜態驗證失敗 → 立即退回 Developer，不繼續進行任何測試
 ```
 

@@ -18,6 +18,7 @@
 | 文件積欠 | PROJECT_STATUS.md 有超過 3 個 Phase 狀態為 PARTIAL，但無 Reviewer/QA 確認 |
 | DRAFT 過多 | GAME_DESIGN.md 有超過 3 個已實作功能的章節仍為 [DRAFT] |
 | **★ DOC_INDEX 滯後** | **任何 ROLE 新增文件/腳本後，Sensor 確認 DOC_INDEX.md 是否已更新。若新文件不在索引中 → Level 2 要求立即更新** |
+| Ponytail 缺失 | 任何 PR 或 Commit 訊息缺少 `[Ponytail]` 標記，或程式碼中沒有 `ponytail:` 註解 → Level 2 阻斷並要求補充 |
 
 ### DOC_INDEX 同步掃描流程（新增，每次 commit 後執行）
 

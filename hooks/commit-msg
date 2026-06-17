@@ -36,24 +36,45 @@ if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITH_ROLE"; then
 fi
 
 if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITHOUT_ROLE"; then
-    exit 0
+    FORMAT_OK=1
 fi
 
 # 格式不符合
-echo ""
-echo "❌ [commit-msg] Commit 訊息格式不正確！"
-echo ""
-echo "   你的訊息：$COMMIT_MSG"
-echo ""
-echo "   正確格式：[ROLE] type: 描述 （至少 3 個字元）"
-echo "   範例："
-echo "     [ARCH] plan: 設計玩家移動系統架構"
-echo "     [DEV] feat: 實作玩家跳躍功能"
-echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤"
-echo "     [REVIEW] review: 審查玩家移動 PR"
-echo "     [QA] test: 驗證玩家移動測試全部通過"
-echo "     docs: 更新 README"
-echo ""
-echo "   可用 type: feat | fix | plan | review | test | docs | refactor | chore"
-echo ""
-exit 1
+if [ -z "$FORMAT_OK" ]; then
+    echo ""
+    echo "❌ [commit-msg] Commit 訊息格式不正確！"
+    echo ""
+    echo "   你的訊息：$COMMIT_MSG"
+    echo ""
+    echo "   正確格式：[ROLE] type: 描述 （至少 3 個字元）"
+    echo "   範例："
+    echo "     [ARCH] plan: 設計玩家移動系統架構 [Ponytail]"
+    echo "     [DEV] feat: 實作玩家跳躍功能"
+    echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤"
+    echo "     [REVIEW] review: 審查玩家移動 PR"
+    echo "     [QA] test: 驗證玩家移動測試全部通過"
+    echo "     docs: 更新 README [Ponytail]"
+    echo ""
+    echo "   可用 type: feat | fix | plan | review | test | docs | refactor | chore"
+    echo ""
+    exit 1
+fi
+
+# ==========================================================
+# PONYTAIL 規則驗證 (Level 1)
+# ==========================================================
+PONYTAIL_MSG=$(echo "$COMMIT_MSG" | grep -i '\[Ponytail\]' || true)
+if [ -z "$PONYTAIL_MSG" ]; then
+    PONYTAIL_CODE=$(git diff --cached | grep -iE '^\+.*ponytail:' || true)
+    if [ -z "$PONYTAIL_CODE" ]; then
+        echo ""
+        echo "❌ [commit-msg] 違反 GLOBAL-RULE-002: Ponytail 規則！"
+        echo "   你必須在 Commit 訊息中加入 [Ponytail] 標籤"
+        echo "   或在新增/修改的程式碼/文件中加入 'ponytail:' 註解。"
+        echo "   例如：# ponytail: Rung 2, using AnimationPlayer"
+        echo ""
+        exit 1
+    fi
+fi
+
+exit 0

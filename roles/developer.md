@@ -206,6 +206,10 @@
 
 □ 5. 確認 Debug 整合要求（從架構決策中取得）
 
+【第二步：Ponytail 7-rung ladder 實作原則】
+□ 6. 寫任何自定義代碼前，先思考能否用 Godot 內建節點 (Rung 2) 或一行代碼 (Rung 5) 解決。
+□ 7. 每次 Commit 必須在訊息中標註 `[Ponytail]` 或在程式碼加入 `# ponytail: Rung X...` 註解。
+
 ⚠️ 任何 error 必須在開始新代碼之前修復，不允許累積
 ```
 

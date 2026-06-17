@@ -58,6 +58,12 @@
 □ 6. 確認 Autoload 順序（project.godot [autoload] 區塊）
 □ 7. 掃描 scripts/ 目錄，確認現有腳本結構與設計意圖一致
 
+【第二步：Ponytail 7-rung ladder 架構審查】
+□ 8. 所有架構規劃必須嚴格對應 Ponytail 階梯，優先考量 Rung 1~4。
+      - 拒絕預先抽象化 (Rung 7 Complete abstraction)。
+      - 必須在 `implementation_plan.md` 中指明實作應採用的最低複雜度 Rung。
+      - 任何架構提案的 Commit 訊息必須包含 `[Ponytail]` 標記。
+
 【發現新問題 → 立即更新 docs/ERROR_LOG.md】
 □ 任何在架構設計過程中發現的新型態問題，必須加入 ERROR_LOG.md
 
