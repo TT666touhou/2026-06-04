@@ -46,7 +46,7 @@
 □ -2. 讀取 docs/DOC_INDEX.md：
        Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
        - 確認自己角色在『職責矩陣』中的讀/寫職責
-       - 找出本次任務涉及的文件類型（Godot/PixelLab/文件）
+       - 找出本次任務涉及的文件類型（Godot/文件）
        ⚠️ 若跳過此步驟 → Sensor 應介入中斷
 
 【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】

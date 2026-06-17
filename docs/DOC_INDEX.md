@@ -146,7 +146,6 @@
 步驟 5（QA）：測試驗證
   - 執行模擬測試（用假場景觸發新規則）
   - 確認規則在 pre-commit hook 和 sensor-scan.ps1 中有效
-  - 執行 qa_pixellab_v3b_test.py（若涉及 PixelLab）
   - Git commit 並記錄在 docs/review_reports/
 ```
 
@@ -161,7 +160,7 @@
   □ 讀取 docs/DOC_INDEX.md（本文件）
     Get-Content "D:\2026-06-04\docs\DOC_INDEX.md"
     - 確認自己角色在「職責矩陣」中的讀/寫職責
-    - 找出本次任務涉及的文件類型（Godot/PixelLab/文件）
+    - 找出本次任務涉及的文件類型（Godot/文件）
     - 依類型找到對應的「必讀文件清單」
   
   ⚠️ 若跳過此步驟 → 視為嚴重違規，Sensor 應介入中斷

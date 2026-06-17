@@ -230,26 +230,6 @@ if [ "$ROLE" = "designer" ]; then
     else
         echo "   ℹ️  本次未修改 GAME_DESIGN.md，跳過亂碼掃描"
     fi
-
-    echo "[Designer/4] §O-REF: 检查 pixellab_api_reference.md 維護狀態..."
-    PIXELLAB_SPECS_CHANGED=$(git diff --cached --name-only | grep 'docs/pixellab_specs.md' || true)
-    PIXELLAB_REF_CHANGED=$(git diff --cached --name-only | grep 'docs/pixellab_api_reference.md' || true)
-    PIXELLAB_REF_EXISTS=$([ -f "docs/pixellab_api_reference.md" ] && echo "YES" || echo "NO")
-
-    if [ "$PIXELLAB_REF_EXISTS" = "NO" ]; then
-        echo "❌ [§O-REF] docs/pixellab_api_reference.md 不存在！"
-        echo "   Designer 必須將此文件從 artifact 複製到 docs/ 目錄"
-        echo "   來源：C:\Users\88698\.gemini\antigravity-ide\brain\...\pixellab_api_reference.md"
-        exit 1
-    fi
-    if [ -n "$PIXELLAB_SPECS_CHANGED" ] && [ -z "$PIXELLAB_REF_CHANGED" ]; then
-        echo "⚠️ [§O-REF Designer 警告] pixellab_specs.md 有更改，但 pixellab_api_reference.md 未同步更新"
-        echo "   請確認是否已在文件頂部更新 Last Updated: YYYY-MM-DD 戳記"
-        echo "   （5秒後繼續...）"
-        sleep 5
-    else
-        echo "   ✅ pixellab_api_reference.md 狀態正常"
-    fi
 fi
 
 # ——————————————————————————————————————
