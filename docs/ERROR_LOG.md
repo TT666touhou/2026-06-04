@@ -846,3 +846,71 @@ region = Rect2(0, 0, 132, 126)
 | 2026-06-20 | Catenary Line2D 多狀態管理 | `_update_wire_renderer()` 依序檢查 in-flight → platform(anchor1↔anchor2) → pendulum(player↔anchor1)，三種互斥模式分開處理 |
 | 2026-06-20 | one_way_collision 斜面平台 | StaticBody2D `global_rotation=0`；CollisionShape2D `rotation=angle`；`one_way_collision_margin≥8.0` |
 | 2026-06-20 | Line2D.get_point_position | Godot 4 回傳 Variant；需明確型別：`var pt: Vector2 = renderer.get_point_position(i)`；禁止 `:=` 推斷 |
+
+---
+
+## GAP-022 E 鍵縮線有彈簧感（應為繩子感）（2026-06-20）
+
+**症狀**：按 E 時 player 會震盪、來回彈動，不像繩子被拉短，像彈簧。
+
+**根本原因**：`_apply_wire()` 每 frame 執行 `velocity += to_anchor / dist * reel_speed`（速度累加），沒有位置限制。繩子超長時速度一直被推向錨點，離開後又受重力，形成振盪。
+
+**修復**：改為直接位置收縮（winch 語意）：
+```gdscript
+_wire.reel_in(reel_speed, delta)          # 縮短 max_length
+var to_anchor: Vector2 = _wire.anchor_pos - global_position
+var dist: float = to_anchor.length()
+if dist > _wire.max_length and dist > 0.0:
+    position += (to_anchor / dist) * (dist - _wire.max_length)  # 立即拉齊
+```
+`WireConstraint.apply()` 後續仍執行速度投影，保留繩子物理。
+
+**提交**：`241d4ed` [DEV] fix: 修正三針繩索顯示錯誤與第三針無法牽線 GAP-022/023
+
+---
+
+## GAP-023 第三針無法牽線（platform mode 早返阻斷）（2026-06-20）
+
+**症狀**：在 platform mode（已有 anchor1+anchor2）時，射出第三根 wire needle 落點後，繩索系統無反應，第三針無法成為新的 pendulum anchor。
+
+**根本原因（雙重）**：
+1. `_on_wire_anchor_ready()` 開頭判斷 `if _wire_anchor2 != null: return`，platform mode 下直接跳出，新錨點被忽略。
+2. `_try_create_platform()` 使用 `wire_anchors[0]` + `wire_anchors[1]`（舊 rolling），第三針落點後平台不更新。
+
+**修復**：
+- `_on_wire_anchor_ready()`：移除早返；新錨點永遠接管 `_wire_anchor`，清空 `_wire_anchor2`（讓 `platform_created` 重建平台）。
+- `needle_manager._try_create_platform()`：改為 rolling window（最新兩錨點 `wire_anchors[n-2]` + `wire_anchors[n-1]`）。
+
+**提交**：`241d4ed` [DEV] fix: 修正三針繩索顯示錯誤與第三針無法牽線 GAP-022/023
+
+---
+
+## GAP-024 第二針飛行途中繩線綁在兩端釘上（應顯示 anchor1→飛行針）（2026-06-20）
+
+**症狀**：射出第二根 wire needle 飛行途中，線段立即固定顯示兩端已知錨點（anchor1↔anchor2 位置），看起來像繩已連接，視覺錯誤。
+
+**根本原因**：`_update_wire_renderer()` Priority 2（pendulum 模式）在 `_wire_anchor` 有效時直接畫 player↔anchor1，未考慮同時有 `_wire_projectile` 在飛行中的情況。
+
+**修復**：在 pendulum 之前插入新 Priority 2：
+```gdscript
+# anchor 存在 + 飛行針存在 → anchor → 飛行針
+if _wire_anchor != null and _wire_projectile != null and is_instance_valid(_wire_projectile):
+    wire_renderer.clear_points()
+    wire_renderer.add_point(_wire_anchor.global_position)
+    wire_renderer.add_point(_wire_projectile.global_position)
+    return
+```
+結果：第二針飛行途中可清楚看到線從 anchor1 延伸至針尖（靈活延展效果）。
+
+**提交**：`241d4ed` [DEV] fix: 修正三針繩索顯示錯誤與第三針無法牽線 GAP-022/023
+
+---
+
+## 🟢 Pattern — GAP-022/023/024 新增
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-20 | E 鍵縮線（winch）| 直接修改 position（winch 語意），不要累加 velocity（spring 語意）；`max_length` 同步縮短由 `reel_in()` 處理 |
+| 2026-06-20 | NeedleManager 平台 rolling window | `_try_create_platform()` 永遠取 `wire_anchors[n-2]` + `wire_anchors[n-1]`（最新兩根），第三針才能觸發平台移位 |
+| 2026-06-20 | 多針 wire renderer 優先順序 | P1=Platform(anchor1↔anchor2)；P2=Anchor+飛行針(anchor1→proj)；P3=Pendulum(player↔anchor1)；P4=僅飛行(player→proj) |
+| 2026-06-20 | `_on_wire_anchor_ready` 不早返 | 永遠接受新錨點；platform mode 由 NeedleManager 的 `platform_created` 信號重建，player.gd 不負責 gate |
