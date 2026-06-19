@@ -716,3 +716,27 @@ region = Rect2(0, 0, 132, 126)
 - **副作用修復**: 加入邊界清除 (`queue_free()`) 當 projectile 逃出螢幕範圍（`x < -64 or x > 544 or y < -64 or y > 334`），防止 `_in_flight` 計數永遠累積、無法再射針。
 - **場景問題（根本原因之二）**: MVP_Test.tscn 原本無牆壁/天花板，針射出後飛出螢幕邊界消失，`_in_flight` 不會歸零，3 根後完全無法射擊。已修復為封閉房間。
 - **防範規則**: `RayCast2D.target_position` **永遠用 local-space 設置**；若節點有旋轉，沿 local X 軸的 `Vector2(距離, 0)` 即為射線正前方。
+
+---
+
+## GAP-018 UX 假陷阱：射擊成功但使用者無法察覺（2026-06-20）
+
+- **Severity**: Low-Medium（功能管線正確，但使用者認為滑鼠無反應）
+- **現象**: 點擊 LMB 後完全無視覺回饋 — 使用者回報「滑鼠沒有反應」。
+  實際狀況：3 發針全部正確射出並嵌入牆面（`_spawn_projectile` 呼叫成功）；第 4 次點擊因 `max_needles=3` 達上限，`shoot_attack_needle()` 靜默 return 無任何提示。
+  MCP debug 確認：`_spawn_projectile: scene=true layer=true from=(...) dir=(...)` 出現 3 次；第 4 次點擊只有 `count=3` → 無 spawn。
+- **根本原因（三層疊加）**:
+  1. 視窗 480×270 → 12×2 px 鋼針投影物在螢幕上幾乎不可見（1:1 像素）
+  2. `NeedleAnchor.tscn` 無任何 Visual 節點 → 針嵌入後零視覺殘留，使用者無法確認位置
+  3. `max_needles=3` 達到後 `shoot_attack_needle()` 直接 `return`，無 sound/flash/UI feedback
+- **修復**:
+  1. `project.godot` 視窗改為 960×540（canvas_items 2× 縮放，針放大至 24×4 視覺像素）
+  2. `NeedleAnchor.tscn` 新增 8×8 黃色 ColorRect → 嵌入的針可見
+- **診斷過程（MCP trace）**:
+  - 在 `NeedleManager._ready()` 加入 print → 確認 `needle_layer=true`（排除 null 靜默失敗）
+  - 在 `player.gd _unhandled_input` + `_spawn_projectile` 加入 print → 確認事件鏈完整
+  - MCP `get_debug_output` 讀取確認所有 `[DBG]` 均在預期位置觸發
+- **防範規則**:
+  - QA **必須**驗證互動功能（LMB 射針、移動、跳躍），不能只確認啟動無錯誤
+  - 任何「使用者觸發 → 系統反應」的功能必須有**可見視覺 feedback**（V1 TODO：max 提示）
+  - `max limit 靜默 return` 視為 UX 缺陷，須加 UI feedback（Phase 1）

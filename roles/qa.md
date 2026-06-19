@@ -85,6 +85,38 @@
 
 **QA 必須親自啟動遊戲並觀察，不接受「我跑過了」這種描述。**
 
+### 步驟 0.5：【強制 MCP 互動驗證 — GAP-018 強化】
+> ⚠️ GAP-018 教訓：啟動成功 ≠ 功能正常。QA **必須**透過 MCP debug output 確認互動行為。
+> 靜態 --check-only 和無崩潰啟動都**不等於**射擊/移動/跳躍能正常運作。
+
+```
+□ QA-MCP-1. 使用 MCP 啟動遊戲，確認 NeedleManager 初始化：
+   mcp__godot__run_project(projectPath="D:\\2026-06-04")
+   mcp__godot__get_debug_output()
+   → 必須看到：NeedleManager 無錯誤（若有 print：needle_layer=true）
+   → 若 needle_layer=false → 立即退回 Developer（World/NeedleLayer 路徑問題）
+
+□ QA-MCP-2. 驗證 LMB 射針（需加臨時 debug print 或使用 DebugOverlay）：
+   策略一：player.gd _unhandled_input 加入 print，然後 MCP 取 output
+   策略二：目視遊戲視窗，確認 NeedleAnchor 出現黃色 8×8 視覺
+   ✅ 判準：3 次點擊 → 3 個 NeedleAnchor 可見（或 3 次 _spawn_projectile 出現在 debug output）
+   ❌ 失敗：點擊後無任何視覺變化 + debug output 無 _spawn_projectile → 退回 Developer
+
+□ QA-MCP-3. 驗證 max_needles 上限有 feedback（Phase 1 TODO）：
+   目前行為：3 發後靜默不射（GAP-018 根本原因之三）
+   當前 MVP 接受：記錄為已知問題，不阻斷通過
+   未來：須加 UI 提示「針已滿（3/3）」
+
+□ QA-MCP-4. F鍵回收驗證：
+   走近嵌入的針（距離 < 30px） → 按 F → 確認 NeedleAnchor 消失
+   確認 debug overlay needle count 減少（或 debug output 有 needle_retrieved signal）
+
+□ QA-MCP-5. 視窗縮放驗證：
+   確認遊戲視窗為 960×540（project.godot window/size）
+   確認房間四壁貼齊視窗邊緣（Floor 底部 = 視窗底部）
+   確認 Camera2D limit 有效（玩家移動不露出牆外）
+```
+
 ### 步驟 1：啟動單機測試
 ```powershell
 # 啟動遊戲（確認能正常開啟）
