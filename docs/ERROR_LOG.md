@@ -740,3 +740,23 @@ region = Rect2(0, 0, 132, 126)
   - QA **必須**驗證互動功能（LMB 射針、移動、跳躍），不能只確認啟動無錯誤
   - 任何「使用者觸發 → 系統反應」的功能必須有**可見視覺 feedback**（V1 TODO：max 提示）
   - `max limit 靜默 return` 視為 UX 缺陷，須加 UI feedback（Phase 1）
+
+---
+
+## GAP-019a `canvas_items` stretch 導致房間縮到視窗左上角（2026-06-20）
+
+- **Severity**: High（房間永遠比視窗小，無法游玩）
+- **現象**: 視窗 960×540，遊戲內容（480×270 房間）只佔視窗中央一個小矩形，四周深灰色。Camera2D limits (0–480 × 0–270) 把畫面釘在 canvas 左上角，外面是空 canvas 背景。
+- **根本原因**: `canvas_items` 模式把 Canvas 擴大至視窗尺寸（960×540）。房間節點座標 0–480 × 0–270 只佔擴大後 canvas 的左上四分之一；Camera2D limit 限定攝影機只顯示那塊，顯示結果是小房間居中、周圍灰色。
+- **修復**: `window/stretch/mode="viewport"` + `window/stretch/aspect="keep"`。`viewport` 先以 480×270 渲染再 2× 縮放填滿 960×540，房間完全貼齊視窗四邊。
+- **防範規則**: 固定解析度 2D 遊戲一律用 `viewport`；`canvas_items` 用於 UI 隨視窗縮放場合。
+
+## GAP-019b NeedleProjectile RayCast2D 偵測 Player，針立刻嵌入自身（2026-06-20）
+
+- **Severity**: High（射針立刻卡在 player 旁邊，無法飛向牆壁）
+- **現象**: LMB 點擊後黃色 anchor 立即出現在 ThrowOrigin 位置，不飛出去。
+- **根本原因**: 所有 PhysicsBody2D 預設 Layer 1，`RayCast2D`（mask=1）因此也偵測到 Player（CharacterBody2D，layer=1）。ThrowOrigin 在 player 碰撞形狀邊緣，Ray 出發時觸及 player 自身 CollisionShape2D → 立即 embed。
+- **修復**:
+  - `Player.tscn`: `collision_layer=2, collision_mask=1`（player 在 layer 2，仍碰牆壁 layer 1）
+  - `NeedleProjectile.tscn` RayCast2D: 明示 `collision_mask=1`（只偵測 layer 1 = 牆/平台）
+- **防範規則**: 投射物/感測器建立時必須明確設 `collision_mask`；Layer 架構建議：Layer 1=World, Layer 2=Player, Layer 3=Enemy, Layer 4=Projectile。
