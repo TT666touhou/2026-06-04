@@ -18,6 +18,8 @@ const _WireConstraintScript = preload("res://scripts/wire_constraint.gd")
 var _anchors: Array = []
 var _in_flight: int = 0
 var _current_platform: Node = null
+var _platform_anchor_a: Node = null
+var _platform_anchor_b: Node = null
 var _needle_layer: Node = null
 var _wire_layer: Node = null
 
@@ -83,31 +85,34 @@ func _on_embedded(hit_pos: Vector2, collider: Object, n_type: int) -> void:
 	if anchor.type == _ANCHOR_WIRE:
 		anchor.wire = _WireConstraintScript.new()
 		wire_anchor_ready.emit(anchor)
-		_try_create_platform()
+		if get_wire_anchors().size() == 2:  # Only create platform on 2nd wire anchor; 3rd+ keeps old platform
+			_try_create_platform()
 
 func _try_create_platform() -> void:
 	var wire_anchors := get_wire_anchors()
 	if wire_anchors.size() < 2 or wire_platform_scene == null or _wire_layer == null:
 		return
-	# Use the two MOST RECENT wire anchors (rolling window)
-	# Shot 3rd wire needle → platform shifts to anchor2↔anchor3, anchor1 freed for retrieval
-	var n := wire_anchors.size()
-	var a1: Node = wire_anchors[n - 2]
-	var a2: Node = wire_anchors[n - 1]
+	var a1: Node = wire_anchors[0]
+	var a2: Node = wire_anchors[1]
 	if _current_platform != null:
 		_current_platform.call("dissolve")
 	var platform := wire_platform_scene.instantiate()
 	_wire_layer.add_child(platform)
 	platform.call("setup", a1, a2)
 	_current_platform = platform
+	_platform_anchor_a = a1
+	_platform_anchor_b = a2
 	platform_created.emit(a1, a2)
 
 func _remove_anchor(anchor: Node) -> void:
 	_anchors.erase(anchor)
 	if _current_platform != null:
-		if is_instance_valid(_current_platform):
-			_current_platform.call("dissolve")
-		_current_platform = null
+		if anchor == _platform_anchor_a or anchor == _platform_anchor_b:
+			if is_instance_valid(_current_platform):
+				_current_platform.call("dissolve")
+			_current_platform = null
+			_platform_anchor_a = null
+			_platform_anchor_b = null
 	needle_retrieved.emit(anchor)
 	var remaining := get_wire_anchors()
 	if remaining.size() > 0:

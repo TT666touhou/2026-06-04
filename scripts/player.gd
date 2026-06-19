@@ -10,10 +10,12 @@ const PLATFORM_TIGHTEN_SPEED := 320.0
 @export var wire_slack: float = 80.0
 
 var _wire: RefCounted = null
-var _wire_anchor: Node = null
-var _wire_anchor2: Node = null
+var _wire_anchor: Node = null       # active pendulum anchor (swinging)
 var _wire_projectile: Node = null
+var _platform_a: Node = null        # platform endpoint A — independent of pendulum state
+var _platform_b: Node = null        # platform endpoint B
 var _platform_slack: float = 0.0
+var _platform_renderer: Line2D = null
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -26,12 +28,18 @@ func _ready() -> void:
 	needle_manager.platform_created.connect(_on_platform_created)
 	wire_renderer.top_level = true
 	wire_renderer.visible = false
+	_platform_renderer = Line2D.new()
+	_platform_renderer.top_level = true
+	_platform_renderer.visible = false
+	_platform_renderer.width = 3.0
+	_platform_renderer.default_color = Color(1.0, 0.92, 0.5, 1.0)
+	add_child(_platform_renderer)
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
 	_apply_movement()
 	_apply_wire(delta)
-	if _wire_anchor2 != null:
+	if _platform_b != null:
 		_platform_slack = maxf(0.0, _platform_slack - PLATFORM_TIGHTEN_SPEED * delta)
 	move_and_slide()
 	_update_wire_renderer()
@@ -82,47 +90,55 @@ func _shoot_needle() -> void:
 func _cut_wire() -> void:
 	_wire = null
 	_wire_anchor = null
-	_wire_anchor2 = null
+	_platform_a = null
+	_platform_b = null
 	_platform_slack = 0.0
 	wire_renderer.visible = false
+	if _platform_renderer != null:
+		_platform_renderer.visible = false
 
 func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_projectile = null
-	# Always allow new wire anchor to become pendulum target.
-	# If was in platform mode: clear it — platform_created will re-establish if NeedleManager decides so.
-	_wire_anchor2 = null
-	_platform_slack = 0.0
 	_wire = anchor.wire as RefCounted
 	_wire_anchor = anchor
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
 
 func _on_needle_retrieved(anchor: Node) -> void:
-	if anchor == _wire_anchor or anchor == _wire_anchor2:
-		_cut_wire()
+	if anchor == _wire_anchor:
+		_wire = null
+		_wire_anchor = null
+	if anchor == _platform_a or anchor == _platform_b:
+		_platform_a = null
+		_platform_b = null
+		_platform_slack = 0.0
+		if _platform_renderer != null:
+			_platform_renderer.visible = false
 
 func _on_platform_created(a1: Node, a2: Node) -> void:
 	_wire = null
-	# Only reset slack animation if anchors actually changed
-	if _wire_anchor != a1 or _wire_anchor2 != a2:
+	_wire_anchor = null
+	if _platform_a != a1 or _platform_b != a2:
 		_platform_slack = 40.0
-	_wire_anchor = a1
-	_wire_anchor2 = a2
+	_platform_a = a1
+	_platform_b = a2
 
 func _update_wire_renderer() -> void:
-	# Priority 1: Platform mode — bright gold = walkable signal; stays visible during flight
-	if _wire_anchor2 != null and is_instance_valid(_wire_anchor2) and is_instance_valid(_wire_anchor):
-		wire_renderer.visible = true
-		wire_renderer.default_color = Color(1.0, 0.92, 0.5, 1.0)  # bright gold = platform active
-		wire_renderer.width = 3.0
-		wire_renderer.clear_points()
-		_draw_catenary(_wire_anchor.global_position, _wire_anchor2.global_position, _platform_slack)
-		return
+	# Platform renderer — independent of pendulum, always updated
+	if _platform_a != null and is_instance_valid(_platform_a) \
+			and _platform_b != null and is_instance_valid(_platform_b):
+		_platform_renderer.visible = true
+		_platform_renderer.default_color = Color(1.0, 0.92, 0.5, 1.0)
+		_platform_renderer.width = 3.0
+		_platform_renderer.clear_points()
+		_draw_catenary_line(_platform_renderer, _platform_a.global_position, _platform_b.global_position, _platform_slack)
+	else:
+		if _platform_renderer != null:
+			_platform_renderer.visible = false
 
-	# Priority 2: Anchor exists + needle in flight → show anchor → flying needle
-	# (2nd needle launch: user wants to see where the wire will land, not player↔anchor1)
+	# Priority 1: Anchor exists + needle in flight → show anchor → flying needle
 	if _wire_anchor != null and is_instance_valid(_wire_anchor) \
 			and _wire_projectile != null and is_instance_valid(_wire_projectile):
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 0.75)
@@ -133,7 +149,7 @@ func _update_wire_renderer() -> void:
 		wire_renderer.add_point(_wire_projectile.global_position)
 		return
 
-	# Priority 3: Pendulum mode — yellow, brightens/thickens under tension
+	# Priority 2: Pendulum mode — yellow, brightens/thickens under tension
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var dist := global_position.distance_to(_wire.anchor_pos)
 		var slack := maxf(0.0, _wire.max_length - dist)
@@ -142,10 +158,10 @@ func _update_wire_renderer() -> void:
 		wire_renderer.width = 1.5 + tension * 1.5
 		wire_renderer.visible = true
 		wire_renderer.clear_points()
-		_draw_catenary(global_position, _wire.anchor_pos, slack)
+		_draw_catenary_line(wire_renderer, global_position, _wire.anchor_pos, slack)
 		return
 
-	# Priority 4: In-flight only — dim, thin; no existing wire at all
+	# Priority 3: In-flight only — dim, thin; no existing wire at all
 	if _wire_projectile != null and is_instance_valid(_wire_projectile):
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 0.6)
 		wire_renderer.width = 1.0
@@ -158,24 +174,22 @@ func _update_wire_renderer() -> void:
 
 	wire_renderer.visible = false
 
-func _draw_catenary(from: Vector2, to: Vector2, slack: float) -> void:
+func _draw_catenary_line(renderer: Line2D, from: Vector2, to: Vector2, slack: float) -> void:
 	var sag := minf(slack * 0.35, 60.0)
-	# Physically correct sag: component of gravity perpendicular to the wire
-	# → zero sag for vertical wire, full downward sag for horizontal wire
 	var wire_vec := (to - from).normalized()
 	var grav_dir := Vector2(0.0, 1.0)
 	var perp := grav_dir - grav_dir.dot(wire_vec) * wire_vec
 	var perp_len := perp.length()
 	if perp_len < 0.01 or sag < 0.5:
-		wire_renderer.add_point(from)
-		wire_renderer.add_point(to)
+		renderer.add_point(from)
+		renderer.add_point(to)
 		return
 	perp = perp / perp_len
 	for i in range(WIRE_SEGMENTS + 1):
 		var t := float(i) / float(WIRE_SEGMENTS)
 		var pt := from.lerp(to, t)
 		pt += perp * sag * sin(PI * t)
-		wire_renderer.add_point(pt)
+		renderer.add_point(pt)
 
 func _update_aim_pivot() -> void:
 	var mouse_local := get_global_mouse_position() - global_position
