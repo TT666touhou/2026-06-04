@@ -11,7 +11,23 @@
 
 ## 進行中 SOP
 
-### §MOD — 全面機械化（開始：2026-06-19）
+### §MOD — Ponytail/SOP 強化（開始：2026-06-19）
+
+**觸發原因**：Ponytail `rung=N` 格式未強制、`.gd` ponytail: 注解未驗證、sop-state PENDING 未阻斷 push
+
+| 步驟 | 名稱 | 狀態 | 執行角色 | 完成時間 |
+|------|------|------|----------|---------|
+| Step ① | Sensor scan — 確認基線（sensor 21/21 PASS） | DONE | Sensor | 2026-06-19 |
+| Step ② | Architect plan — 分析 Ponytail/SOP 執行漏洞，規劃 3 hook 升版 + workflow v8 | DONE | Architect | 2026-06-19 |
+| Step ③ | Developer impl — commit-msg v3 + pre-commit v6 + pre-push v3 + workflow v8 | DONE | Developer | 2026-06-19 |
+| Step ④ | Reviewer review — 審查 hook 邏輯（Ponytail rung= 邏輯正確、SOP check 限 main） | DONE | Reviewer | 2026-06-19 |
+| Step ⑤ | QA verify + commit — sensor 21/21 PASS + commit-msg v3 rung= 測試全通過 | DONE | QA | 2026-06-19 |
+
+---
+
+## 已完成 SOP 歷史
+
+### §MOD — 全面機械化（2026-06-19 完成）
 
 **觸發原因**：用戶要求將所有 workflow 規則盡可能升級至機器強制層
 
@@ -21,10 +37,6 @@
 | Step ② | Developer impl — Block 1-6 實作（sensor v11/21, pre-commit v5, commit-msg v2, DOC_INDEX.md, workflow v7） | DONE | Developer | 2026-06-19 |
 | Step ③ | Reviewer review — 審查所有變更（sensor 21 checks、cascade rules、Ponytail enforcement） | DONE | Reviewer | 2026-06-19 |
 | Step ④ | QA verify + commit — 驗收並執行最終 commit+push | DONE | QA | 2026-06-19 |
-
----
-
-## 已完成 SOP 歷史
 
 ### §LEARN — GAP-012, GAP-013（2026-06-19 完成）
 

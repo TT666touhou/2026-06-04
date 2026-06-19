@@ -1,17 +1,19 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-push  (v2 — GAP-013 核心文件強制)
+# hooks/pre-push  (v3 — SOP 完整性強制)
 # AI-Agnostic Pre-Push Hook for Godot 4 Project
 #
 # 觸發時機：執行 git push 前自動執行
-# 作用：  最後一道防線，阻斷核心 workflow 文件缺失的 push
+# 作用：  最後一道防線，阻斷核心 workflow 文件缺失或 SOP 未完成的 push
 # v2 新增功能：
 #   - GAP-013 防範：push main 前確認 workflow.md / roles/ / hooks/ 存在
+# v3 新增功能：
+#   - SOP 完整性：sop-state.md 有 PENDING 步驟 → 阻斷 push（強制所有角色完成各自步驟）
 # ==========================================================
 
 echo ""
 echo "============================================================"
-echo "[Pre-Push Hook v2] Push 前最終安全驗證..."
+echo "[Pre-Push Hook v3] Push 前最終安全驗證..."
 echo "============================================================"
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -52,6 +54,26 @@ if [ "$CURRENT_BRANCH" = "main" ]; then
         exit 1
     fi
     echo "   [PASS] 核心 Workflow 文件完整（workflow.md / roles/ / hooks/）"
+
+    # ——————————————————————————————————————
+    # [SOP 完整性] sop-state.md PENDING → 阻斷 push 到 main
+    # 強制所有 §MOD SOP 角色步驟完成後才能 push（確保角色協同完整）
+    # 注意：只在 main branch 阻斷；feature branch push 不受此限制
+    # ——————————————————————————————————————
+    if [ -f "docs/sop-state.md" ]; then
+        SOP_PENDING=$(grep -cE '^\s*\|[^|]+\|[^|]+\|\s*PENDING\s*\|' docs/sop-state.md || echo "0")
+        if [ "$SOP_PENDING" -gt 0 ]; then
+            echo ""
+            echo "❌ [SOP 強制] docs/sop-state.md 有 $SOP_PENDING 個 PENDING 步驟未完成！"
+            echo "   Push 到 main 被阻斷：§MOD SOP 要求所有角色步驟完成後才能推送。"
+            echo ""
+            grep -E '^\s*\|[^|]+\|[^|]+\|\s*PENDING\s*\|' docs/sop-state.md | head -5
+            echo ""
+            echo "   完成全部 PENDING 步驟並更新 sop-state.md 後，再執行 git push。"
+            exit 1
+        fi
+        echo "   [PASS] SOP 步驟全部完成（無 PENDING）"
+    fi
 
     # ——————————————————————————————————————
     # [警告] 直接 push 到 main 提示

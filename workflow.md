@@ -1,4 +1,4 @@
-﻿# Godot Multi-Agent 開發工作流（完整規範）v7 (2026-06-19)
+﻿# Godot Multi-Agent 開發工作流（完整規範）v8 (2026-06-19)
 
 > **讀取指示（給 AI）**: 進入任何 Godot 遊戲開發對話時，必須優先讀取此文件。
 > 讀完後，立刻執行「A. 對話開始時的第一步」。
@@ -62,7 +62,7 @@
 ### 觸發與機制（Level 1 Strictness）
 
 - 所有角色（Designer, Architect, Developer, Reviewer, QA）均受此規則約束。
-- **Commit 強制檢查**：任何 Commit 訊息中必須包含 `[Ponytail]` 標記，且變更內容中必須包含 `ponytail:` 註解（用以說明採用的 Rung）。這由 `commit-msg` hook 強制阻斷。
+- **Commit 強制檢查**：(1) commit 訊息必須含 `[Ponytail] rung=N` 格式標記（`commit-msg` v3 FAIL 阻斷）；(2) 變更的 `.gd` diff 中必須含 `# ponytail: rung=N` 注解（`pre-commit` v6 Developer/Ponytail-A WARN）。
 
 ---
 
@@ -149,10 +149,10 @@ git config core.hooksPath hooks
 
 | 文件 | 觸發時機 | 作用 |
 |------|---------|------|
-| `pre-commit` (v5) | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、編碼、UID、CASCADE 0e/0f、Developer auto-sensor） |
-| `commit-msg` (v2) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ **Ponytail 標記強制**（feat/fix/refactor/style/perf → FAIL）+ ERR hint |
+| `pre-commit` (v6) | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、編碼、UID、CASCADE 0e/0f、Developer auto-sensor、**Developer/Ponytail-A .gd ponytail: 注解**） |
+| `commit-msg` (v3) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ **Ponytail rung=N 格式強制**（feat/fix/refactor/style/perf → FAIL）+ ERR hint |
 | `prepare-commit-msg` | commit 訊息編輯前 | 自動加入角色前綴 |
-| `pre-push` | push 前 | 禁止直接 force push main |
+| `pre-push` (v3) | push 前 | 禁止 force push main + **SOP PENDING 阻斷 push** |
 | `post-merge` | merge 後 | 提示更新狀態 |
 
 ### Commit 格式規範
@@ -175,7 +175,7 @@ git config core.hooksPath hooks
 - **Architect**：禁止提交任何 `.gd/.tscn/.tres`
 - **Developer**：`.gd` 提交前必須通過 Godot `--check-only` 語法驗證；禁止在 main 分支提交 `.gd`
 - **QA**：禁止提交任何自行撰寫的新 `.gd/.tscn/.tres`
-- **【強化 v3】Sensor 最終閘門**：commit 前 Developer **手動執行** `.\scripts\sensor-scan.ps1`，確認全部 PASS（含 --check-only）。**注意：pre-commit hook 不會自動呼叫 sensor-scan.ps1**，這是流程紀律而非 hook 自動保護。
+- **【強化 v5】Sensor 自動閘門**：pre-commit hook v5+ 在 Developer commit 時**自動執行** `sensor-scan.ps1`（v11/21）；FAIL 項目阻斷 commit。Developer 也可手動執行 `.\scripts\sensor-scan.ps1` 進行提前確認。
 
 ---
 
@@ -395,6 +395,14 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | — | **CASCADE: roles → DOC_INDEX**：`roles/*.md` staged 但 `DOC_INDEX.md` 未同步 → WARN | `[HOOK]` pre-commit 0f |
 | — | **hook 版本一致性**：pre-commit header/echo 版本號不符 → FAIL | `[SENSOR]` Check 19/21 FAIL |
 | — | **SAS-A 完整性**：`workflow.md` 以外 `.md` 含完整 Ponytail Rung 1-7 定義 → WARN | `[SENSOR]` Check 20/21 |
+
+> **2026-06-19 升級（第二輪）**：以下規則補強 Ponytail 執行完整性與 SOP 協同強制
+
+| # | 規則 | 執行機制 |
+|---|------|---------|
+| — | **Ponytail rung=N 格式**：`[Ponytail]` 未含 `rung=N` 數字 → FAIL | `[HOOK]` commit-msg v3 FAIL |
+| — | **Ponytail 代碼注解**：Developer `.gd` diff 無 `ponytail:` 注解 → WARN | `[HOOK]` pre-commit v6 Developer/Ponytail-A |
+| — | **SOP 完整性**：`sop-state.md` 有 PENDING 步驟 → 阻斷 push 到 main | `[HOOK]` pre-push v3 FAIL |
 
 ### I-B. 強制力缺口層（§LEARN 追蹤，目標升級為機器執行）
 
@@ -618,9 +626,9 @@ $md | ForEach-Object {
 ```
 執行掃描：
   Select-String -Path "D:\2026-06-04\**\*.md","D:\2026-06-04\**\*.ps1" `
-    -Pattern "Check \d+/\d+|Sensor v\d+|\d+/15" -Recurse
+    -Pattern "Check \d+/\d+|Sensor v\d+|\d+/21" -Recurse
 
-預期結果：所有 Check 引用均為 X/15；所有 Sensor 版本均為 v10
+預期結果：所有 Check 引用均為 X/21；所有 Sensor 版本均為 v11
 任何偏差 → 視為違規，記錄並修復
 ```
 

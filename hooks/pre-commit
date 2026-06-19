@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-commit  (v5 — 全面機械化版)
+# hooks/pre-commit  (v6 — Ponytail 注解驗證版)
 # AI-Agnostic + Role-Aware Pre-Commit Hook
 #
 # 觸發時機：每次 git commit 前
@@ -9,13 +9,15 @@
 #   - CASCADE [0f]: roles/*.md 改 → docs/DOC_INDEX.md 必須同步 staged
 #   - [Designer/3]: GDD 中 [GDD TODO] 標記警告（I-B Rule 26）
 #   - Developer auto-sensor: Developer commit 自動執行 sensor-scan.ps1 (v11/21)
+# v6 新增功能：
+#   - [Developer/Ponytail-A]: .gd diff 必須含 ponytail: 注解（GLOBAL-RULE-002 代碼層 WARN）
 # ==========================================================
 
 set -e
 
 echo ""
 echo "============================================================"
-echo "🔒 [Pre-Commit Hook v5] 角色感知驗證閘門..."
+echo "🔒 [Pre-Commit Hook v6] 角色感知驗證閘門..."
 echo "============================================================"
 
 # ——————————————————————————————————————
@@ -362,6 +364,18 @@ if [ "$ROLE" = "developer" ]; then
         echo "   ✅ Sensor 自動掃描完成"
     else
         echo "   ⚠️  找不到 scripts/sensor-scan.ps1，跳過自動掃描"
+    fi
+
+    echo "[Developer/Ponytail-A] 驗證 .gd diff 含 ponytail: 注解（GLOBAL-RULE-002 代碼層）..."
+    if [ -n "$CHANGED_GD" ]; then
+        PONYTAIL_ANNOT=$(git diff --cached -- "*.gd" | grep '^+' | grep -v '^+++' | grep 'ponytail:' || true)
+        if [ -z "$PONYTAIL_ANNOT" ]; then
+            echo "⚠️  [GLOBAL-RULE-002] .gd 變更中找不到 ponytail: 注解！"
+            echo "   請在修改的函數旁加入：# ponytail: rung=N 或 # ponytail: rung=N-description"
+            echo "   說明採用的 Ponytail 決策階梯（workflow.md §GLOBAL-RULE-002）"
+        else
+            echo "   ✅ ponytail: 注解已存在"
+        fi
     fi
 
 fi
