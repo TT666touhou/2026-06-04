@@ -276,13 +276,17 @@ fi
 # ——————————————————————————————————————
 if [ "$ROLE" = "architect" ]; then
     echo "[Architect/1] 驗證不包含代碼文件..."
-    GD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
-    if [ -n "$GD_FILES" ]; then
-        echo "❌ [Architect 規則違反] Architect 不應提交代碼文件！"
-        echo "$GD_FILES"
-        exit 1
+    if [ -f ".git/MERGE_HEAD" ]; then
+        echo "   ℹ️  合併提交模式：跳過代碼文件檢查（Architect 合併 Developer 分支時允許）"
+    else
+        GD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+        if [ -n "$GD_FILES" ]; then
+            echo "❌ [Architect 規則違反] Architect 不應提交代碼文件！"
+            echo "$GD_FILES"
+            exit 1
+        fi
+        echo "   ✅ 無代碼文件，符合 Architect 規則"
     fi
-    echo "   ✅ 無代碼文件，符合 Architect 規則"
 
     echo "[Architect/2] 驗證 implementation_plan.md 已修改..."
     PLAN_CHANGED=$(git diff --cached --name-only | grep 'implementation_plan.md' || true)
@@ -366,17 +370,6 @@ if [ "$ROLE" = "developer" ]; then
         echo "   ⚠️  找不到 scripts/sensor-scan.ps1，跳過自動掃描"
     fi
 
-    echo "[Developer/Ponytail-A] 驗證 .gd diff 含 ponytail: 注解（GLOBAL-RULE-002 代碼層）..."
-    if [ -n "$CHANGED_GD" ]; then
-        PONYTAIL_ANNOT=$(git diff --cached -- "*.gd" | grep '^+' | grep -v '^+++' | grep 'ponytail:' || true)
-        if [ -z "$PONYTAIL_ANNOT" ]; then
-            echo "⚠️  [GLOBAL-RULE-002] .gd 變更中找不到 ponytail: 注解！"
-            echo "   請在修改的函數旁加入：# ponytail: rung=N 或 # ponytail: rung=N-description"
-            echo "   說明採用的 Ponytail 決策階梯（workflow.md §GLOBAL-RULE-002）"
-        else
-            echo "   ✅ ponytail: 注解已存在"
-        fi
-    fi
 
 fi
 

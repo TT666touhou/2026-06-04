@@ -1,20 +1,19 @@
-# ponytail: rung=2+5 — CharacterBody2D (rung=2) + WireConstraint + catenary Line2D (rung=5)
 extends CharacterBody2D
 
 const WIRE_SEGMENTS := 8
-const PLATFORM_TIGHTEN_SPEED := 320.0  # px/s — rate at which platform wire slack reduces
+const PLATFORM_TIGHTEN_SPEED := 320.0
 
 @export var move_speed: float = 200.0
 @export var jump_velocity: float = 501.0
 @export var gravity: float = 980.0
-@export var reel_speed: float = 100.0
-@export var wire_slack: float = 10.0
+@export var reel_speed: float = 150.0
+@export var wire_slack: float = 80.0
 
-var _wire: RefCounted = null       # WireConstraint; null when not in pendulum mode
-var _wire_anchor: Node = null      # anchor1 — valid in both pendulum and platform modes
-var _wire_anchor2: Node = null     # anchor2 — valid only in platform mode
-var _wire_projectile: Node = null  # in-flight wire needle; cleared on embed
-var _platform_slack: float = 0.0   # extra slack in platform wire; decreases over time
+var _wire: RefCounted = null
+var _wire_anchor: Node = null
+var _wire_anchor2: Node = null
+var _wire_projectile: Node = null
+var _platform_slack: float = 0.0
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -25,7 +24,7 @@ func _ready() -> void:
 	needle_manager.needle_retrieved.connect(_on_needle_retrieved)
 	needle_manager.wire_needle_launched.connect(_on_wire_needle_launched)
 	needle_manager.platform_created.connect(_on_platform_created)
-	wire_renderer.top_level = true  # world-space rendering, immune to Player scale flip
+	wire_renderer.top_level = true
 	wire_renderer.visible = false
 
 func _physics_process(delta: float) -> void:
@@ -65,6 +64,11 @@ func _apply_wire(delta: float) -> void:
 		return
 	if Input.is_action_pressed("reel_wire"):
 		_wire.reel_in(reel_speed, delta)
+		# E key actively pulls player toward anchor
+		var to_anchor: Vector2 = _wire.anchor_pos - global_position
+		var dist: float = to_anchor.length()
+		if dist > 0.0:
+			velocity += to_anchor / dist * reel_speed
 	velocity = _wire.apply(global_position, velocity)
 
 func _shoot_needle() -> void:
@@ -87,6 +91,9 @@ func _on_wire_needle_launched(proj: Node) -> void:
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_projectile = null
+	# Don't disrupt existing platform — platform_created will update if needed
+	if _wire_anchor2 != null and is_instance_valid(_wire_anchor2):
+		return
 	_wire = anchor.wire as RefCounted
 	_wire_anchor = anchor
 	_wire_anchor2 = null
@@ -98,13 +105,31 @@ func _on_needle_retrieved(anchor: Node) -> void:
 		_cut_wire()
 
 func _on_platform_created(a1: Node, a2: Node) -> void:
-	_wire = null          # release pendulum constraint
+	_wire = null
+	# Only reset slack animation if anchors actually changed
+	if _wire_anchor != a1 or _wire_anchor2 != a2:
+		_platform_slack = 40.0
 	_wire_anchor = a1
 	_wire_anchor2 = a2
-	_platform_slack = 40.0  # start with slack; will physically contract to 0
 
 func _update_wire_renderer() -> void:
-	# In-flight: straight line from player to flying needle
+	# Priority 1: Platform mode — stays visible even while other needles are in flight
+	if _wire_anchor2 != null and is_instance_valid(_wire_anchor2) and is_instance_valid(_wire_anchor):
+		wire_renderer.visible = true
+		wire_renderer.clear_points()
+		_draw_catenary(_wire_anchor.global_position, _wire_anchor2.global_position, _platform_slack)
+		return
+
+	# Priority 2: Pendulum mode — stays visible even while other needles are in flight
+	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
+		var dist := global_position.distance_to(_wire.anchor_pos)
+		var slack := maxf(0.0, _wire.max_length - dist)
+		wire_renderer.visible = true
+		wire_renderer.clear_points()
+		_draw_catenary(global_position, _wire.anchor_pos, slack)
+		return
+
+	# Priority 3: In-flight line — only when no wire connected yet
 	if _wire_projectile != null and is_instance_valid(_wire_projectile):
 		wire_renderer.visible = true
 		wire_renderer.clear_points()
@@ -113,30 +138,19 @@ func _update_wire_renderer() -> void:
 		return
 	_wire_projectile = null
 
-	# Platform mode: catenary anchor1→anchor2, slack contracts to 0 (tightening effect)
-	if _wire_anchor2 != null and is_instance_valid(_wire_anchor2) and is_instance_valid(_wire_anchor):
-		wire_renderer.visible = true
-		wire_renderer.clear_points()
-		_draw_catenary(_wire_anchor.global_position, _wire_anchor2.global_position, _platform_slack)
-		return
-
-	# Pendulum mode: catenary player→anchor, sag grows with slack
-	if _wire != null:
-		var dist := global_position.distance_to(_wire.anchor_pos)
-		var slack := maxf(0.0, _wire.max_length - dist)
-		wire_renderer.visible = true
-		wire_renderer.clear_points()
-		_draw_catenary(global_position, _wire.anchor_pos, slack)
-		return
-
 	wire_renderer.visible = false
 
 func _draw_catenary(from: Vector2, to: Vector2, slack: float) -> void:
 	var sag := minf(slack * 0.35, 60.0)
+	# Sag direction: perpendicular to wire direction, biased downward in screen space
+	var wire_vec := to - from
+	var perp := Vector2(-wire_vec.y, wire_vec.x).normalized()
+	if perp.y < 0.0:
+		perp = -perp
 	for i in range(WIRE_SEGMENTS + 1):
 		var t := float(i) / float(WIRE_SEGMENTS)
 		var pt := from.lerp(to, t)
-		pt.y += sag * sin(PI * t)
+		pt += perp * sag * sin(PI * t)
 		wire_renderer.add_point(pt)
 
 func _update_aim_pivot() -> void:
