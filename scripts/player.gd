@@ -7,7 +7,7 @@ const PLATFORM_TIGHTEN_SPEED := 320.0
 @export var jump_velocity: float = 501.0
 @export var gravity: float = 980.0
 @export var reel_speed: float = 150.0
-@export var wire_slack: float = 80.0
+@export var wire_slack: float = 30.0
 
 var _wire: RefCounted = null
 var _wire_anchor: Node = null       # active pendulum anchor (swinging)
@@ -31,8 +31,8 @@ func _ready() -> void:
 	_platform_renderer = Line2D.new()
 	_platform_renderer.top_level = true
 	_platform_renderer.visible = false
-	_platform_renderer.width = 3.0
-	_platform_renderer.default_color = Color(1.0, 0.92, 0.5, 1.0)
+	_platform_renderer.width = 1.5
+	_platform_renderer.default_color = Color(0.95, 0.9, 0.55, 0.9)
 	add_child(_platform_renderer)
 
 func _physics_process(delta: float) -> void:
@@ -130,8 +130,8 @@ func _update_wire_renderer() -> void:
 	if _platform_a != null and is_instance_valid(_platform_a) \
 			and _platform_b != null and is_instance_valid(_platform_b):
 		_platform_renderer.visible = true
-		_platform_renderer.default_color = Color(1.0, 0.92, 0.5, 1.0)
-		_platform_renderer.width = 3.0
+		_platform_renderer.default_color = Color(0.95, 0.9, 0.55, 0.9)
+		_platform_renderer.width = 1.5
 		_platform_renderer.clear_points()
 		_draw_catenary_line(_platform_renderer, _platform_a.global_position, _platform_b.global_position, _platform_slack)
 	else:
