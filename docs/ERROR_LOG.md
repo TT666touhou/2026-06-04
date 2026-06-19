@@ -796,3 +796,53 @@ region = Rect2(0, 0, 132, 126)
 - **根本原因**: 牆壁貼齊 viewport 邊緣，場景 = viewport，無滾動空間。
 - **修復**: 場景擴大至 960×540 canvas px（5 個平台）；Camera2D limit 同步更新；Player 起始位置移至 (480, 490)；NeedleProjectile 安全邊界更新至 1024/604。
 - **防範規則**: MVP 測試場景大小應至少 4× viewport area，確保有足夠空間測試所有移動機制。
+
+---
+
+## GAP-021 繩子系統三重修復：垂弧線 + 線條端點切換 + 單向平台（2026-06-20）
+
+### GAP-021a 射出第二根針後第一條線消失（端點應切換而非清除）
+
+- **Severity**: High（平台模式下無繩子視覺，設計規格違反）
+- **現象**: 雙針展開成平台後，WireRenderer 消失（Player→anchor1 的線被清除），GDD §2.3 規定平台模式下應顯示 anchor1↔anchor2 垂弧線。
+- **根本原因**: GAP-020c 修復（`_cut_wire()`）清空了所有繩子狀態，但 GDD 設計是「線的端點切換，不是線消失」。`_on_platform_created` 接收 `platform_created` 信號後直接呼叫 `_cut_wire()`，導致視覺被清除。
+- **修復**: `_on_platform_created(a1, a2)` 改為：清空 `_wire`（釋放擺錘約束）但保留 `_wire_anchor=a1`，新增 `_wire_anchor2=a2`，設 `_platform_slack=40.0`；`_update_wire_renderer()` 新增 platform 模式分支：當 `_wire_anchor2 != null` 時畫 catenary(anchor1.global_position, anchor2.global_position, _platform_slack)。
+- **防範規則**: 「狀態轉移」（擺錘模式→平台模式）必須明確辨別哪些視覺/物理狀態**繼承**（anchor1 位置）、哪些**替換**（線的另一端從 Player 改為 anchor2）、哪些**釋放**（WireConstraint）。
+
+### GAP-021b 垂弧線（Catenary）品質驗證
+
+- **Severity**: Medium（視覺效果問題）
+- **設計要求**: GDD §2.3 要求「垂弧線（Catenary）」；用 8 段 Line2D 近似，sag = min(slack × 0.35, 60.0)，各中間點 +sag × sin(π × t) 偏移。
+- **Debug 驗證（2026-06-20）**:
+  - `mcp__godot__run_project` + `get_debug_output` 取得啟動時 auto-test 輸出：
+    ```
+    [QA] WireRenderer top_level=true (expect true)
+    [QA] Catenary sag: slack=40→14.0 (expect 14.0) | slack=200→60.0 (expect 60.0)
+    [QA] Catenary draw: points=9 (expect 9) | mid_y=114.0 (expect 114.0)
+    ```
+  - 數學驗證：from=(100,100) to=(400,100) slack=40 → sag=14 → t=0.5 → mid=(250, 100+14×sin(π×0.5)) = (250, 114) ✓
+  - 上限驗證：slack=200 → sag=min(70, 60)=60 ✓（不超過 60px）
+- **Godot 4 注意事項**: `Line2D.get_point_position(idx)` 回傳 `Variant`，必須明確標注型別：`var pt: Vector2 = renderer.get_point_position(i)`；用 `:=` 推斷會觸發 `Cannot infer type` parse error。
+- **結論**: 垂弧線數學和渲染邏輯正確。視覺效果需用戶在遊戲中確認感受（線越鬆、弧度越深，最多 60px 下垂）。
+
+### GAP-021c 平台從下方穿透失敗（one_way_collision 方向錯誤）
+
+- **Severity**: High（平台設計核心機制失效：玩家無法從下方跳上去）
+- **現象**: 在兩根 Wire 針之間展開的鋼索平台，玩家從下方跳躍會被整個擋住（無法穿透），且側面也有碰撞。
+- **根本原因**: `WirePlatform`（StaticBody2D）的 `global_rotation = a.angle_to_point(b)` 讓整個剛體旋轉。Godot 的 `one_way_collision` 方向是相對於 **body 的世界朝上方向**（`(0, -1)` in world space）。當 body 旋轉後，one_way「朝上」方向也隨之旋轉 → 對角斜面的 one_way 方向完全錯誤。
+- **修復**:
+  - `global_rotation = 0.0`（body 永遠不旋轉，one_way 方向始終是世界座標的 -Y 即上方）
+  - `_shape.rotation = a.angle_to_point(b)`（只旋轉 CollisionShape2D，讓形狀沿 Wire 方向對齊）
+  - `_shape.one_way_collision_margin = 8.0`（增加穿透容差，避免角速度邊界滑動失敗）
+- **防範規則**: 任何需要 `one_way_collision` 的平台，**body 必須保持 `global_rotation = 0`**；若平台本身是斜的，只旋轉 CollisionShape2D 子節點，body transform 不動。
+
+---
+
+## 🟢 Pattern — GAP-021 新增
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-20 | 繩子端點切換（擺錘→平台） | `_on_platform_created`：`_wire=null`（釋放約束），`_wire_anchor=a1`、`_wire_anchor2=a2`（保留視覺端點），不呼叫 `_cut_wire()`（那會清除全部） |
+| 2026-06-20 | Catenary Line2D 多狀態管理 | `_update_wire_renderer()` 依序檢查 in-flight → platform(anchor1↔anchor2) → pendulum(player↔anchor1)，三種互斥模式分開處理 |
+| 2026-06-20 | one_way_collision 斜面平台 | StaticBody2D `global_rotation=0`；CollisionShape2D `rotation=angle`；`one_way_collision_margin≥8.0` |
+| 2026-06-20 | Line2D.get_point_position | Godot 4 回傳 Variant；需明確型別：`var pt: Vector2 = renderer.get_point_position(i)`；禁止 `:=` 推斷 |
