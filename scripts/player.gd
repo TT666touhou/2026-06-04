@@ -152,8 +152,8 @@ func _draw_catenary(from: Vector2, to: Vector2, slack: float) -> void:
 	# Physically correct sag: component of gravity perpendicular to the wire
 	# → zero sag for vertical wire, full downward sag for horizontal wire
 	var wire_vec := (to - from).normalized()
-	var gravity := Vector2(0.0, 1.0)
-	var perp := gravity - gravity.dot(wire_vec) * wire_vec
+	var grav_dir := Vector2(0.0, 1.0)
+	var perp := grav_dir - grav_dir.dot(wire_vec) * wire_vec
 	var perp_len := perp.length()
 	if perp_len < 0.01 or sag < 0.5:
 		wire_renderer.add_point(from)
