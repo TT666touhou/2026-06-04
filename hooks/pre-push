@@ -1,6 +1,6 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-push  (v3 — SOP 完整性強制)
+# hooks/pre-push  (v4 — 角色序列完整性強制)
 # AI-Agnostic Pre-Push Hook for Godot 4 Project
 #
 # 觸發時機：執行 git push 前自動執行
@@ -9,11 +9,14 @@
 #   - GAP-013 防範：push main 前確認 workflow.md / roles/ / hooks/ 存在
 # v3 新增功能：
 #   - SOP 完整性：sop-state.md 有 PENDING 步驟 → 阻斷 push（強制所有角色完成各自步驟）
+# v4 新增功能：
+#   - 角色序列：main push 前確認最近一輪包含 [DEV] + [REVIEW] + [QA] commit
+#   - WARN: 若缺少 [DESIGN] commit（GDD 未更新）也提示
 # ==========================================================
 
 echo ""
 echo "============================================================"
-echo "[Pre-Push Hook v3] Push 前最終安全驗證..."
+echo "[Pre-Push Hook v4] Push 前最終安全驗證..."
 echo "============================================================"
 
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -74,6 +77,63 @@ if [ "$CURRENT_BRANCH" = "main" ]; then
         fi
         echo "   [PASS] SOP 步驟全部完成（無 PENDING）"
     fi
+
+    # ——————————————————————————————————————
+    # [v4] 角色序列完整性：自上次 ARCH merge 後，必須存在 [DEV]+[REVIEW]+[QA]
+    # 防止跳過 Reviewer 或 QA 步驟直接 push
+    # ——————————————————————————————————————
+    echo ""
+    echo "[序列檢查] 驗證 Designer→Developer→Reviewer→QA 序列..."
+
+    # 取得上次 ARCH merge commit 之後的所有 commit messages
+    LAST_ARCH_MERGE=$(git log --oneline --format="%H %s" | grep "\[ARCH\].*merge\|merge.*\[ARCH\]" | head -1 | awk '{print $1}')
+    if [ -n "$LAST_ARCH_MERGE" ]; then
+        RECENT_COMMITS=$(git log --format="%s" "${LAST_ARCH_MERGE}..HEAD" 2>/dev/null)
+    else
+        RECENT_COMMITS=$(git log --format="%s" -20 2>/dev/null)
+    fi
+
+    SEQ_FAIL=0
+
+    # 必須有 DEV commit
+    if ! echo "$RECENT_COMMITS" | grep -q "^\[DEV\]"; then
+        echo "❌ [序列] 缺少 [DEV] commit！Developer 必須在 push 前完成實作。"
+        SEQ_FAIL=$((SEQ_FAIL + 1))
+    else
+        echo "   ✅ [DEV] commit 存在"
+    fi
+
+    # 必須有 REVIEW commit
+    if ! echo "$RECENT_COMMITS" | grep -q "^\[REVIEW\]"; then
+        echo "❌ [序列] 缺少 [REVIEW] commit！Reviewer 必須審查後才能 push。"
+        SEQ_FAIL=$((SEQ_FAIL + 1))
+    else
+        echo "   ✅ [REVIEW] commit 存在"
+    fi
+
+    # 必須有 QA commit
+    if ! echo "$RECENT_COMMITS" | grep -q "^\[QA\]"; then
+        echo "❌ [序列] 缺少 [QA] commit！QA 必須驗收後才能 push。"
+        SEQ_FAIL=$((SEQ_FAIL + 1))
+    else
+        echo "   ✅ [QA] commit 存在"
+    fi
+
+    # WARN: 缺少 DESIGN commit（GDD 可能未更新）
+    if ! echo "$RECENT_COMMITS" | grep -q "^\[DESIGN\]"; then
+        echo "⚠️  [序列 WARN] 缺少 [DESIGN] commit — GAME_DESIGN.md 可能未更新。"
+        echo "   如本輪無 GDD 變更（純技術修復），可忽略此警告。"
+    else
+        echo "   ✅ [DESIGN] commit 存在"
+    fi
+
+    if [ $SEQ_FAIL -gt 0 ]; then
+        echo ""
+        echo "❌ [序列強制] $SEQ_FAIL 個必要角色步驟缺失，阻斷 Push！"
+        echo "   補齊 [REVIEW] 和/或 [QA] commit 後再推送。"
+        exit 1
+    fi
+    echo "   [PASS] 角色序列完整（DEV + REVIEW + QA）"
 
     # ——————————————————————————————————————
     # [警告] 直接 push 到 main 提示
