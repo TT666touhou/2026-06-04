@@ -92,13 +92,33 @@ P4: 僅飛行（player→proj）
 
 ---
 
+## GAP-014 WARN 處理（不得靜默跳過）
+
+**WARN 內容**：GUT tests present but addon not installed
+- 受影響文件：`test_needle_manager.gd`、`test_wire_constraint.gd`
+- 影響：`NeedleManager.rolling_window` 和 `WireConstraint.apply()` 的**自動化單元測試無法執行**
+- 這直接影響本輪 GAP-022/023/024 的測試覆蓋率
+
+**決策選項（需使用者決定）**：
+
+| 選項 | 行動 | 工程成本 |
+|------|------|---------|
+| A：安裝 GUT addon | 下載 GUT 4.x → `addons/gut/`，更新 project.godot | 中（需下載） |
+| B：移除測試文件 | `git rm tests/test_needle_manager.gd tests/test_wire_constraint.gd` | 低（不可逆） |
+| C：現狀豁免 | 在 CLAUDE.md 記錄：自動化測試不可用，QA 僅靜態驗證 | 零（已在 CLAUDE.md 記錄） |
+
+**QA 升級**：⚠️ 在使用者做出選項 A/B/C 決策前，本輪 QA 標記為「**靜態通過，自動化測試待決**」。
+
+---
+
 ## 結論
 
 | 類型 | 結果 |
 |------|------|
-| 靜態掃描 | ✅ PASS（21/22，1 WARN 為舊有 GAP-014） |
+| 靜態掃描 | ✅ 21/22 PASS |
+| Sensor WARN GAP-014 | ⚠️ **已升級** — GUT addon 缺失，自動化測試無法執行（見上節決策） |
 | --check-only 語法 | ✅ PASS |
 | 邏輯人工審查 | ✅ PASS |
-| 執行時遊戲測試 | ⚠️ 待玩家手動確認 |
+| 執行時遊戲測試 | ⏳ 待玩家在 Godot 中手動確認（見 checklist） |
 
-**QA 決定：靜態驗收通過。執行時驗證需使用者在 Godot 中執行上表清單。**
+**QA 決定：靜態驗收通過。GAP-014 已升級至使用者決策。執行時驗證需使用者在 Godot 中跑 checklist 確認。**
