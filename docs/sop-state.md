@@ -20,8 +20,8 @@
 | Step ① | Sensor scan — 確認 clean baseline | DONE | Sensor | 2026-06-19 |
 | Step ② | Architect plan — 節點架構 + wire physics 技術決策 | DONE | Architect | 2026-06-19 |
 | Step ③ | Developer impl — 實作所有模組 (.gd + .tscn) | DONE | Developer | 2026-06-19 |
-| Step ④ | Reviewer review — 審查模組化設計與 Ponytail 合規 | PENDING | Reviewer | — |
-| Step ⑤ | QA verify + commit — 物理驗證 + sensor PASS + commit | PENDING | QA | — |
+| Step ④ | Reviewer review — 審查模組化設計與 Ponytail 合規 | DONE | Reviewer | 2026-06-19 |
+| Step ⑤ | QA verify + commit — 物理驗證 + sensor PASS + commit | DONE | QA | 2026-06-19 |
 
 ---
 
