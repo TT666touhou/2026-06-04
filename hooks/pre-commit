@@ -1,20 +1,21 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-commit  (v4 — SOP強化版)
+# hooks/pre-commit  (v5 — 全面機械化版)
 # AI-Agnostic + Role-Aware Pre-Commit Hook
 #
 # 觸發時機：每次 git commit 前
-# v4 新增功能：
-#   - [CONFIRMED] 寫入 GAME_DESIGN.md 強制攔截（GAP-012 防範）
-#   - §LEARN SOP PENDING 警告（sop-state.md 驅動）
-#   - 移除過時 DebugOverlay/DebugBridge/debug_state.json 檢查
+# v5 新增功能：
+#   - CASCADE [0e]: sensor-scan.ps1 改 → workflow.md 必須同步 staged（§EDIT）
+#   - CASCADE [0f]: roles/*.md 改 → docs/DOC_INDEX.md 必須同步 staged
+#   - [Designer/3]: GDD 中 [GDD TODO] 標記警告（I-B Rule 26）
+#   - Developer auto-sensor: Developer commit 自動執行 sensor-scan.ps1 (v11/21)
 # ==========================================================
 
 set -e
 
 echo ""
 echo "============================================================"
-echo "🔒 [Pre-Commit Hook v4] 角色感知驗證閘門..."
+echo "🔒 [Pre-Commit Hook v5] 角色感知驗證閘門..."
 echo "============================================================"
 
 # ——————————————————————————————————————
@@ -79,6 +80,30 @@ if [ -f "docs/sop-state.md" ]; then
         echo "   這是警告，不阻斷 Commit，但請確認是否應先完成 SOP 再提交。"
         echo "   查看詳情：cat docs/sop-state.md"
         echo ""
+    fi
+fi
+
+# ——————————————————————————————————————
+# [通用規則 0e] CASCADE: sensor-scan.ps1 修改 → workflow.md 必須同步 staged
+# ——————————————————————————————————————
+SENSOR_CHANGED=$(git diff --cached --name-only | grep 'scripts/sensor-scan.ps1' || true)
+if [ -n "$SENSOR_CHANGED" ]; then
+    WORKFLOW_CHANGED=$(git diff --cached --name-only | grep 'workflow.md' || true)
+    if [ -z "$WORKFLOW_CHANGED" ]; then
+        echo "⚠️  [CASCADE 0e] sensor-scan.ps1 已修改，但 workflow.md 未同步 staged！"
+        echo "   根據 §EDIT Cascade Matrix: sensor-scan 版本變更需同步更新 workflow.md §E"
+    fi
+fi
+
+# ——————————————————————————————————————
+# [通用規則 0f] CASCADE: roles/*.md 修改 → docs/DOC_INDEX.md 必須同步 staged
+# ——————————————————————————————————————
+ROLES_CHANGED=$(git diff --cached --name-only | grep '^roles/' || true)
+if [ -n "$ROLES_CHANGED" ] && [ -f "docs/DOC_INDEX.md" ]; then
+    DOCINDEX_CHANGED=$(git diff --cached --name-only | grep 'docs/DOC_INDEX.md' || true)
+    if [ -z "$DOCINDEX_CHANGED" ]; then
+        echo "⚠️  [CASCADE 0f] roles/*.md 已修改，但 docs/DOC_INDEX.md 未同步 staged！"
+        echo "   根據 §EDIT Cascade Matrix: 角色讀/寫權限變更需同步 DOC_INDEX.md 職責矩陣"
     fi
 fi
 
@@ -229,6 +254,19 @@ if [ "$ROLE" = "designer" ]; then
     else
         echo "   ✅ GAME_DESIGN.md 已更新"
     fi
+
+    echo "[Designer/3] 掃描 GAME_DESIGN.md 中的 [GDD TODO] 標記（I-B Rule 26）..."
+    if [ -n "$DESIGN_CHANGED" ]; then
+        GDD_TODO=$(git diff --cached -- docs/GAME_DESIGN.md | grep '^+' | grep -v '^+++' | grep '\[GDD TODO\]' || true)
+        if [ -n "$GDD_TODO" ]; then
+            echo "⚠️  [GDD 設計警告] GAME_DESIGN.md 中有 [GDD TODO] 標記（5秒後繼續...）："
+            echo "$GDD_TODO" | head -5
+            echo "   [GDD TODO] 代表設計細節待定，請確認是否為刻意保留。"
+            sleep 5
+        else
+            echo "   ✅ 無 [GDD TODO] 未清除標記"
+        fi
+    fi
 fi
 
 # ——————————————————————————————————————
@@ -306,6 +344,25 @@ if [ "$ROLE" = "developer" ]; then
         fi
     fi
     echo "   ✅ 分支檢查通過（目前：$CURRENT_BRANCH）"
+
+    echo "[Developer/auto-sensor] 自動執行 sensor-scan.ps1（v11 / 21 checks）..."
+    if [ -f "scripts/sensor-scan.ps1" ]; then
+        SENSOR_OUT=$(powershell.exe -NoProfile -File "scripts/sensor-scan.ps1" 2>&1)
+        SENSOR_FAIL=$(echo "$SENSOR_OUT" | grep "\[FAIL\]" || true)
+        SENSOR_WARN=$(echo "$SENSOR_OUT" | grep "\[WARN\]" || true)
+        if [ -n "$SENSOR_FAIL" ]; then
+            echo "❌ [Sensor 自動掃描] 發現 FAIL 項目，阻斷 Commit！"
+            echo "$SENSOR_FAIL"
+            exit 1
+        fi
+        if [ -n "$SENSOR_WARN" ]; then
+            echo "⚠️  [Sensor 自動掃描] 發現 WARN 項目（不阻斷）："
+            echo "$SENSOR_WARN"
+        fi
+        echo "   ✅ Sensor 自動掃描完成"
+    else
+        echo "   ⚠️  找不到 scripts/sensor-scan.ps1，跳過自動掃描"
+    fi
 
 fi
 

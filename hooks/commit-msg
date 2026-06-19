@@ -1,12 +1,12 @@
 #!/bin/sh
 # ==========================================================
-# hooks/commit-msg
-# Commit 訊息格式驗證
+# hooks/commit-msg  (v2 — Ponytail 強制版)
+# Commit 訊息格式驗證 + GLOBAL-RULE-002 執行
 #
 # 觸發時機：git commit 訊息確認後
-# 作用：強制 commit 訊息符合可追蹤的格式規範
-# 格式：[ROLE] type: 描述
-#       type 可以是：feat|fix|plan|review|test|docs|refactor|chore
+# v2 新增功能：
+#   - feat/fix/refactor/style/perf commit 強制含 [Ponytail] rung=N（FAIL）
+#   - fix: commit 建議引用 ERR-XXX 或 GAP-XXX 編號（WARN）
 # ==========================================================
 
 COMMIT_MSG_FILE=$1
@@ -31,29 +31,74 @@ VALID_TYPES="feat|fix|plan|review|test|docs|refactor|chore|style|perf|ci"
 PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA|DESIGN)\] ($VALID_TYPES): .{3,}"
 PATTERN_WITHOUT_ROLE="^($VALID_TYPES): .{3,}"
 
+# 先驗證格式
+FORMAT_OK=0
 if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITH_ROLE"; then
-    exit 0
+    FORMAT_OK=1
 fi
-
 if echo "$COMMIT_MSG" | grep -qE "$PATTERN_WITHOUT_ROLE"; then
-    exit 0
+    FORMAT_OK=1
 fi
 
-# 格式不符合
-echo ""
-echo "❌ [commit-msg] Commit 訊息格式不正確！"
-echo ""
-echo "   你的訊息：$COMMIT_MSG"
-echo ""
-echo "   正確格式：[ROLE] type: 描述 （至少 3 個字元）"
-echo "   範例："
-echo "     [ARCH] plan: 設計玩家移動系統架構"
-echo "     [DEV] feat: 實作玩家跳躍功能"
-echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤"
-echo "     [REVIEW] review: 審查玩家移動 PR"
-echo "     [QA] test: 驗證玩家移動測試全部通過"
-echo "     docs: 更新 README"
-echo ""
-echo "   可用 type: feat | fix | plan | review | test | docs | refactor | chore"
-echo ""
-exit 1
+if [ $FORMAT_OK -eq 0 ]; then
+    echo ""
+    echo "❌ [commit-msg v2] Commit 訊息格式不正確！"
+    echo ""
+    echo "   你的訊息：$COMMIT_MSG"
+    echo ""
+    echo "   正確格式：[ROLE] type: 描述 （至少 3 個字元）"
+    echo "   範例："
+    echo "     [ARCH] plan: 設計玩家移動系統架構"
+    echo "     [DEV] feat: 實作玩家跳躍功能 [Ponytail] rung=5"
+    echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤 ERR-001 [Ponytail] rung=5"
+    echo "     [REVIEW] review: 審查玩家移動 PR"
+    echo "     [QA] test: 驗證玩家移動測試全部通過"
+    echo "     docs: 更新 README"
+    echo ""
+    echo "   可用 type: feat | fix | plan | review | test | docs | refactor | chore | style | perf | ci"
+    echo ""
+    exit 1
+fi
+
+# ——————————————————————————————————————
+# 提取 type（處理有無 [ROLE] 前綴兩種格式）
+# ——————————————————————————————————————
+TYPE=$(echo "$COMMIT_MSG" | sed 's/^\[\(ARCH\|DEV\|REVIEW\|QA\|DESIGN\)\] //' | cut -d: -f1 | tr -d ' ')
+
+# ——————————————————————————————————————
+# [GLOBAL-RULE-002] Ponytail 強制
+# 代碼實作類 type（feat/fix/refactor/style/perf）必須含 [Ponytail] rung=N
+# ——————————————————————————————————————
+CODE_TYPES="feat|fix|refactor|style|perf"
+if echo "$TYPE" | grep -qE "^($CODE_TYPES)$"; then
+    if ! echo "$COMMIT_MSG" | grep -q "\[Ponytail\]"; then
+        echo ""
+        echo "❌ [GLOBAL-RULE-002] 代碼類 commit 必須包含 [Ponytail] 標記！"
+        echo ""
+        echo "   你的訊息：$COMMIT_MSG"
+        echo ""
+        echo "   型別 '$TYPE' 代表有代碼實作，必須說明 Ponytail rung 層級。"
+        echo "   正確格式：[ROLE] $TYPE: 描述 [Ponytail] rung=N"
+        echo "   範例："
+        echo "     [DEV] feat: 實作玩家跳躍 [Ponytail] rung=5-minimal"
+        echo "     [DEV] fix: 修正碰撞偵測 ERR-001 [Ponytail] rung=5"
+        echo "     [DEV] refactor: 重構移動系統 [Ponytail] rung=6"
+        echo ""
+        echo "   Ponytail 7-rung 定義詳見：workflow.md §SAS"
+        echo "   （chore/docs/plan/review/test/ci 不需要 [Ponytail]）"
+        echo ""
+        exit 1
+    fi
+fi
+
+# ——————————————————————————————————————
+# [I-B Rule 10] fix: commit → 建議引用 ERR-XXX 或 GAP-XXX（WARN only，不阻斷）
+# ——————————————————————————————————————
+if echo "$TYPE" | grep -q "^fix$"; then
+    if ! echo "$COMMIT_MSG" | grep -qE "ERR-[0-9]+|GAP-[0-9]+"; then
+        echo "⚠️  [I-B Rule 10] fix: commit 建議在訊息中引用對應的 ERR-XXX 或 GAP-XXX 編號"
+        echo "   範例：[DEV] fix: 修正碰撞偵測 ERR-001 [Ponytail] rung=5"
+    fi
+fi
+
+exit 0

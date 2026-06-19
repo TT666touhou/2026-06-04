@@ -1,4 +1,4 @@
-﻿# Godot Multi-Agent 開發工作流（完整規範）v6 (2026-06-19)
+﻿# Godot Multi-Agent 開發工作流（完整規範）v7 (2026-06-19)
 
 > **讀取指示（給 AI）**: 進入任何 Godot 遊戲開發對話時，必須優先讀取此文件。
 > 讀完後，立刻執行「A. 對話開始時的第一步」。
@@ -149,8 +149,8 @@ git config core.hooksPath hooks
 
 | 文件 | 觸發時機 | 作用 |
 |------|---------|------|
-| `pre-commit` | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、**編碼驗證**、**UID 驗證**） |
-| `commit-msg` | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ Ponytail 標記驗證 |
+| `pre-commit` (v5) | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、編碼、UID、CASCADE 0e/0f、Developer auto-sensor） |
+| `commit-msg` (v2) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ **Ponytail 標記強制**（feat/fix/refactor/style/perf → FAIL）+ ERR hint |
 | `prepare-commit-msg` | commit 訊息編輯前 | 自動加入角色前綴 |
 | `pre-push` | push 前 | 禁止直接 force push main |
 | `post-merge` | merge 後 | 提示更新狀態 |
@@ -379,20 +379,31 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | 19 | **TileSet tile_size 顯式聲明（ERR-031）**：`[resource]` 區塊必須有 `tile_size = Vector2i(W,H)` | `[SENSOR]` Check 12 |
 | 20 | **for-loop 禁同名變數（ERR-032）**：inner/outer scope 同名報警告，用前綴區別（`root_marker` vs `marker`） | `[SENSOR]` Check 8 --check-only |
 | 21 | **函式參數禁基底屬性同名（ERR-033）**：禁用 `visible/position/rotation/scale/name/owner` 作參數名 | `[SENSOR]` Check 13 |
-| 22 | **add_child 前置順序（ERR-034）**：`make_current()`/`set_as_top_level()` 必須在 `add_child()` 之後呼叫 | `[SENSOR]` Check 14 |
+| 22 | **add_child 前置順序（ERR-034）**：`make_current()`/`set_as_top_level()` 必須在 `add_child()` 之後呼叫 | `[SENSOR]` Check 14/21 |
+
+> **2026-06-19 升級**：以下規則由 I-B/I-C 升級至機器層（sensor v11 / pre-commit v5 / commit-msg v2）
+
+| # | 規則 | 執行機制 |
+|---|------|---------|
+| 1 | **設計優先**：有 `.gd` 但無 `docs/GAME_DESIGN.md` → WARN | `[SENSOR]` Check 15/21 |
+| 10 | **ERROR_LOG 同步**：`fix:` commit 未引用 ERR-XXX/GAP-XXX → WARN | `[HOOK]` commit-msg v2 WARN |
+| 15 | **tscn 安全寫入**：`.ps1` 中 `Set-Content/Get-Content *.tscn` → FAIL | `[SENSOR]` Check 16/21 FAIL |
+| 23 | **warn fallback 層次**：`.gd` 有 `push_warning()` → WARN（確認是否必要） | `[SENSOR]` Check 18/21 |
+| 25 | **工具腳本範疇**：`.tscn` 引用 `scripts/utils/` → WARN | `[SENSOR]` Check 17/21 |
+| 26 | **GDD TODO 清除**：Designer commit GDD 時 diff 含 `[GDD TODO]` → WARN | `[HOOK]` pre-commit Designer/3 |
+| — | **CASCADE: sensor-scan → workflow**：`sensor-scan.ps1` staged 但 `workflow.md` 未同步 → WARN | `[HOOK]` pre-commit 0e |
+| — | **CASCADE: roles → DOC_INDEX**：`roles/*.md` staged 但 `DOC_INDEX.md` 未同步 → WARN | `[HOOK]` pre-commit 0f |
+| — | **hook 版本一致性**：pre-commit header/echo 版本號不符 → FAIL | `[SENSOR]` Check 19/21 FAIL |
+| — | **SAS-A 完整性**：`workflow.md` 以外 `.md` 含完整 Ponytail Rung 1-7 定義 → WARN | `[SENSOR]` Check 20/21 |
 
 ### I-B. 強制力缺口層（§LEARN 追蹤，目標升級為機器執行）
 
 | # | 規則 | 升級路徑 |
 |---|------|---------|
-| 1 | **設計優先**：沒有 `docs/GAME_DESIGN.md` 禁止代碼進 repo | sensor 掃 GDD 是否存在 |
 | 3 | **分支保護**：Developer `.gd` 不得直接 push main，須走 dev-submit.ps1 | pre-push hook 升級 |
 | 4 | **場景鎖定**：修改 .tscn 前必須執行 `lock-scene.ps1 lock` | pre-commit 偵測 .tscn 未 lock |
-| 10 | **ERROR_LOG 強制**：修復錯誤後必須更新 ERROR_LOG.md；開始工作前必須讀 ERROR_LOG.md | sensor 掃 fix: commit 未含 ERROR_LOG 變更 |
 | 13 | **VFX Scale 強制**：VFX AnimatedSprite2D 必須設 scale（近戰弧=0.35, 槍口=0.15, 受擊=0.20, 死亡=0.30） | sensor 掃 .tscn VFX scale 缺失 |
 | 14 | **@export 自動配置**：@export PackedScene/NodePath 腳本建立後，所有引用 .tscn 必須加 ext_resource + 賦值 | reviewer 交接閘門人工守門 |
-| 15 | **tscn 安全寫入**：自動化修改 .tscn 用 `[IO.File]::ReadAllText/WriteAllText(UTF8NoBOM)`，禁 Get-Content/Set-Content | sensor 掃 ps1 含 Set-Content.*tscn |
-| 26 | **GDD 編輯三項查（GAP-011）**：Designer 編輯 GDD 前必查：①新內容衝突 ②過時描述 ③結構完整 | hook 升級偵測新 [GDD TODO] |
 
 ### I-C. 行為準則層（人工自律，無法機器化）
 
@@ -406,9 +417,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | 6 | **測試基準**：QA 只依據 Memory DoD，不依賴 Developer 說明 | [DOC-ONLY] |
 | 8 | **Sensor 優先**：看到 Level 1 觸發條件 → 立即停止，呼叫 Sensor | [DOC-ONLY] |
 | 9 | **反省強制**：Architect/Developer/Reviewer 每次工作後寫反省記錄（Memory MCP） | [DOC-ONLY] |
-| 23 | **warn fallback 層次（ERR-035）**：只有所有 fallback 失效時才 push_warning | [DOC-ONLY] |
 | 24 | **GUT 測試**：複雜系統才強制 GUT（非 100% 要求）；QA 在驗收中判斷 | [DOC-ONLY] |
-| 25 | **工具腳本範疇**：`scripts/utils/` 不被 .tscn 引用、不被 GUT 涵蓋、不進 QA F6 驗證 | [DOC-ONLY] |
 
 ---
 
@@ -420,7 +429,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 │   ├── GAME_DESIGN.md              → GDD（必須含 GDD 最後同步日期標記）
 │   ├── ERROR_LOG.md                → 錯誤知識庫（ERR-001 ~ ERR-041）
 │   ├── PROJECT_STATUS.md           → 專案狀態追蹤
-│   ├── sop-state.md                → SOP 執行進度追蹤（Sensor [15/15] + set-role.ps1 讀取）
+│   ├── sop-state.md                → SOP 執行進度追蹤（Sensor [21/21] + set-role.ps1 讀取）
 │   ├── DOC_INDEX.md                → 文件總索引（所有 ROLE 開場必讀）
 │   └── archive/                   → 舊日誌文件封存（arch_log, design_log, dev_log 等）
 ├── hooks/                          → 所有 hook 腳本（含編碼+UID 驗證）
@@ -433,7 +442,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 │   └── sensor.md                   → 代碼感知守衛（含觸發器）
 └── scripts/
     ├── set-role.ps1                → v2 新增：必讀文件清單提示（§READ SOP）
-    ├── sensor-scan.ps1             → Sensor 自動掃描腳本（v10/15 checks）
+    ├── sensor-scan.ps1             → Sensor 自動掃描腳本（v11/21 checks）
     ├── dev-submit.ps1              → Developer 投遞流程
     └── utils/
         └── (工具型腳本，不進入測試)
@@ -766,7 +775,7 @@ $md | ForEach-Object {
 
 | ★ 若修改這個 | 必須同步更新以下文件 |
 |---|---|
-| `sensor-scan.ps1` check 數量（如 15→16） | `workflow.md §E` 工具表 · `roles/developer.md` · `roles/sensor.md`（Sensor v4/v5 承諾兩處） · `roles/reviewer.md` 交接閘門 · `scripts/set-role.ps1` |
+| `sensor-scan.ps1` check 數量（如 15→21） | `workflow.md §E` 工具表 · `roles/developer.md` · `roles/sensor.md` · `roles/reviewer.md` 交接閘門 · `scripts/set-role.ps1` |
 | `sensor-scan.ps1` version banner | 同上，以及 `sensor-scan.ps1` 自身標頭 `## Checks:` 區塊 |
 | `hooks/commit-msg` 任何 exit 邏輯 | 執行 EDIT.2 驗證；`workflow.md §C` |
 | `hooks/pre-commit` 角色規則 | 對應 `roles/<role>.md §Hook 驗證`；`docs/DOC_INDEX.md` 職責矩陣 |
@@ -774,13 +783,15 @@ $md | ForEach-Object {
 | `GLOBAL-RULE-001/002` 規則內容 | 各 `roles/*.md` 中引用該規則的段落 |
 | `§READ SOP` 步驟 | `docs/DOC_INDEX.md §READ`；`scripts/set-role.ps1` 必讀清單 |
 | `§MOD SOP` 步驟 | `docs/DOC_INDEX.md §MOD`（引用格式） |
+| `scripts/sensor-scan.ps1`（任何修改） | `workflow.md §I`（規則列表）；pre-commit [0e] 自動 WARN 提醒 |
+| `roles/*.md`（任何修改） | `docs/DOC_INDEX.md` 職責矩陣；pre-commit [0f] 自動 WARN 提醒 |
 
 ### EDIT.4 Ponytail 評估與提交
 
 ```
 1. 新增/修改內容：在 Ponytail 7-rung 中選最低可用 Rung（→ workflow.md §GLOBAL-RULE-002）
 2. Commit 訊息含 [Ponytail] 標記
-3. 執行 sensor-scan.ps1 確認全部 PASS（含 Check 15/15 自洽檢查）
+3. 執行 sensor-scan.ps1 確認全部 PASS（含 Check 21/21 自洽檢查）
 4. 若新增規則/SOP/文件 → 更新 docs/DOC_INDEX.md 版本欄位
 ```
 

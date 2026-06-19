@@ -1,5 +1,5 @@
 # docs/sop-state.md — SOP 執行狀態追蹤
-> **由 Sensor [15/15] 在提交前讀取**；有 PENDING 項目時輸出 WARN。
+> **由 Sensor [21/21] 在提交前讀取**；有 PENDING 項目時輸出 WARN。
 > **由 set-role.ps1 在角色切換時讀取**；顯示當前角色應接手的 PENDING 步驟。
 >
 > 更新規則：
@@ -11,7 +11,22 @@
 
 ## 進行中 SOP
 
-### §LEARN — GAP-012, GAP-013（開始：2026-06-19）
+### §MOD — 全面機械化（開始：2026-06-19）
+
+**觸發原因**：用戶要求將所有 workflow 規則盡可能升級至機器強制層
+
+| 步驟 | 名稱 | 狀態 | 執行角色 | 完成時間 |
+|------|------|------|----------|---------|
+| Step ① | Architect plan — 差距分析 + Block 1-6 計畫（12 項可機械化規則） | DONE | Architect | 2026-06-19 |
+| Step ② | Developer impl — Block 1-6 實作（sensor v11/21, pre-commit v5, commit-msg v2, DOC_INDEX.md, workflow v7） | DONE | Developer | 2026-06-19 |
+| Step ③ | Reviewer review — 審查所有變更（sensor 21 checks、cascade rules、Ponytail enforcement） | DONE | Reviewer | 2026-06-19 |
+| Step ④ | QA verify + commit — 驗收並執行最終 commit+push | DONE | QA | 2026-06-19 |
+
+---
+
+## 已完成 SOP 歷史
+
+### §LEARN — GAP-012, GAP-013（2026-06-19 完成）
 
 **觸發原因**：GAP-012（AI 擅自標記 [CONFIRMED]）、GAP-013（workflow.md 從未 merge 至 main）
 
@@ -24,9 +39,9 @@
 | Step 5 | VERIFY — 執行 sensor-scan.ps1 確認 PASS | DONE | Developer | 2026-06-19 |
 | Step 6 | COMMIT — [ARCH] chore: commit all workflow enforcement changes | DONE | Architect | 2026-06-19 |
 
-### §MOD — workflow 強化（開始：2026-06-19）
+### §MOD — workflow 強化（2026-06-19 完成）
 
-**觸發原因**：用戶要求所有 workflow 規則與 SOP 具備機械層強制力
+**觸發原因**：用戶要求所有 workflow 規則與 SOP 具備機械層強制力（第一輪）
 
 | 步驟 | 名稱 | 狀態 | 執行角色 | 完成時間 |
 |------|------|------|----------|---------|
@@ -35,12 +50,6 @@
 | Step ③ | Developer impl — Block 1-5 實作 (v10/15 sensor, hook v4/v2, sop-state.md) | DONE | Developer | 2026-06-19 |
 | Step ④ | Reviewer review — 審查所有變更 | DONE | Reviewer | 2026-06-19 |
 | Step ⑤ | QA verify + commit — 驗收並執行最終 commit+push | DONE | QA | 2026-06-19 |
-
----
-
-## 已完成 SOP 歷史
-
-（目前無）
 
 ---
 
