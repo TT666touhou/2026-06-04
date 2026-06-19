@@ -613,3 +613,35 @@ region = Rect2(0, 0, 132, 126)
 | 2026-06-13 | QA 驗證覆蓋範圍 | VFX 驗證不能只測試 VFX 場景本身，必須從玩家場景出發（player instantiate → marker → VFX spawn 全流程） |
 | 2026-06-13 | @export 配置覆蓋 | 新增 @export PackedScene 後，必須更新所有引用該腳本的 .tscn，包含基底場景 |
 | 2026-06-13 | 工作流盲點 | AI 修改多版本場景時容易遺漏「主要使用的基底場景」。必須以測試場景（test_room）為起點追蹤引用鏈 |
+
+---
+
+## GAP-012 AI 在 GDD 重設時擅自標記 [CONFIRMED]（2026-06-19）
+
+- **Severity**: Medium（設計流程污染，需要回滾）
+- **類型（§LEARN）**: (C) 設計缺陷 — SOP 遺漏了必要的驗證步驟
+- **發現者**: 用戶（人工審查）
+- **發生場景**: AI 在「清空舊代碼、重設 GAME_DESIGN.md」任務中，將根據閒聊討論得出的設計方向直接標記為 `[CONFIRMED]`（包含 §1.1 核心定位、1.2 遊戲類型、1.3 核心設計支柱、7.2 可用資產等 5 處）
+- **哪個步驟沒攔截它**: pre-commit hook 只驗證 Designer 身份，不驗證 [CONFIRMED] 是否有正式設計授權
+- **根本原因**: 工作流 Bootstrap 流程（§D4）規定「從模板建立（所有欄位 [DRAFT]）」，但「重設既有 GDD」的 SOP 未明確指出同樣規則。AI 將非正式討論誤認為已確認的設計決策。
+- **修復**: 將所有擅自標記的 [CONFIRMED] 改回 [DRAFT]（commit 27300b2）
+- **防範規則（新增）**:
+  - **Rule**: 任何情況下新寫入 GAME_DESIGN.md 的設計內容，一律從 [DRAFT] 開始，不論討論多麼明確
+  - **Rule**: [CONFIRMED] 只能在用戶明確於設計對話中批准後由 Designer 角色修改
+  - **升級路徑（§LEARN Step 4）**: 目前第三層（行為準則）。評估是否在 pre-commit hook 中加入警告：偵測到新增的 [CONFIRMED] 行時提示確認
+
+---
+
+## GAP-013 workflow.md 從未 merge 進 main 分支（2026-06-19）
+
+- **Severity**: High（主分支遺失核心工作流文件，若 feature 分支刪除則永久消失）
+- **類型（§LEARN）**: (D) 流程空白 — 規則存在但無機制確保其有效性
+- **發現者**: 用戶（人工審查）
+- **發生場景**: `workflow.md` 自 2026-06-17 納入版控（commit 9c5c728，feature/enemy-spawner-rooms），但在 AI 清空 main 分支時發現它從未 merge 進 main。AI 執行清理前未確認 main 上是否存在此文件。
+- **哪個步驟沒攔截它**: 清理前沒有 `git ls-files workflow.md` 確認文件存在；sensor-scan.ps1 不掃描 feature branch 是否有未 merge 的核心文件
+- **根本原因**: workflow.md 只存在於 feature branch，從未被 merge 或 cherry-pick 進 main。清理計劃中也未列出「確認 workflow.md 在 main 上存在」的步驟。
+- **修復**: `git checkout feature/enemy-spawner-rooms -- workflow.md`（commit 27300b2）
+- **防範規則（新增）**:
+  - **Rule**: 任何清理/重設 main 分支前，必須先執行 `git ls-files workflow.md roles/ hooks/` 確認核心工作流文件已在 main 上追蹤
+  - **Rule**: workflow.md、roles/、hooks/ 屬於「永遠必須在 main 上存在」的文件，任何 merge/branch 操作後需確認
+  - **升級路徑（§LEARN Step 4）**: 評估在 Bootstrap 清單（§D4）或 §MOD SOP 中加入「確認核心文件在目標分支存在」的前置檢查步驟
