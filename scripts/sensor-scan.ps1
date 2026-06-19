@@ -1,30 +1,31 @@
 #!/usr/bin/env pwsh
-## sensor-scan.ps1 -- Sensor Automated Scan Script v11
+## sensor-scan.ps1 -- Sensor Automated Scan Script v12
 ## Run in pre-commit hook or manually to verify project integrity
 ## Usage: .\scripts\sensor-scan.ps1 [-Root "D:\2026-06-04"]
 ##
 ## Checks:
-##   1/21  BOM scan (.gd files must be UTF-8 without BOM)
-##   2/21  .tscn ext_resource UID self-reference (ERR-013)
-##   3/21  Physics callback dangerous patterns (ERR-001)
-##   4/21  int() narrowing conversion (ERR-002)
-##   5/21  Godot 3 deprecated API (ERR-014)
-##   6/21  .tscn header first byte validity (ERR-023)
-##   7/21  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
-##   8/21  Godot --check-only GDScript validation (ERR-015) <- CRITICAL: skips if no .gd files
-##   9/21  SceneTree script calling get_tree() (ERR-028)
-##  10/21  Godot 3 connect() with string method name (ERR-030)
-##  11/21  yield() call in Godot 4 code (ERR-031)
-##  12/21  get_node_or_null() without type cast (ERR-032)
-##  13/21  @export var without type annotation (ERR-033)
-##  14/21  Hardcoded /root/ path access (ERR-034)
-##  15/21  GAME_DESIGN.md existence when .gd files exist (I-B Rule 1)
-##  16/21  Unsafe Set-Content/Get-Content on .tscn in .ps1 files (I-B Rule 15)
-##  17/21  scripts/utils/ referenced in .tscn files (I-C Rule 25)
-##  18/21  push_warning() usage in .gd files (I-C Rule 23)
-##  19/21  pre-commit hook version consistency (AUDIT.3)
-##  20/21  SAS-A: Ponytail 7-rung definition outside workflow.md
-##  21/21  SOP state check (docs/sop-state.md PENDING items)
+##   1/22  BOM scan (.gd files must be UTF-8 without BOM)
+##   2/22  .tscn ext_resource UID self-reference (ERR-013)
+##   3/22  Physics callback dangerous patterns (ERR-001)
+##   4/22  int() narrowing conversion (ERR-002)
+##   5/22  Godot 3 deprecated API (ERR-014)
+##   6/22  .tscn header first byte validity (ERR-023)
+##   7/22  SpriteFrames frame dict 'region' (ERR-024) - must use AtlasTexture
+##   8/22  Godot --check-only GDScript validation (ERR-015) <- CRITICAL: skips if no .gd files
+##   9/22  SceneTree script calling get_tree() (ERR-028)
+##  10/22  Godot 3 connect() with string method name (ERR-030)
+##  11/22  yield() call in Godot 4 code (ERR-031)
+##  12/22  get_node_or_null() without type cast (ERR-032)
+##  13/22  @export var without type annotation (ERR-033)
+##  14/22  Hardcoded /root/ path access (ERR-034)
+##  15/22  GAME_DESIGN.md existence when .gd files exist (I-B Rule 1)
+##  16/22  Unsafe Set-Content/Get-Content on .tscn in .ps1 files (I-B Rule 15)
+##  17/22  scripts/utils/ referenced in .tscn files (I-C Rule 25)
+##  18/22  push_warning() usage in .gd files (I-C Rule 23)
+##  19/22  pre-commit hook version consistency (AUDIT.3)
+##  20/22  SAS-A: Ponytail 7-rung definition outside workflow.md
+##  21/22  SOP state check (docs/sop-state.md PENDING items)
+##  22/22  GUT tests without addon (GAP-014) - tests/.gdignore required when addons/gut/ absent
 
 param(
     [string]$Root = "D:\2026-06-04"
@@ -39,7 +40,7 @@ function Write-Warn { param($msg) Write-Host "  [WARN] $msg" -ForegroundColor Ye
 function Write-NA   { param($msg) Write-Host "  [N/A]  $msg" -ForegroundColor Cyan }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " [Sensor v11] Godot Project Integrity Scan"                   -ForegroundColor Cyan
+Write-Host " [Sensor v12] Godot Project Integrity Scan"                   -ForegroundColor Cyan
 Write-Host " Root: $Root"                                                  -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
@@ -61,7 +62,7 @@ if ($null -eq $scriptFiles) { $scriptFiles = @() }
 ## ============================================================
 ## 1/21  BOM Scan -- all .gd files must be UTF-8 without BOM
 ## ============================================================
-Write-Host "`n[1/21] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
+Write-Host "`n[1/22] Scanning .gd file encoding (BOM)..." -ForegroundColor Yellow
 $bomCount = 0
 
 foreach ($f in $gdFiles) {
@@ -87,7 +88,7 @@ else { Write-Fail "Found $bomCount BOM issues in .gd files" }
 ## ============================================================
 ## 2/21  .tscn ext_resource UID self-reference scan (ERR-013)
 ## ============================================================
-Write-Host "`n[2/21] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
+Write-Host "`n[2/22] Scanning .tscn ext_resource UID self-references (ERR-013)..." -ForegroundColor Yellow
 $uidSelfRefCount = 0
 
 foreach ($f in $tscnFiles) {
@@ -109,7 +110,7 @@ if ($uidSelfRefCount -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files ha
 ## ============================================================
 ## 3/21  Physics callback dangerous pattern scan (ERR-001)
 ## ============================================================
-Write-Host "`n[3/21] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
+Write-Host "`n[3/22] Scanning physics callback dangerous patterns (ERR-001)..." -ForegroundColor Yellow
 $physicsIssues  = 0
 $dangerCalls    = @("add_child(", "queue_free(", "change_scene_to_file(")
 $callbackFuncs  = @("func _on_body_entered", "func _on_area_entered", "func _on_body_exited", "func _on_area_exited")
@@ -151,7 +152,7 @@ if ($physicsIssues -eq 0) { Write-Pass "No physics callback dangerous patterns f
 ## ============================================================
 ## 4/21  Narrowing conversion scan (ERR-002)
 ## ============================================================
-Write-Host "`n[4/21] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
+Write-Host "`n[4/22] Scanning for int() narrowing conversion patterns (ERR-002)..." -ForegroundColor Yellow
 $narrowingCount = 0
 
 foreach ($f in $scriptFiles) {
@@ -168,7 +169,7 @@ if ($narrowingCount -eq 0) { Write-Pass "No int() narrowing conversion issues fo
 ##       BAD: export var, onready var, setget
 ##       GOOD: @export var, @onready var
 ## ============================================================
-Write-Host "`n[5/21] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
+Write-Host "`n[5/22] Scanning for Godot 3 deprecated APIs (ERR-014)..." -ForegroundColor Yellow
 $deprecatedCount = 0
 
 foreach ($f in $gdFiles) {
@@ -204,7 +205,7 @@ if ($deprecatedCount -eq 0) { Write-Pass "No Godot 3 deprecated API found" }
 ## ============================================================
 ## 6/21  .tscn header first-byte validity (ERR-023)
 ## ============================================================
-Write-Host "`n[6/21] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
+Write-Host "`n[6/22] Scanning .tscn header first-byte validity (ERR-023)..." -ForegroundColor Yellow
 $headerIssues = 0
 
 foreach ($f in $tscnFiles) {
@@ -235,7 +236,7 @@ if ($headerIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files have 
 ## ============================================================
 ## 7/21  SpriteFrames ERR-024: frame dict must use AtlasTexture, not raw region
 ## ============================================================
-Write-Host "`n[7/21] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
+Write-Host "`n[7/22] Scanning SpriteFrames for ERR-024 (frame dict 'region' instead of AtlasTexture)..." -ForegroundColor Yellow
 $spriteFramesIssues = 0
 
 $wrongTexKey    = '"texture": ExtResource('
@@ -259,7 +260,7 @@ if ($spriteFramesIssues -eq 0) { Write-Pass "All $($tscnFiles.Count) .tscn files
 ##       SKIPPED (N/A) when no .gd files exist — avoids false FAIL on clean projects
 ##       CRITICAL when .gd files exist: catches Variant/type errors
 ## ============================================================
-Write-Host "`n[8/21] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
+Write-Host "`n[8/22] Running Godot --check-only GDScript validation (ERR-015)..." -ForegroundColor Yellow
 
 if ($gdFiles.Count -eq 0) {
     Write-NA "No .gd files present — skipping Godot --check-only (clean project, not an error)"
@@ -314,7 +315,7 @@ if ($gdFiles.Count -eq 0) {
 ## ============================================================
 ## 9/21  SceneTree script calling get_tree() (ERR-028)
 ## ============================================================
-Write-Host "`n[9/21] Scanning for ERR-028 (extends SceneTree using get_tree())..." -ForegroundColor Yellow
+Write-Host "`n[9/22] Scanning for ERR-028 (extends SceneTree using get_tree())..." -ForegroundColor Yellow
 $err028Count = 0
 
 foreach ($f in $gdFiles) {
@@ -343,7 +344,7 @@ if ($err028Count -eq 0) { Write-Pass "No ERR-028: No SceneTree scripts incorrect
 ##       BAD:  signal.connect("signal", self, "_handler")
 ##       GOOD: signal.connect(_handler) or signal.connect(func(): ...)
 ## ============================================================
-Write-Host "`n[10/21] Scanning for Godot 3 string-based connect() (ERR-030)..." -ForegroundColor Yellow
+Write-Host "`n[10/22] Scanning for Godot 3 string-based connect() (ERR-030)..." -ForegroundColor Yellow
 $err030Count = 0
 
 foreach ($f in $gdFiles) {
@@ -364,7 +365,7 @@ if ($err030Count -eq 0) { Write-Pass "No Godot 3 string-based connect() patterns
 ## 11/21 yield() call — Godot 3 only, removed in Godot 4 (ERR-031)
 ##       Use 'await signal' or 'await get_tree().create_timer(n).timeout'
 ## ============================================================
-Write-Host "`n[11/21] Scanning for Godot 3 yield() calls (ERR-031)..." -ForegroundColor Yellow
+Write-Host "`n[11/22] Scanning for Godot 3 yield() calls (ERR-031)..." -ForegroundColor Yellow
 $err031Count = 0
 
 foreach ($f in $gdFiles) {
@@ -384,7 +385,7 @@ if ($err031Count -eq 0) { Write-Pass "No Godot 3 yield() calls found" }
 ##       BAD:  var x = get_node_or_null("NodePath")
 ##       GOOD: var x: NodeType = get_node_or_null("NodePath") as NodeType
 ## ============================================================
-Write-Host "`n[12/21] Scanning for get_node_or_null() without type cast (ERR-032)..." -ForegroundColor Yellow
+Write-Host "`n[12/22] Scanning for get_node_or_null() without type cast (ERR-032)..." -ForegroundColor Yellow
 $err032Count = 0
 
 foreach ($f in $gdFiles) {
@@ -407,7 +408,7 @@ if ($err032Count -eq 0) { Write-Pass "No untyped get_node_or_null() calls found"
 ##       BAD:  @export var speed = 100
 ##       GOOD: @export var speed: float = 100.0
 ## ============================================================
-Write-Host "`n[13/21] Scanning for @export var without type annotation (ERR-033)..." -ForegroundColor Yellow
+Write-Host "`n[13/22] Scanning for @export var without type annotation (ERR-033)..." -ForegroundColor Yellow
 $err033Count = 0
 
 foreach ($f in $gdFiles) {
@@ -429,7 +430,7 @@ if ($err033Count -eq 0) { Write-Pass "All @export vars have type annotations" }
 ##       BAD:  get_node("/root/AutoloadName")
 ##       GOOD: AutoloadName  (access autoloads directly by their global name)
 ## ============================================================
-Write-Host "`n[14/21] Scanning for hardcoded /root/ path access (ERR-034)..." -ForegroundColor Yellow
+Write-Host "`n[14/22] Scanning for hardcoded /root/ path access (ERR-034)..." -ForegroundColor Yellow
 $err034Count = 0
 
 foreach ($f in $gdFiles) {
@@ -448,7 +449,7 @@ if ($err034Count -eq 0) { Write-Pass "No hardcoded /root/ Autoload paths found" 
 ## 15/21  GAME_DESIGN.md 存在性（I-B Rule 1 升級 → Sensor）
 ##        有 .gd 文件但 docs/GAME_DESIGN.md 不存在 → WARN
 ## ============================================================
-Write-Host "`n[15/21] Checking GAME_DESIGN.md existence (I-B Rule 1)..." -ForegroundColor Yellow
+Write-Host "`n[15/22] Checking GAME_DESIGN.md existence (I-B Rule 1)..." -ForegroundColor Yellow
 $gddPath = Join-Path $Root "docs\GAME_DESIGN.md"
 if ($gdFiles.Count -gt 0) {
     if (-not (Test-Path $gddPath)) {
@@ -465,7 +466,7 @@ if ($gdFiles.Count -gt 0) {
 ##        .ps1 中 Set-Content/Get-Content 操作 .tscn 檔名 → FAIL
 ##        正確作法：[IO.File]::ReadAllText / WriteAllText
 ## ============================================================
-Write-Host "`n[16/21] Scanning for unsafe .tscn write patterns in .ps1 files (I-B Rule 15)..." -ForegroundColor Yellow
+Write-Host "`n[16/22] Scanning for unsafe .tscn write patterns in .ps1 files (I-B Rule 15)..." -ForegroundColor Yellow
 $ps1Files = [array](Get-ChildItem $Root -Recurse -Filter "*.ps1" -ErrorAction SilentlyContinue |
     Where-Object { -not $_.FullName.Contains("\.git\") })
 if ($null -eq $ps1Files) { $ps1Files = @() }
@@ -487,7 +488,7 @@ if ($tscnWriteCount -eq 0) { Write-Pass "No unsafe tscn-write cmdlets found in .
 ## 17/21  scripts/utils/ 不應被 .tscn 直接引用（I-C Rule 25 升級 → Sensor）
 ##        .tscn ext_resource 引用 scripts/utils/ 路徑 → WARN
 ## ============================================================
-Write-Host "`n[17/21] Scanning for scripts/utils/ references in .tscn files (I-C Rule 25)..." -ForegroundColor Yellow
+Write-Host "`n[17/22] Scanning for scripts/utils/ references in .tscn files (I-C Rule 25)..." -ForegroundColor Yellow
 $utilsRefCount = 0
 foreach ($f in $tscnFiles) {
     $hits = Select-String -Path $f.FullName -Pattern 'scripts/utils/' -ErrorAction SilentlyContinue
@@ -502,7 +503,7 @@ if ($utilsRefCount -eq 0) { Write-Pass "No scripts/utils/ references in .tscn fi
 ## 18/21  push_warning() 使用偵測（I-C Rule 23 升級 → Sensor）
 ##        .gd 中使用 push_warning() → WARN（確認是否為必要診斷，非預設輸出方式）
 ## ============================================================
-Write-Host "`n[18/21] Scanning for push_warning() usage in .gd files (I-C Rule 23)..." -ForegroundColor Yellow
+Write-Host "`n[18/22] Scanning for push_warning() usage in .gd files (I-C Rule 23)..." -ForegroundColor Yellow
 $pushWarnCount = 0
 foreach ($f in $gdFiles) {
     $hits = Select-String -Path $f.FullName -Pattern '\bpush_warning\s*\(' -ErrorAction SilentlyContinue
@@ -520,7 +521,7 @@ if ($pushWarnCount -eq 0) { Write-Pass "No push_warning() calls in .gd files" }
 ## 19/21  Pre-Commit Hook 版本一致性（AUDIT.3 自動化）
 ##        hooks/pre-commit header comment 版本 ≠ echo 版本 → FAIL
 ## ============================================================
-Write-Host "`n[19/21] Checking pre-commit hook version consistency (AUDIT.3)..." -ForegroundColor Yellow
+Write-Host "`n[19/22] Checking pre-commit hook version consistency (AUDIT.3)..." -ForegroundColor Yellow
 $hookFile = Join-Path $Root "hooks\pre-commit"
 if (-not (Test-Path $hookFile)) {
     Write-NA "hooks/pre-commit not found — version consistency check skipped"
@@ -547,7 +548,7 @@ if (-not (Test-Path $hookFile)) {
 ## 20/21  SAS-A 一致性：Ponytail 7-rung 定義不複製至 workflow.md 以外（§SAS-A）
 ##        其他 .md 含完整 Rung 1-7 全部存在 → WARN
 ## ============================================================
-Write-Host "`n[20/21] Checking SAS-A: no full Ponytail 7-rung definition outside workflow.md..." -ForegroundColor Yellow
+Write-Host "`n[20/22] Checking SAS-A: no full Ponytail 7-rung definition outside workflow.md..." -ForegroundColor Yellow
 $mdFiles = [array](Get-ChildItem $Root -Recurse -Filter "*.md" -ErrorAction SilentlyContinue |
     Where-Object {
         -not $_.FullName.Contains("\.git\") -and
@@ -576,7 +577,7 @@ if ($sasViolations -eq 0) { Write-Pass "No Ponytail 7-rung definition duplicatio
 ## 21/21  SOP state check — docs/sop-state.md PENDING items
 ##        Warns when active SOPs have incomplete steps
 ## ============================================================
-Write-Host "`n[21/21] Checking SOP state (docs/sop-state.md)..." -ForegroundColor Yellow
+Write-Host "`n[21/22] Checking SOP state (docs/sop-state.md)..." -ForegroundColor Yellow
 $sopStateFile = Join-Path $Root "docs\sop-state.md"
 
 if (-not (Test-Path $sopStateFile)) {
@@ -597,17 +598,54 @@ if (-not (Test-Path $sopStateFile)) {
 }
 
 ## ============================================================
+## 22/22  GUT 測試 Addon 缺失偵測（GAP-014）
+##        tests/ 有 extends GutTest 但 addons/gut/ 不存在 → WARN
+##        若同時缺少 tests/.gdignore → 升為 FAIL（Godot 啟動即 Parse Error）
+## ============================================================
+Write-Host "`n[22/22] Checking GUT tests vs addon presence (GAP-014)..." -ForegroundColor Yellow
+$gutAddonPath  = Join-Path $Root "addons\gut"
+$gutIgnorePath = Join-Path $Root "tests\.gdignore"
+$testsPath     = Join-Path $Root "tests"
+
+if (Test-Path $testsPath) {
+    $testFiles = [array](Get-ChildItem $testsPath -Filter "*.gd" -Recurse -ErrorAction SilentlyContinue)
+    if ($null -eq $testFiles) { $testFiles = @() }
+
+    $gutTestFiles = @()
+    foreach ($tf in $testFiles) {
+        $content = [System.IO.File]::ReadAllText($tf.FullName, [System.Text.Encoding]::UTF8)
+        if ($content -match "extends GutTest") {
+            $gutTestFiles += $tf.Name
+        }
+    }
+
+    if ($gutTestFiles.Count -gt 0 -and -not (Test-Path $gutAddonPath)) {
+        if (-not (Test-Path $gutIgnorePath)) {
+            Write-Fail "GUT tests without addon AND without .gdignore (GAP-014): $($gutTestFiles -join ', ') -- Godot will Parse Error on startup! Add tests/.gdignore immediately."
+        } else {
+            Write-Warn "GUT tests present but addon not installed (GAP-014): $($gutTestFiles -join ', ') -- tests/.gdignore prevents parse errors but tests cannot run. Install addons/gut to enable."
+        }
+    } elseif ($gutTestFiles.Count -eq 0) {
+        Write-Pass "No GUT-dependent test files found in tests/"
+    } else {
+        Write-Pass "GUT addon present at addons/gut/ -- $($gutTestFiles.Count) test file(s) can run"
+    }
+} else {
+    Write-NA "tests/ directory not found -- GUT check skipped"
+}
+
+## ============================================================
 ## Result summary
 ## ============================================================
 Write-Host "`n============================================================" -ForegroundColor Cyan
 if ($hasError) {
-    Write-Host " [Sensor v11] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
+    Write-Host " [Sensor v12] FAILED -- Critical issues found. Fix before committing." -ForegroundColor Red
     Write-Host " Role action: DEVELOPER must fix GDScript errors; Sensor will re-verify." -ForegroundColor Red
     exit 1
 } elseif ($hasWarning) {
-    Write-Host " [Sensor v11] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
+    Write-Host " [Sensor v12] PASSED with warnings -- Review warnings before committing." -ForegroundColor Yellow
     exit 0
 } else {
-    Write-Host " [Sensor v11] PASSED -- No issues found." -ForegroundColor Green
+    Write-Host " [Sensor v12] PASSED -- No issues found." -ForegroundColor Green
     exit 0
 }

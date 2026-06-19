@@ -645,3 +645,61 @@ region = Rect2(0, 0, 132, 126)
   - **Rule**: 任何清理/重設 main 分支前，必須先執行 `git ls-files workflow.md roles/ hooks/` 確認核心工作流文件已在 main 上追蹤
   - **Rule**: workflow.md、roles/、hooks/ 屬於「永遠必須在 main 上存在」的文件，任何 merge/branch 操作後需確認
   - **升級路徑（§LEARN Step 4）**: ✅ 已升級至機器層（2026-06-19）：`hooks/pre-push` v2 新增 GAP-013 檢查 — push 至 main 時若 workflow.md / roles/ / hooks/ 不存在則 FAIL，阻斷推送
+
+---
+
+## GAP-014 GUT 測試在缺少 Addon 時造成 Parse Error（2026-06-19）
+
+- **Severity**: Medium（Godot Editor 啟動即顯示錯誤，分散注意力，破壞 sensor --check-only）
+- **類型（§LEARN）**: (C) 設計缺陷 — 測試框架依賴未被驗證即寫入
+- **發現者**: 用戶（Godot Editor 錯誤通知）
+- **症狀**: `Failed to load script "res://tests/test_needle_manager.gd" with error "Parse error".` 及 `test_wire_constraint.gd` 同樣錯誤
+- **發生場景**: `tests/test_wire_constraint.gd` 和 `tests/test_needle_manager.gd` 均使用 `extends GutTest`，但 `addons/gut/` 目錄不存在。Godot 嘗試解析所有 `res://` 下的 .gd 文件，找不到 `GutTest` 類別 → Parse Error。
+- **哪個步驟沒攔截它**: Sensor [8/21] `--check-only` 會發現但未能阻斷 Developer commit（應為 FAIL）；開發時誤以為 GUT 測試可以在無 Addon 的情況下存放於 res:// 目錄
+- **根本原因**: Godot 在啟動時掃描整個 `res://` 下的所有 .gd 文件並嘗試解析；使用 `extends <未知類>` 會立即 Parse Error。`tests/` 目錄缺少 `.gdignore` 保護。
+- **修復**:
+  1. 在 `tests/` 目錄新增 `.gdignore` 空文件 → Godot 忽略此目錄（標準 Godot 做法）
+  2. Sensor [22/22] 新增：偵測 tests/*.gd 使用 `extends GutTest` 但 `addons/gut/` 不存在 → WARN
+- **防範規則（新增）**:
+  - **Rule**: 任何使用第三方測試框架（GUT、WAT 等）的 .gd 測試文件，必須確保 `tests/.gdignore` 存在，否則 Godot 啟動即 Parse Error
+  - **Rule**: 安裝 GUT addon 後刪除 `.gdignore` 才能讓 Godot Editor 的 GUT runner 發現測試
+  - **升級路徑（§LEARN Step 4）**: ✅ 已升級至機器層（2026-06-19）：sensor v12 [22/22] — tests/*.gd 含 `extends GutTest` 但無 `addons/gut/` → WARN
+
+---
+
+## GAP-015 跨腳本 class_name 在 --check-only 模式導致 Parse Error（2026-06-19）
+
+- **Severity**: High（Sensor [8/21] --check-only 失敗，阻斷所有 Developer commit）
+- **類型（§LEARN）**: (A) 技術認知缺口 — Godot 4.6 class_name 跨腳本限制
+- **發現者**: Sensor [8/21] --check-only（開發中間阻斷）
+- **症狀**: Godot `--check-only` 對含有跨腳本 class_name 型別標注的 .gd 輸出 `ERROR: Parse error`
+- **受影響文件**: `player.gd`、`needle_manager.gd`、`needle_anchor.gd`、`wire_platform.gd`、`debug_overlay.gd`（第一輪）；`needle_manager.gd`（第二輪，含更多跨腳本引用）
+- **根本原因**: Godot 4.6 `--check-only` 在解析單一腳本時，不能保證其他腳本的 `class_name` 已被 Godot 完全注冊。導致：
+  1. `var x: CustomClass` — `CustomClass` 不在當前解析上下文 → Parse Error
+  2. `CustomClass.SomeEnum.VALUE` — 跨腳本 enum 存取 → Parse Error
+  3. `CustomClass.new()` — 未 preload 的跨腳本實例化 → Parse Error
+  4. `signal foo(param: CustomClass)` — 信號參數型別標注 → Parse Error
+- **修復（已應用）**:
+  1. 跨腳本型別變數 → 改用基礎型別：`var x: RefCounted`、`var y: Node`、`var z: Node2D`
+  2. 跨腳本 enum 存取 → 改用本地整數常數：`const _ANCHOR_WIRE := 1  # NeedleAnchor.Type.WIRE`
+  3. 跨腳本實例化 → 改用 preload：`const _Script = preload("res://scripts/foo.gd"); _Script.new()`
+  4. 跨腳本方法呼叫 → 改用 `call()`：`obj.call("method_name", arg1, arg2)`
+  5. 信號參數型別標注 → 移除或改用 `Object`：`signal foo(param)`
+- **防範規則（新增）**:
+  - **Rule**: 任何跨腳本的型別引用，一律使用以上 5 種 workaround pattern（見下方 PATTERN 條目）
+  - **Rule**: 測試文件中的跨腳本 class_name 引用同樣適用此規則（GAP-015 的衍生問題：`test_needle_manager.gd` 使用 `NeedleManager.new()`、`NeedleAnchor.Type.ATTACK`）
+  - **升級路徑（§LEARN Step 4）**: ✅ 已由 Sensor [8/21] --check-only 自動偵測（parse error → FAIL）；workaround pattern 記錄於下方 PATTERN 條目
+
+---
+
+## 🟢 Pattern — GAP-015 Workarounds（跨腳本 class_name 的 5 種解法）
+
+| 場景 | 錯誤寫法 | 正確寫法 |
+|------|---------|---------|
+| 跨腳本型別標注 | `var x: WireConstraint = null` | `var x: RefCounted = null` |
+| 跨腳本 Node 型別 | `var p: Player = null` | `var p: Node = null` |
+| 跨腳本 Node2D 型別 | `var a: NeedleAnchor = null` | `var a: Node2D = null` |
+| 跨腳本實例化 | `WireConstraint.new()` | `const _S = preload("res://scripts/wire_constraint.gd"); _S.new()` |
+| 跨腳本 enum 存取 | `NeedleAnchor.Type.WIRE` | `const _WIRE := 1  # NeedleAnchor.Type.WIRE` |
+| 跨腳本方法呼叫（typed） | `typed_node.custom_method()` | `typed_node.call("custom_method")` |
+| 信號跨腳本型別參數 | `signal foo(p: CustomClass)` | `signal foo(p)` 或 `signal foo(p: Object)` |
