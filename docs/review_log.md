@@ -3,6 +3,30 @@
 
 ---
 
+### 2026-06-20 GAP-022/023/024 Wire 系統修復 — Reviewer 審查
+
+- **審查 commit**：`241d4ed` [DEV] fix: 修正三針繩索顯示錯誤與第三針無法牽線
+- **審查結論**：✅ **批准**（附一項次要注意事項）
+
+**審查項目**
+
+| 項目 | 結果 | 說明 |
+|------|------|------|
+| E 鍵 winch 修正（GAP-022） | ✅ 通過 | `velocity +=` → `position +=`，winch 語意正確，不會累加速度 |
+| 第三針無法牽線（GAP-023） | ✅ 通過 | `_on_wire_anchor_ready` 移除早返正確；signal 順序（wire_anchor_ready → platform_created）在 Godot 同步信號下行為可預測 |
+| NeedleManager rolling window | ✅ 通過 | `wire_anchors[n-2]` + `wire_anchors[n-1]` 正確，邊界條件 `size() < 2` 有守衛 |
+| 第二針飛行顯示（GAP-024） | ✅ 通過 | Priority 2 插入位置正確，條件邊界清楚 |
+| GDScript 型別安全 | ✅ 通過 | `var to_anchor: Vector2 = ...` 顯式型別，無 Variant 推斷 |
+| GDScript 語法（--check-only） | ✅ 通過 | pre-commit hook 已驗證 |
+| GDD 對應 | ✅ 通過 | Designer 已更新 §2.3 Wire 視覺優先順序 |
+
+**次要注意（不阻斷 merge）**
+- `_remove_anchor()` 在回收一根錨點後以 `remaining[0]`（最舊）重新建立連線。目前最多 1 根剩餘時不成問題，但若未來允許回收中間錨點，需改為 rolling-last 選擇。
+
+**Reviewer 簽核**：流程補齊（Designer→Dev→Reviewer 順序已還原）
+
+---
+
 ### 2026-06-12 ERR-012/013/014/015 — Reviewer 審查後反省
 
 - **審查結論**：❌ 退回（事後修復，未在 PR 時攔截）
