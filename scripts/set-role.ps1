@@ -89,3 +89,32 @@ switch ($Role) {
     }
 }
 Write-Host ""
+
+# ——————————————————————————————————————
+# 顯示 SOP 狀態（docs/sop-state.md）
+# ——————————————————————————————————————
+$sopStateFile = "docs\sop-state.md"
+if (Test-Path $sopStateFile) {
+    $sopLines  = [System.IO.File]::ReadAllLines("$PWD\$sopStateFile", [System.Text.Encoding]::UTF8)
+    $pendingRows = $sopLines | Where-Object { $_ -match '^\s*\|[^|]+\|[^|]+\|\s*PENDING\s*\|' }
+    if ($pendingRows.Count -gt 0) {
+        Write-Host "------------------------------------------------------------" -ForegroundColor Yellow
+        Write-Host "  [$($pendingRows.Count) 個 PENDING SOP 步驟] — 請確認是否為你的任務：" -ForegroundColor Yellow
+        # Find which SOP section each pending row belongs to
+        $currentSop = ""
+        foreach ($line in $sopLines) {
+            if ($line -match '^### (§\w+.+?)（') {
+                $currentSop = $Matches[1].Trim()
+            }
+            if ($line -match '^\s*\|[^|]+\|[^|]+\|\s*PENDING\s*\|') {
+                $stepName = ($line -split '\|')[2].Trim()
+                $stepRole = ($line -split '\|')[4].Trim()
+                Write-Host "  [$currentSop] $stepName" -ForegroundColor Yellow
+                Write-Host "    -> 執行角色：$stepRole" -ForegroundColor Gray
+            }
+        }
+        Write-Host "  查看詳情：cat docs\sop-state.md" -ForegroundColor Gray
+        Write-Host "------------------------------------------------------------" -ForegroundColor Yellow
+    }
+}
+Write-Host ""

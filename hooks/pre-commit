@@ -1,15 +1,13 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-commit  (v3 — 強化版)
+# hooks/pre-commit  (v4 — SOP強化版)
 # AI-Agnostic + Role-Aware Pre-Commit Hook
 #
 # 觸發時機：每次 git commit 前
-# v3 新增功能：
-#   - Debug 整合驗證（確認 group、錯誤處理）
-#   - Autoload 順序驗證
-#   - 靜態錯誤零容忍（error 級別）
-#   - QA 階段強制 debug_state.json 存在
-#   - 所有角色禁止 TODO/FIXME 遺留在新增行
+# v4 新增功能：
+#   - [CONFIRMED] 寫入 GAME_DESIGN.md 強制攔截（GAP-012 防範）
+#   - §LEARN SOP PENDING 警告（sop-state.md 驅動）
+#   - 移除過時 DebugOverlay/DebugBridge/debug_state.json 檢查
 # ==========================================================
 
 set -e
@@ -47,6 +45,40 @@ if [ -n "$GAME_DESIGN_CHANGED" ] && [ "$ROLE" != "designer" ]; then
     echo "❌ [Designer 文件保護] docs/GAME_DESIGN.md 只能由 Designer 角色修改！"
     echo "   目前角色：$ROLE"
     exit 1
+fi
+
+# ——————————————————————————————————————
+# [通用規則 0c] 禁止在 GAME_DESIGN.md 中寫入 [CONFIRMED]（GAP-012 防範）
+# [CONFIRMED] 標記必須透過正式 Designer 設計會議授權，不得由 AI 自行寫入
+# ——————————————————————————————————————
+if [ -n "$GAME_DESIGN_CHANGED" ]; then
+    CONFIRMED_ADDED=$(git diff --cached -- docs/GAME_DESIGN.md | grep '^+' | grep -v '^+++' | grep '\[CONFIRMED\]' || true)
+    if [ -n "$CONFIRMED_ADDED" ]; then
+        echo "❌ [GAP-012 防護] 禁止在 GAME_DESIGN.md 中新增 [CONFIRMED] 標記！"
+        echo "   [CONFIRMED] 必須透過正式 Designer 設計會議中、用戶明確授權後才能標記。"
+        echo "   所有新設計內容必須從 [DRAFT] 開始。"
+        echo ""
+        echo "   違規行："
+        echo "$CONFIRMED_ADDED" | head -5
+        echo ""
+        echo "   修正方法：將 [CONFIRMED] 改為 [DRAFT]，等待正式設計會議確認後再升級。"
+        exit 1
+    fi
+fi
+
+# ——————————————————————————————————————
+# [通用規則 0d] §LEARN SOP PENDING 警告
+# 若 docs/sop-state.md 有 PENDING 項目，警告但不阻斷
+# ——————————————————————————————————————
+if [ -f "docs/sop-state.md" ]; then
+    SOP_PENDING=$(grep 'PENDING' docs/sop-state.md || true)
+    if [ -n "$SOP_PENDING" ]; then
+        PENDING_COUNT=$(grep -c 'PENDING' docs/sop-state.md || echo "0")
+        echo "⚠️  [SOP 警告] docs/sop-state.md 有 $PENDING_COUNT 個 PENDING 步驟未完成！"
+        echo "   這是警告，不阻斷 Commit，但請確認是否應先完成 SOP 再提交。"
+        echo "   查看詳情：cat docs/sop-state.md"
+        echo ""
+    fi
 fi
 
 # ——————————————————————————————————————
@@ -220,19 +252,6 @@ if [ "$ROLE" = "architect" ]; then
         echo "   ✅ implementation_plan.md 已更新"
     fi
 
-    echo "[Architect/3] 驗證 Autoload 順序（project.godot）..."
-    if [ -f "project.godot" ]; then
-        # 確認 DebugOverlay 在 DebugBridge 之前
-        OVERLAY_LINE=$(grep -n "DebugOverlay" project.godot | head -1 | cut -d: -f1 || echo "0")
-        BRIDGE_LINE=$(grep -n "DebugBridge" project.godot | head -1 | cut -d: -f1 || echo "0")
-        if [ "$OVERLAY_LINE" -gt 0 ] && [ "$BRIDGE_LINE" -gt 0 ]; then
-            if [ "$OVERLAY_LINE" -lt "$BRIDGE_LINE" ]; then
-                echo "   ✅ Autoload 順序正確（DebugOverlay → DebugBridge）"
-            else
-                echo "⚠️  [Architect 警告] DebugOverlay 應在 DebugBridge 之前"
-            fi
-        fi
-    fi
 fi
 
 # ——————————————————————————————————————
@@ -287,40 +306,6 @@ if [ "$ROLE" = "developer" ]; then
     fi
     echo "   ✅ 分支檢查通過（目前：$CURRENT_BRANCH）"
 
-    echo "[Developer/3] 驗證新增 .gd 文件有群組宣告（Debug 整合）..."
-    NEW_GD=$(git diff --cached --name-only --diff-filter=A | grep '\.gd$' || true)
-    if [ -n "$NEW_GD" ]; then
-        for gd_file in $NEW_GD; do
-            # 跳過 autoload 和 test 文件（不需要 group）
-            case "$gd_file" in
-                scripts/autoload/*|test/*|scripts/camera/*|scripts/ui/*|hooks/*)
-                    continue
-                    ;;
-            esac
-            # 檢查遊戲實體腳本是否有 add_to_group
-            if echo "$gd_file" | grep -qE 'scripts/(player|enemy|npc)/'; then
-                HAS_GROUP=$(grep 'add_to_group' "$gd_file" || true)
-                if [ -z "$HAS_GROUP" ]; then
-                    echo "⚠️  [Developer 警告] $gd_file 可能缺少 add_to_group()（DebugBridge 感知需要）"
-                fi
-            fi
-        done
-    fi
-    echo "   ✅ Debug 整合初步驗證完成"
-
-    echo "[Developer/4] 驗證 project.godot Autoload 一致性..."
-    if git diff --cached --name-only | grep -q 'project.godot'; then
-        # 確認 DebugOverlay 和 DebugBridge 都存在
-        if [ -f "project.godot" ]; then
-            HAS_OVERLAY=$(grep "DebugOverlay" project.godot || true)
-            HAS_BRIDGE=$(grep "DebugBridge" project.godot || true)
-            if [ -z "$HAS_OVERLAY" ] || [ -z "$HAS_BRIDGE" ]; then
-                echo "⚠️  [Developer 警告] project.godot 缺少 DebugOverlay 或 DebugBridge Autoload"
-            else
-                echo "   ✅ Debug Autoload 存在"
-            fi
-        fi
-    fi
 fi
 
 # ——————————————————————————————————————
@@ -366,22 +351,6 @@ if [ "$ROLE" = "qa" ]; then
         echo "   ✅ QA 報告已包含"
     fi
 
-    echo "[QA/3] 驗證 debug_state.json 已存在（QA 必須親自執行遊戲）..."
-    DEBUG_JSON_WIN=$(powershell.exe -NoProfile -Command "
-        \$path = \"\$env:APPDATA\Godot\app_userdata\2026 06 04\debug_state.json\"
-        if (Test-Path \$path) { 'EXISTS' } else { 'MISSING' }
-    " 2>/dev/null || echo "CHECK_FAILED")
-    
-    if [ "$DEBUG_JSON_WIN" = "EXISTS" ]; then
-        echo "   ✅ debug_state.json 存在（QA 確實執行了遊戲）"
-    elif [ "$DEBUG_JSON_WIN" = "MISSING" ]; then
-        echo "⚠️  [QA 警告] debug_state.json 不存在！"
-        echo "   QA 必須執行遊戲（並按 F5 確認 DebugBridge 正常輸出）才能提交報告"
-        echo "   (5秒後繼續，但請確認已執行遊戲測試...)"
-        sleep 5
-    else
-        echo "   ℹ️  無法檢查 debug_state.json（PowerShell 不可用，跳過）"
-    fi
 fi
 
 # ——————————————————————————————————————

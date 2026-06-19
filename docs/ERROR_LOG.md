@@ -628,7 +628,7 @@ region = Rect2(0, 0, 132, 126)
 - **防範規則（新增）**:
   - **Rule**: 任何情況下新寫入 GAME_DESIGN.md 的設計內容，一律從 [DRAFT] 開始，不論討論多麼明確
   - **Rule**: [CONFIRMED] 只能在用戶明確於設計對話中批准後由 Designer 角色修改
-  - **升級路徑（§LEARN Step 4）**: 目前第三層（行為準則）。評估是否在 pre-commit hook 中加入警告：偵測到新增的 [CONFIRMED] 行時提示確認
+  - **升級路徑（§LEARN Step 4）**: ✅ 已升級至機器層（2026-06-19）：`hooks/pre-commit` v4 新增 [通用規則 0c] — 偵測到新增的 [CONFIRMED] 行時 FAIL（不僅是警告），阻斷提交
 
 ---
 
@@ -644,4 +644,4 @@ region = Rect2(0, 0, 132, 126)
 - **防範規則（新增）**:
   - **Rule**: 任何清理/重設 main 分支前，必須先執行 `git ls-files workflow.md roles/ hooks/` 確認核心工作流文件已在 main 上追蹤
   - **Rule**: workflow.md、roles/、hooks/ 屬於「永遠必須在 main 上存在」的文件，任何 merge/branch 操作後需確認
-  - **升級路徑（§LEARN Step 4）**: 評估在 Bootstrap 清單（§D4）或 §MOD SOP 中加入「確認核心文件在目標分支存在」的前置檢查步驟
+  - **升級路徑（§LEARN Step 4）**: ✅ 已升級至機器層（2026-06-19）：`hooks/pre-push` v2 新增 GAP-013 檢查 — push 至 main 時若 workflow.md / roles/ / hooks/ 不存在則 FAIL，阻斷推送

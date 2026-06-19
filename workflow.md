@@ -1,4 +1,4 @@
-﻿# Godot Multi-Agent 開發工作流（完整規範）v5 (2026-06-17)
+﻿# Godot Multi-Agent 開發工作流（完整規範）v6 (2026-06-19)
 
 > **讀取指示（給 AI）**: 進入任何 Godot 遊戲開發對話時，必須優先讀取此文件。
 > 讀完後，立刻執行「A. 對話開始時的第一步」。
@@ -396,15 +396,19 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 
 ### I-C. 行為準則層（人工自律，無法機器化）
 
-| # | 準則 |
-|---|------|
-| 5 | **熔斷**：同一 Bug 連續失敗 3 次 → 切換 Architect，不得繼續嘗試 |
-| 6 | **測試基準**：QA 只依據 Memory DoD，不依賴 Developer 說明 |
-| 8 | **Sensor 優先**：看到 Level 1 觸發條件 → 立即停止，呼叫 Sensor |
-| 9 | **反省強制**：Architect/Developer/Reviewer 每次工作後寫反省記錄（Memory MCP） |
-| 23 | **warn fallback 層次（ERR-035）**：只有所有 fallback 失效時才 push_warning |
-| 24 | **GUT 測試**：複雜系統才強制 GUT（非 100% 要求）；QA 在驗收中判斷 |
-| 25 | **工具腳本範疇**：`scripts/utils/` 不被 .tscn 引用、不被 GUT 涵蓋、不進 QA F6 驗證 |
+> **[DOC-ONLY — 機器層無法覆蓋，依賴 AI 自律]**
+> 以下規則無法由 hook 或 sensor 自動強制執行，完全依賴 Agent 的行為紀律。
+> 違反時僅能在事後發現（§LEARN 記錄）。
+
+| # | 準則 | 強制層級 |
+|---|------|---------|
+| 5 | **熔斷**：同一 Bug 連續失敗 3 次 → 切換 Architect，不得繼續嘗試 | [DOC-ONLY] |
+| 6 | **測試基準**：QA 只依據 Memory DoD，不依賴 Developer 說明 | [DOC-ONLY] |
+| 8 | **Sensor 優先**：看到 Level 1 觸發條件 → 立即停止，呼叫 Sensor | [DOC-ONLY] |
+| 9 | **反省強制**：Architect/Developer/Reviewer 每次工作後寫反省記錄（Memory MCP） | [DOC-ONLY] |
+| 23 | **warn fallback 層次（ERR-035）**：只有所有 fallback 失效時才 push_warning | [DOC-ONLY] |
+| 24 | **GUT 測試**：複雜系統才強制 GUT（非 100% 要求）；QA 在驗收中判斷 | [DOC-ONLY] |
+| 25 | **工具腳本範疇**：`scripts/utils/` 不被 .tscn 引用、不被 GUT 涵蓋、不進 QA F6 驗證 | [DOC-ONLY] |
 
 ---
 
@@ -416,6 +420,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 │   ├── GAME_DESIGN.md              → GDD（必須含 GDD 最後同步日期標記）
 │   ├── ERROR_LOG.md                → 錯誤知識庫（ERR-001 ~ ERR-041）
 │   ├── PROJECT_STATUS.md           → 專案狀態追蹤
+│   ├── sop-state.md                → SOP 執行進度追蹤（Sensor [15/15] + set-role.ps1 讀取）
 │   ├── DOC_INDEX.md                → 文件總索引（所有 ROLE 開場必讀）
 │   └── archive/                   → 舊日誌文件封存（arch_log, design_log, dev_log 等）
 ├── hooks/                          → 所有 hook 腳本（含編碼+UID 驗證）

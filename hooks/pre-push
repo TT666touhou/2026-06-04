@@ -1,34 +1,67 @@
 #!/bin/sh
 # ==========================================================
-# hooks/pre-push
+# hooks/pre-push  (v2 — GAP-013 核心文件強制)
 # AI-Agnostic Pre-Push Hook for Godot 4 Project
 #
 # 觸發時機：執行 git push 前自動執行
-# 作用：  最後一道防線，阻斷未通過完整驗證的代碼推送到遠端
+# 作用：  最後一道防線，阻斷核心 workflow 文件缺失的 push
+# v2 新增功能：
+#   - GAP-013 防範：push main 前確認 workflow.md / roles/ / hooks/ 存在
 # ==========================================================
 
 echo ""
 echo "============================================================"
-echo "🚀 [Pre-Push Hook] Push 前最終安全驗證..."
+echo "[Pre-Push Hook v2] Push 前最終安全驗證..."
 echo "============================================================"
 
-# ——————————————————————————————————————
-# [規則] 禁止直接 force push 到 main 分支
-# ——————————————————————————————————————
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+# ——————————————————————————————————————
+# [GAP-013 防範] 推送 main 前確認核心 Workflow 文件存在
+# workflow.md / roles/ / hooks/ 是 workflow 的基礎設施
+# 如果這些文件不存在，整個工作流就會崩潰（GAP-013 的根本原因）
+# ——————————————————————————————————————
 if [ "$CURRENT_BRANCH" = "main" ]; then
-  # 取得 push 的 refspec 引數
-  while read local_ref local_sha remote_ref remote_sha; do
-    if echo "$remote_ref" | grep -q "refs/heads/main"; then
-      echo "⚠️  [警告] 直接 push 到 main 分支。"
-      echo "   建議使用 feature 分支 + Pull Request 工作流。"
-      echo "   如確認要繼續，請手動執行 git push。"
+    echo "[GAP-013 檢查] 確認核心 Workflow 文件存在於 main..."
+    CORE_MISSING=0
+
+    if ! git cat-file -e HEAD:workflow.md 2>/dev/null; then
+        echo "❌ [GAP-013] workflow.md 不存在於 main 分支！"
+        echo "   整個工作流將在下次 clone/reset 後失效。"
+        echo "   修復：git checkout feature/xxx -- workflow.md && git commit && git push"
+        CORE_MISSING=$((CORE_MISSING + 1))
     fi
-  done
+
+    if ! git ls-tree HEAD roles/ 2>/dev/null | grep -q .; then
+        echo "❌ [GAP-013] roles/ 目錄不存在於 main 分支！"
+        echo "   角色定義文件缺失，多 Agent 工作流無法運作。"
+        CORE_MISSING=$((CORE_MISSING + 1))
+    fi
+
+    if ! git ls-tree HEAD hooks/ 2>/dev/null | grep -q .; then
+        echo "❌ [GAP-013] hooks/ 目錄不存在於 main 分支！"
+        echo "   Git Hook 強制層缺失，所有機器層約束失效。"
+        CORE_MISSING=$((CORE_MISSING + 1))
+    fi
+
+    if [ $CORE_MISSING -gt 0 ]; then
+        echo ""
+        echo "❌ 發現 $CORE_MISSING 個核心文件/目錄缺失，阻斷 Push 到 main！"
+        echo "   請先補上缺失的文件再推送。"
+        echo "   參考 ERROR_LOG.md GAP-013 的修復方法。"
+        exit 1
+    fi
+    echo "   [PASS] 核心 Workflow 文件完整（workflow.md / roles/ / hooks/）"
+
+    # ——————————————————————————————————————
+    # [警告] 直接 push 到 main 提示
+    # ——————————————————————————————————————
+    echo "⚠️  [警告] 直接 push 到 main 分支。"
+    echo "   建議使用 feature 分支 + Pull Request 工作流。"
 fi
 
-echo "✅ Pre-push 驗證通過。"
+echo ""
+echo "[PASS] Pre-push 驗證通過。"
 echo "============================================================"
 echo ""
 exit 0
