@@ -7,6 +7,3 @@ script = ExtResource("1_wplat")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 one_way_collision = true
-
-[node name="Visual" type="ColorRect" parent="."]
-color = Color(0.95, 0.95, 0.35, 1)
