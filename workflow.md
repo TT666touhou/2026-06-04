@@ -304,6 +304,72 @@ sensor_report_[日期]_[ERR] → Sensor 的掃描報告（EntityType: SensorRepo
 blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 ```
 
+### Godot MCP（2026-06-19 新增）
+
+> 本專案已安裝 `@coding-solo/godot-mcp` v0.1.1，透過 `.mcp.json` 接入 Claude Code。
+> **無需在 Godot 安裝任何插件**；MCP server 透過 Godot CLI/stdio 與引擎通訊。
+> **已驗證**：14 個工具全部可用；`get_project_info` 回傳 Godot 版本 `4.6.2.stable`。
+
+#### 可用工具一覽（14 個）
+
+| 工具 | 用途 | 最常用角色 |
+|------|------|----------|
+| `get_godot_version` | 取得 Godot 版本 | Sensor/QA 驗證 |
+| `get_project_info` | 取得專案結構（scenes/scripts/assets 數量）| Architect/Reviewer |
+| `run_project` | 以 debug 模式啟動遊戲 | Developer/QA |
+| `get_debug_output` | 取得執行時 console 輸出與錯誤訊息 | Sensor/QA |
+| `stop_project` | 停止執行中的遊戲 | Developer/QA |
+| `launch_editor` | 開啟 Godot Editor | Developer |
+| `list_projects` | 掃描目錄找出所有 Godot 專案 | Architect |
+| `create_scene` | 建立新場景（指定 root node 類型） | Developer（謹慎使用）|
+| `add_node` | 向場景新增節點（含屬性設定）| Developer（謹慎使用）|
+| `save_scene` | 儲存場景（支援建立 variant） | Developer（謹慎使用）|
+| `load_sprite` | 載入貼圖至 Sprite2D | Developer（謹慎使用）|
+| `export_mesh_library` | 匯出 3D 場景為 MeshLibrary | Developer |
+| `get_uid` | 取得檔案 UID（Godot 4.4+）| Developer/Reviewer |
+| `update_project_uids` | 批次更新 UID 引用 | Reviewer/QA |
+
+#### 使用規範
+
+```
+[何時使用]
+✅ QA 驗收：run_project → 等待 → get_debug_output → 取代截圖流程
+✅ Sensor 掃描：get_debug_output 取得即時 runtime 錯誤（補充靜態 sensor-scan.ps1）
+✅ Architect 分析：get_project_info 確認專案結構數量符合設計
+✅ Developer 調試：run_project + get_debug_output 取代手動開 Godot 截圖
+✅ Reviewer 審查：get_uid 確認 UID 正確性
+
+[謹慎使用場景]
+⚠️ create_scene / add_node / save_scene：會直接修改 .tscn 檔案
+   → 必須走完整 §IMPL SOP，結果需 Reviewer 確認
+   → 不可替代手動在 Godot Editor 操作（缺乏視覺確認）
+   → 執行前先 git status，確保有退路
+
+[禁止場景]
+❌ 用 MCP 工具繞過 git hook 提交（hook 仍然有效）
+❌ 在 QA 角色用 create_scene/add_node（QA 不寫代碼）
+```
+
+#### MCP 配置檔
+
+```json
+// .mcp.json（已 commit）
+{
+  "mcpServers": {
+    "godot": {
+      "command": "node",
+      "args": ["D:\\2026-06-04\\node_modules\\@coding-solo\\godot-mcp\\build\\index.js"],
+      "env": {
+        "GODOT_PATH": "C:\\Users\\88698\\Downloads\\Godot_v4.6.2-stable_win64.exe\\Godot_v4.6.2-stable_win64.exe"
+      }
+    }
+  }
+}
+```
+
+> **注意**：`node_modules/` 已加入 `.gitignore`，重新 clone 後需執行 `npm install` 重建。
+> MCP server 在 Claude Code 啟動時自動連線，無需手動啟動。
+
 ---
 
 ## G. 工作流狀態機（完整版）

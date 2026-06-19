@@ -15,6 +15,9 @@ qa_game*.log
 qa_gut*.log
 check.log
 
+# Node.js (Godot MCP server)
+node_modules/
+
 # IDE specific
 .vs/
 .vscode/
