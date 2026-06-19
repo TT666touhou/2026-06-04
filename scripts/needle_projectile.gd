@@ -25,11 +25,15 @@ func _ready() -> void:
 	_ray.enabled = true
 
 func _physics_process(delta: float) -> void:
-	var move := direction * flight_speed * delta
-	_ray.target_position = move * 1.2
+	var step := flight_speed * delta
+	# target_position is LOCAL space; needle rotation = direction.angle(), so local-X == world direction
+	_ray.target_position = Vector2(step * 1.2, 0)
 	_ray.force_raycast_update()
 	if _ray.is_colliding():
 		embedded.emit(_ray.get_collision_point(), _ray.get_collider())
 		queue_free()
 		return
-	global_position += move
+	global_position += direction * step
+	# safety: free projectile if it escapes scene bounds (no wall to catch it)
+	if global_position.x < -64 or global_position.x > 544 or global_position.y < -64 or global_position.y > 334:
+		queue_free()

@@ -704,3 +704,15 @@ region = Rect2(0, 0, 132, 126)
 | 跨腳本 enum 存取 | `NeedleAnchor.Type.WIRE` | `const _WIRE := 1  # NeedleAnchor.Type.WIRE` |
 | 跨腳本方法呼叫（typed） | `typed_node.custom_method()` | `typed_node.call("custom_method")` |
 | 信號跨腳本型別參數 | `signal foo(p: CustomClass)` | `signal foo(p)` 或 `signal foo(p: Object)` |
+
+---
+
+## GAP-017 RayCast2D 方向在 Local vs World Space 混用（2026-06-20）
+
+- **Severity**: Medium（斜向/垂直射擊時 RayCast2D 方向錯誤，僅水平射擊正常）
+- **現象**: 鋼針以非水平方向射出時，`RayCast2D` 的碰撞偵測方向錯誤（偵測到不該偵測的位置），極端情況（90°）時射線方向與移動方向垂直；水平射擊（0°）不受影響。
+- **根本原因**: `needle_projectile.gd` 中 `_ray.target_position = move * 1.2` — `move` 是 **world-space** 向量，但 `RayCast2D.target_position` 是 **local-space**。當節點旋轉（`rotation = direction.angle()`）時，兩者不等價：world `(0, spd)` 在 local space（旋轉 90°）會映射為 `(-spd, 0)`，射線向左而非向下。
+- **修復**: `_ray.target_position = Vector2(step * 1.2, 0)`。由於針已旋轉至 `direction.angle()`，local X 軸在 world space 即為飛行方向，永遠正確。
+- **副作用修復**: 加入邊界清除 (`queue_free()`) 當 projectile 逃出螢幕範圍（`x < -64 or x > 544 or y < -64 or y > 334`），防止 `_in_flight` 計數永遠累積、無法再射針。
+- **場景問題（根本原因之二）**: MVP_Test.tscn 原本無牆壁/天花板，針射出後飛出螢幕邊界消失，`_in_flight` 不會歸零，3 根後完全無法射擊。已修復為封閉房間。
+- **防範規則**: `RayCast2D.target_position` **永遠用 local-space 設置**；若節點有旋轉，沿 local X 軸的 `Vector2(距離, 0)` 即為射線正前方。
