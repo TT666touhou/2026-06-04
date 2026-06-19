@@ -2,7 +2,7 @@
 class_name NeedleProjectile
 extends Node2D
 
-@export var flight_speed: float = 600.0
+@export var flight_speed: float = 1200.0
 @export var needle_size: Vector2 = Vector2(12.0, 2.0)
 
 enum NeedleType { ATTACK, WIRE }
