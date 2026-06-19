@@ -17,136 +17,136 @@
 【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
 
 □ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
-       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
-       - 確認「快速總覽」中各 Phase 的當前狀態
-       - 找到你今次要實作的 Phase，閱讀「關鍵檔案」和「已知限制」
-       - 確認「尚未開始（TODO）」和「部分完成（PARTIAL）」區塊，明確目前任務範圍
-       - 確認「已鎖定設計決策」，不得修改已鎖定內容
-       ⚠️ 若不讀此文件就開始實作 → 視為嚴重違規，開發成果無效
+	   Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+	   - 確認「快速總覽」中各 Phase 的當前狀態
+	   - 找到你今次要實作的 Phase，閱讀「關鍵檔案」和「已知限制」
+	   - 確認「尚未開始（TODO）」和「部分完成（PARTIAL）」區塊，明確目前任務範圍
+	   - 確認「已鎖定設計決策」，不得修改已鎖定內容
+	   ⚠️ 若不讀此文件就開始實作 → 視為嚴重違規，開發成果無效
 
 【第零步：查詢錯誤知識庫 — 先學，再做】
 
 □ 0. 查詢 docs/ERROR_LOG.md（所有錯誤前必做）：
-      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-      - 查找與當前任務相關的已知錯誤
-      - 遵循對應的「修復方法」或「最佳做法」
-      ⚠️ 已知錯誤不得重蹈，違者視為嚴重失職
+	  Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+	  - 查找與當前任務相關的已知錯誤
+	  - 遵循對應的「修復方法」或「最佳做法」
+	  ⚠️ 已知錯誤不得重蹈，違者視為嚴重失職
 
 【第一步：全面靜態錯誤清除 — 任何新代碼都不能建立在錯誤上】
 
 □ 1. 執行工作區清潔檢查：
-      .\scripts\assert-clean.ps1
-      若不乾淨 → git stash 或 commit 後繼續
+	  .\scripts\assert-clean.ps1
+	  若不乾淨 → git stash 或 commit 後繼續
 
 □ 2. 執行靜態錯誤掃描（IDE 問題面板）：
-      - 確認沒有 error 級別問題
-      - 確認 warning 已知且可接受
-      - 特別注意：型別推斷錯誤、未宣告識別符、未使用變數
+	  - 確認沒有 error 級別問題
+	  - 確認 warning 已知且可接受
+	  - 特別注意：型別推斷錯誤、未宣告識別符、未使用變數
 
 □ 3. 執行 Godot --check-only 語法驗證：
-      $godot = "C:\Users\88698\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
-      Start-Process -FilePath $godot -ArgumentList @("--headless","--path","D:\2026-06-04","--check-only") `
-        -Wait -NoNewWindow -RedirectStandardError "godot_check.log"
-      Get-Content "godot_check.log" | Select-String "error|warning" -CaseSensitive:$false
+	  $godot = "C:\Users\88698\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
+	  Start-Process -FilePath $godot -ArgumentList @("--headless","--path","D:\2026-06-04","--check-only") `
+		-Wait -NoNewWindow -RedirectStandardError "godot_check.log"
+	  Get-Content "godot_check.log" | Select-String "error|warning" -CaseSensitive:$false
 
 □ 3.5. 【新增】Sensor 前置掃描（寫物理/信號相關代碼時必做）：
-       ★ 凡是涉及 Area2D、body_entered、物理 callback 的代碼，必須先確認：
-         a. _on_body_entered / _on_area_entered 的函式體內，禁止出現：
-            add_child() / queue_free() / load_next_room() / change_scene_to_file()
-            → 違反時立即改為 call_deferred()
-         b. 所有 int() 轉換：來源是否為 float？ → 若是，改為 roundi()
-         c. 三元運算符 A if cond else B：兩分支型別是否相同？ → 不同則展開為 if/else
-         d. 新增的高頻觸發函式：是否需要防重入守衛？ → 若可能重複觸發，加 _is_xxx bool
-         e. 【ERR-004 後】修復 narrowing/ternary 後全局掃描同類問題：
-            Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
-              Select-String "\bint\(" | ForEach-Object { "$($_.Filename):$($_.LineNumber)" }
-         f. 【ERR-005/008 後】手寫 .tscn 時確認 SubResource 聲明完整：
-            ❌ 禁止：只寫 `shape = SubResource("RectangleShape2D_1")` 而沒有對應聲明
-            ✅ 正確流程：
-              Step1 在 ext_resource 區段結尾、第一個 [node] 之前加入：
-                [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
-                size = Vector2(48, 96)
-              Step2 再在 [node] 中引用：shape = SubResource("RectangleShape2D_1")
-            ⚠️ 此錯誤 --check-only 無法偵測！只有 runtime 才會爆炸（ERR_INVALID_PARAMETER）
-            ⚠️ 驗證方法：用 Select-String "SubResource" xxx.tscn 確認每個引用都有對應定義
-         g. 【ERR-HUD-001 後】HUD 在 CanvasLayer 下：
-            禁止用 `cam.zoom` 縮放 HUD 元素大小
-            必須設 `texture_filter = TEXTURE_FILTER_NEAREST` + `filter_clip = true`
-         h. 【ERR-SPAWN-001 後】玩家生成時序：
-            若房間是 deferred 載入，玩家必須先 `visible=false` + `set_physics_process(false)`
-         i. 【ERR-006 後】創建 .tscn 引用 Script 時，立刻確認 .gd 存在：
-            `Test-Path "D:\2026-06-04\scripts\enemy\xxx.gd"` → 必須為 True
-            否則停止提交，先創建 .gd 腳本
-         j. 【ERR-007 後】房間載入需要三層 deferred（不是兩層）：
-            Layer1: body_entered → call_deferred("load_next_room")
-            Layer2: load_next_room() → _load_room_scene() [只做 instantiate()]
-            Layer3: call_deferred("_finish_room_load") [add_child + cleanup + reset]
-         k. 【ERR-008 後】.tscn SubResource 完整性驗證腳本（每次手寫 .tscn 後必跑）：
-            $tscn = "D:\2026-06-04\scenes\xxx.tscn"; $content = Get-Content $tscn -Raw
-            $refs = [regex]::Matches($content,'SubResource\("([^"]+)"\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
-            $defs = [regex]::Matches($content,'\[sub_resource[^\]]+id="([^"]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
-            $missing = $refs | Where-Object { $_ -notin $defs }
-            if ($missing) { Write-Host "❌ 缺少 sub_resource 聲明: $($missing -join ', ')" } else { Write-Host "✅ 所有 SubResource 引用都有對應聲明" }
-         l. 【ERR-009 後】禁止在 GDScript class body 直接呼叫函式（Parse Error: Unexpected identifier）：
-            ❌ 危險：class 頂層寫 `add_to_group("Enemies")` → 立即 Parse Error
-            ✅ 正確：所有語句必須在 func 內（_ready(), _physics_process() 等）
-            掃描：Get-Content "xxx.gd" | Where-Object { $_ -match "^\w+\(" -and $_ -notmatch "^(func|var|@|extends|class|enum|signal|const|static)" }
-         m. 【ERR-010 後】複製 .tscn 文件後必須立即更新 UID（UID duplicate warning）：
-            ❌ 危險：直接複製 player.tscn → player2.tscn，player2.tscn UID 與 player.tscn 完全相同
-            ✅ 正確：複製後立刻執行：
-               function New-GodotUID { $c="abcdefghijklmnopqrstuvwxyz0123456789"; "uid://" + (-join (1..13|%{$c[(Get-Random -Max $c.Length)]})) }
-               (Get-Content "new.tscn" -Raw) -replace 'uid="uid://[a-z0-9]+"',"uid=`"$(New-GodotUID)`"" | Set-Content "new.tscn" -NoNewline
-            或直接移除 uid 字段（Godot 會自動重新分配）
-         n. 【ERR-011 後】確認所有 .gd 文件無 UTF-16 BOM（Unicode parsing error ff/fe）：
-            掃描：Get-ChildItem "D:\2026-06-04" -Recurse -Include "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 2 -and $b[0]-eq 0xFF -and $b[1]-eq 0xFE } | ForEach-Object { "❌ $($_.Name)" }
-            修復：$b=[IO.File]::ReadAllBytes($p); $t=[Text.Encoding]::Unicode.GetString($b,2,$b.Length-2); [IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding($false)))
-         o. 【ERR-012 後】含中文或多位元組字元的 .gd 文件必須確認 UTF-8 編碼（Unicode parsing error）：
-            ❌ 危險：在非 UTF-8 環境中撰寫含中文的 .gd 文件 → 0x80+ 位元組觸發 Godot parse 失敗
-            ✅ 最安全：統一以英文撰寫所有 .gd 代碼和注解
-            掃描 UTF-8 BOM：Get-ChildItem "D:\2026-06-04" -Recurse -Filter "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 3 -and $b[0]-eq 0xEF -and $b[1]-eq 0xBB -and $b[2]-eq 0xBF } | ForEach-Object { "❌ UTF-8 BOM: $($_.Name)" }
-         p. 【ERR-013 後】複製 .tscn 後必須驗證 ext_resource UID 不等於場景 UID（UID 自引用）：
-            ❌ 危險：複製 player.tscn 建立 player1.tscn 後，替換場景 UID 時也誤將 ext_resource 的 uid 改為新場景 UID → 全部指向自身
-            ✅ 正確：ext_resource 的 uid 必須是被引用資源本身的 UID（查 .uid 文件或資源頭）
-            驗證腳本（每次複製 .tscn 後必跑）：
-               $tscn = Get-Content "scenes\player\player1.tscn" -Raw
-               $sUID = [regex]::Match($tscn,'gd_scene.*uid="([^"]+)"').Groups[1].Value
-               $bad = [regex]::Matches($tscn,'ext_resource.*uid="([^"]+)"') | Where-Object { $_.Groups[1].Value -eq $sUID }
-               if ($bad) { "❌ UID 自引用！" } else { "✅ 無 UID 自引用" }
-       ★ 掃描腳本（可直接執行）：
-         Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
-           Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |
-           ForEach-Object { Write-Host "$($_.Filename):$($_.LineNumber) → $($_.Line.Trim())" }
-       ⚠️ 未做 Sensor 掃描即提交物理/信號相關代碼 → 視為嚴重違規（ERR-001 前車之鑑）
-          q. 【ERR-023 後】.tscn 文件的安全讀寫協議（防止開頭 '[' 被吃掉）：
-             ❌ 絕對禁止：Get-Content "xxx.tscn" -Encoding UTF8 -Raw （會注入 U+FEFF BOM 字符）
-             ❌ 絕對禁止：Set-Content "xxx.tscn" -Value $c -Encoding UTF8 （會加 BOM 前綴）
-             ✅ 唯一安全方法：
-                $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-                $c = [System.IO.File]::ReadAllText("xxx.tscn", [System.Text.Encoding]::UTF8)
-                # ... 做修改（用 .Replace() 而非 -replace 修改標頭）...
-                $c = $c.Replace("[gd_scene load_steps=OLD", "[gd_scene load_steps=NEW")
-                [System.IO.File]::WriteAllText("xxx.tscn", $c, $utf8NoBom)
-             ✅ 寫入後立即驗證第一字節（必做！）：
-                $b = [System.IO.File]::ReadAllBytes("xxx.tscn")
-                if ([char]$b[0] -ne '[') { Write-Error "ERR-023: .tscn header broken!" }
-             根本原因：Get-Content -Encoding UTF8 在遇到 BOM 文件時將 U+FEFF 注入字符串，
+	   ★ 凡是涉及 Area2D、body_entered、物理 callback 的代碼，必須先確認：
+		 a. _on_body_entered / _on_area_entered 的函式體內，禁止出現：
+			add_child() / queue_free() / load_next_room() / change_scene_to_file()
+			→ 違反時立即改為 call_deferred()
+		 b. 所有 int() 轉換：來源是否為 float？ → 若是，改為 roundi()
+		 c. 三元運算符 A if cond else B：兩分支型別是否相同？ → 不同則展開為 if/else
+		 d. 新增的高頻觸發函式：是否需要防重入守衛？ → 若可能重複觸發，加 _is_xxx bool
+		 e. 【ERR-004 後】修復 narrowing/ternary 後全局掃描同類問題：
+			Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
+			  Select-String "\bint\(" | ForEach-Object { "$($_.Filename):$($_.LineNumber)" }
+		 f. 【ERR-005/008 後】手寫 .tscn 時確認 SubResource 聲明完整：
+			❌ 禁止：只寫 `shape = SubResource("RectangleShape2D_1")` 而沒有對應聲明
+			✅ 正確流程：
+			  Step1 在 ext_resource 區段結尾、第一個 [node] 之前加入：
+				[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+				size = Vector2(48, 96)
+			  Step2 再在 [node] 中引用：shape = SubResource("RectangleShape2D_1")
+			⚠️ 此錯誤 --check-only 無法偵測！只有 runtime 才會爆炸（ERR_INVALID_PARAMETER）
+			⚠️ 驗證方法：用 Select-String "SubResource" xxx.tscn 確認每個引用都有對應定義
+		 g. 【ERR-HUD-001 後】HUD 在 CanvasLayer 下：
+			禁止用 `cam.zoom` 縮放 HUD 元素大小
+			必須設 `texture_filter = TEXTURE_FILTER_NEAREST` + `filter_clip = true`
+		 h. 【ERR-SPAWN-001 後】玩家生成時序：
+			若房間是 deferred 載入，玩家必須先 `visible=false` + `set_physics_process(false)`
+		 i. 【ERR-006 後】創建 .tscn 引用 Script 時，立刻確認 .gd 存在：
+			`Test-Path "D:\2026-06-04\scripts\enemy\xxx.gd"` → 必須為 True
+			否則停止提交，先創建 .gd 腳本
+		 j. 【ERR-007 後】房間載入需要三層 deferred（不是兩層）：
+			Layer1: body_entered → call_deferred("load_next_room")
+			Layer2: load_next_room() → _load_room_scene() [只做 instantiate()]
+			Layer3: call_deferred("_finish_room_load") [add_child + cleanup + reset]
+		 k. 【ERR-008 後】.tscn SubResource 完整性驗證腳本（每次手寫 .tscn 後必跑）：
+			$tscn = "D:\2026-06-04\scenes\xxx.tscn"; $content = Get-Content $tscn -Raw
+			$refs = [regex]::Matches($content,'SubResource\("([^"]+)"\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+			$defs = [regex]::Matches($content,'\[sub_resource[^\]]+id="([^"]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+			$missing = $refs | Where-Object { $_ -notin $defs }
+			if ($missing) { Write-Host "❌ 缺少 sub_resource 聲明: $($missing -join ', ')" } else { Write-Host "✅ 所有 SubResource 引用都有對應聲明" }
+		 l. 【ERR-009 後】禁止在 GDScript class body 直接呼叫函式（Parse Error: Unexpected identifier）：
+			❌ 危險：class 頂層寫 `add_to_group("Enemies")` → 立即 Parse Error
+			✅ 正確：所有語句必須在 func 內（_ready(), _physics_process() 等）
+			掃描：Get-Content "xxx.gd" | Where-Object { $_ -match "^\w+\(" -and $_ -notmatch "^(func|var|@|extends|class|enum|signal|const|static)" }
+		 m. 【ERR-010 後】複製 .tscn 文件後必須立即更新 UID（UID duplicate warning）：
+			❌ 危險：直接複製 player.tscn → player2.tscn，player2.tscn UID 與 player.tscn 完全相同
+			✅ 正確：複製後立刻執行：
+			   function New-GodotUID { $c="abcdefghijklmnopqrstuvwxyz0123456789"; "uid://" + (-join (1..13|%{$c[(Get-Random -Max $c.Length)]})) }
+			   (Get-Content "new.tscn" -Raw) -replace 'uid="uid://[a-z0-9]+"',"uid=`"$(New-GodotUID)`"" | Set-Content "new.tscn" -NoNewline
+			或直接移除 uid 字段（Godot 會自動重新分配）
+		 n. 【ERR-011 後】確認所有 .gd 文件無 UTF-16 BOM（Unicode parsing error ff/fe）：
+			掃描：Get-ChildItem "D:\2026-06-04" -Recurse -Include "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 2 -and $b[0]-eq 0xFF -and $b[1]-eq 0xFE } | ForEach-Object { "❌ $($_.Name)" }
+			修復：$b=[IO.File]::ReadAllBytes($p); $t=[Text.Encoding]::Unicode.GetString($b,2,$b.Length-2); [IO.File]::WriteAllText($p,$t,(New-Object Text.UTF8Encoding($false)))
+		 o. 【ERR-012 後】含中文或多位元組字元的 .gd 文件必須確認 UTF-8 編碼（Unicode parsing error）：
+			❌ 危險：在非 UTF-8 環境中撰寫含中文的 .gd 文件 → 0x80+ 位元組觸發 Godot parse 失敗
+			✅ 最安全：統一以英文撰寫所有 .gd 代碼和注解
+			掃描 UTF-8 BOM：Get-ChildItem "D:\2026-06-04" -Recurse -Filter "*.gd" | Where-Object { $b=[IO.File]::ReadAllBytes($_.FullName); $b.Length-ge 3 -and $b[0]-eq 0xEF -and $b[1]-eq 0xBB -and $b[2]-eq 0xBF } | ForEach-Object { "❌ UTF-8 BOM: $($_.Name)" }
+		 p. 【ERR-013 後】複製 .tscn 後必須驗證 ext_resource UID 不等於場景 UID（UID 自引用）：
+			❌ 危險：複製 player.tscn 建立 player1.tscn 後，替換場景 UID 時也誤將 ext_resource 的 uid 改為新場景 UID → 全部指向自身
+			✅ 正確：ext_resource 的 uid 必須是被引用資源本身的 UID（查 .uid 文件或資源頭）
+			驗證腳本（每次複製 .tscn 後必跑）：
+			   $tscn = Get-Content "scenes\player\player1.tscn" -Raw
+			   $sUID = [regex]::Match($tscn,'gd_scene.*uid="([^"]+)"').Groups[1].Value
+			   $bad = [regex]::Matches($tscn,'ext_resource.*uid="([^"]+)"') | Where-Object { $_.Groups[1].Value -eq $sUID }
+			   if ($bad) { "❌ UID 自引用！" } else { "✅ 無 UID 自引用" }
+	   ★ 掃描腳本（可直接執行）：
+		 Get-ChildItem "D:\2026-06-04\scripts" -Recurse -Filter "*.gd" |
+		   Select-String "_on_body_entered|_on_area_entered|int\(|add_child\(|cam\.zoom" |
+		   ForEach-Object { Write-Host "$($_.Filename):$($_.LineNumber) → $($_.Line.Trim())" }
+	   ⚠️ 未做 Sensor 掃描即提交物理/信號相關代碼 → 視為嚴重違規（ERR-001 前車之鑑）
+		  q. 【ERR-023 後】.tscn 文件的安全讀寫協議（防止開頭 '[' 被吃掉）：
+			 ❌ 絕對禁止：Get-Content "xxx.tscn" -Encoding UTF8 -Raw （會注入 U+FEFF BOM 字符）
+			 ❌ 絕對禁止：Set-Content "xxx.tscn" -Value $c -Encoding UTF8 （會加 BOM 前綴）
+			 ✅ 唯一安全方法：
+				$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+				$c = [System.IO.File]::ReadAllText("xxx.tscn", [System.Text.Encoding]::UTF8)
+				# ... 做修改（用 .Replace() 而非 -replace 修改標頭）...
+				$c = $c.Replace("[gd_scene load_steps=OLD", "[gd_scene load_steps=NEW")
+				[System.IO.File]::WriteAllText("xxx.tscn", $c, $utf8NoBom)
+			 ✅ 寫入後立即驗證第一字節（必做！）：
+				$b = [System.IO.File]::ReadAllBytes("xxx.tscn")
+				if ([char]$b[0] -ne '[') { Write-Error "ERR-023: .tscn header broken!" }
+			 根本原因：Get-Content -Encoding UTF8 在遇到 BOM 文件時將 U+FEFF 注入字符串，
 
-          r. 【ERR-024 後】VFX SpriteFrames 幀切割必須使用 AtlasTexture sub-resource：
-             ❌ 絕對禁止（Godot 4 忽略 region 欄位，顯示整個 spritesheet）：
-                "frames": [{"texture": ExtResource("tex_id"), "region": Rect2(0,0,132,126)}]
-             ✅ 正確格式（每幀一個 AtlasTexture sub-resource）：
-                [sub_resource type="AtlasTexture" id="AT_0"]
-                atlas = ExtResource("tex_id")
-                region = Rect2(0, 0, 132, 126)
-                
-                "frames": [{"texture": SubResource("AT_0"), "duration": 1.0}]
-             ✅ load_steps 公式：2（ext_resource: Script+Texture）+ frameCount（AtlasTextures）+ 1（SpriteFrames）
-             ✅ 建立 VFX 場景後在 Godot 編輯器確認 Animation Frames 面板顯示個別幀（非整條 sheet）
-                      後續 -replace 或 Substring(1) 移除 BOM 時會意外消耗第一個 '[' 字元。
+		  r. 【ERR-024 後】VFX SpriteFrames 幀切割必須使用 AtlasTexture sub-resource：
+			 ❌ 絕對禁止（Godot 4 忽略 region 欄位，顯示整個 spritesheet）：
+				"frames": [{"texture": ExtResource("tex_id"), "region": Rect2(0,0,132,126)}]
+			 ✅ 正確格式（每幀一個 AtlasTexture sub-resource）：
+				[sub_resource type="AtlasTexture" id="AT_0"]
+				atlas = ExtResource("tex_id")
+				region = Rect2(0, 0, 132, 126)
+				
+				"frames": [{"texture": SubResource("AT_0"), "duration": 1.0}]
+			 ✅ load_steps 公式：2（ext_resource: Script+Texture）+ frameCount（AtlasTextures）+ 1（SpriteFrames）
+			 ✅ 建立 VFX 場景後在 Godot 編輯器確認 Animation Frames 面板顯示個別幀（非整條 sheet）
+					  後續 -replace 或 Substring(1) 移除 BOM 時會意外消耗第一個 '[' 字元。
 
 □ 4. 查詢 Memory MCP 取得當前任務的架構決策：
-      memory.search_nodes("arch_decision_[功能名稱]")
-      memory.search_nodes("task_[功能名稱]")
+	  memory.search_nodes("arch_decision_[功能名稱]")
+	  memory.search_nodes("task_[功能名稱]")
 
 □ 5. 確認 Debug 整合要求（從架構決策中取得）
 
@@ -162,32 +162,32 @@
 ```gdscript
 ## ❌ 危險模式（必須修改）
 func _on_body_entered(body):
-    game_world.load_next_room()  # 在物理 callback 中直接呼叫！
+	game_world.load_next_room()  # 在物理 callback 中直接呼叫！
 
 ## ✅ 正確模式
 func _on_body_entered(body):
-    game_world.call_deferred("load_next_room")  # 延後到物理查詢結束後執行
+	game_world.call_deferred("load_next_room")  # 延後到物理查詢結束後執行
 
 ## ❌ 危險模式（narrowing + ternary）
 limit_top = int(pos.y) if node != null else -10_000_000
 
 ## ✅ 正確模式（明確型別 + if/else 區塊）
 if node != null:
-    limit_top = roundi(pos.y)
+	limit_top = roundi(pos.y)
 else:
-    limit_top = -10_000_000
+	limit_top = -10_000_000
 
 ## ❌ 危險模式（無防重入守衛的高頻觸發函式）
 func load_room():
-    add_child(new_room)  # 可能被呼叫 28 次！
+	add_child(new_room)  # 可能被呼叫 28 次！
 
 ## ✅ 正確模式（有防重入守衛）
 var _is_loading: bool = false
 func load_room():
-    if _is_loading: return
-    _is_loading = true
-    add_child(new_room)
-    call_deferred("_unlock")
+	if _is_loading: return
+	_is_loading = true
+	add_child(new_room)
+	call_deferred("_unlock")
 func _unlock(): _is_loading = false
 ```
 
@@ -213,8 +213,8 @@ func _unlock(): _is_loading = false
 ```gdscript
 ## 玩家或敵人必須加入對應群組
 func _ready() -> void:
-    add_to_group("Players")   # 或 "Enemies"
-    print("[NodeName] 初始化完成 — peer:", multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else "offline")
+	add_to_group("Players")   # 或 "Enemies"
+	print("[NodeName] 初始化完成 — peer:", multiplayer.get_unique_id() if multiplayer.has_multiplayer_peer() else "offline")
 ```
 
 ### 必要屬性（讓 DebugOverlay 顯示）
@@ -278,7 +278,7 @@ push_warning("[MultiplayerCamera] 沒有找到玩家，等待中...")
 □ 2. IDE 問題面板無 error（warning 已處理或已知）
 □ 3. 所有新節點已加入正確 group
 □ 4. DebugBridge 可以正確讀取新節點的屬性
-       方法：啟動遊戲 → F5 → 確認 debug_state.json 包含新節點
+	   方法：啟動遊戲 → F5 → 確認 debug_state.json 包含新節點
 □ 5. 如有 Autoload 修改 → 確認 project.godot 中的順序正確
 □ 6. 如有 RPC 函式 → 確認 @rpc 屬性標記正確
 □ 7. Git pre-commit hook 通過
@@ -293,12 +293,12 @@ push_warning("[MultiplayerCamera] 沒有找到玩家，等待中...")
 memory.add_observations(
   entityName: "dev_reflection_[日期]_[功能名稱]",
   observations: [
-    "實作方式：[說明]",
-    "與架構設計的差異：[說明（若有）]",
-    "遇到的問題：[說明]",
-    "解決方式：[說明]",
-    "已知風險或技術債：[說明]",
-    "給 Reviewer 的注意事項：[說明]",
+	"實作方式：[說明]",
+	"與架構設計的差異：[說明（若有）]",
+	"遇到的問題：[說明]",
+	"解決方式：[說明]",
+	"已知風險或技術債：[說明]",
+	"給 Reviewer 的注意事項：[說明]",
     "給 QA 的測試建議：[說明]"
   ]
 )
@@ -384,14 +384,14 @@ github.create_pull_request(
 □ 6. 本次開發反省已寫入 Memory
 □ 7. GitHub PR 已建立
 □ 8. 【新增必要】更新 docs/PROJECT_STATUS.md：
-      - 在「快速總覽」更新相關 Phase 狀態（由 PARTIAL → DONE 或記錄新完成項目）
-      - 在「已完成」區塊加入實作說明和關鍵檔案
-      - 更新「尚未開始（TODO）」（若有尚未實作的子項）
-      - 在「更新日誌」加入一行記錄
+	  - 在「快速總覽」更新相關 Phase 狀態（由 PARTIAL → DONE 或記錄新完成項目）
+	  - 在「已完成」區塊加入實作說明和關鍵檔案
+	  - 更新「尚未開始（TODO）」（若有尚未實作的子項）
+	  - 在「更新日誌」加入一行記錄
 □ 9. 【新增必要】確認 GAME_DESIGN.md 反映本次實作：
-      - 打開 docs/GAME_DESIGN.md，找到對應功能章節
-      - 若仍標記為 [DRAFT] 但功能已實作 → 通知 Designer 更新
-      - 若 GDD 與實作有差異 → 必須記錄在 ERROR_LOG.md Warning 區段
+	  - 打開 docs/GAME_DESIGN.md，找到對應功能章節
+	  - 若仍標記為 [DRAFT] 但功能已實作 → 通知 Designer 更新
+	  - 若 GDD 與實作有差異 → 必須記錄在 ERROR_LOG.md Warning 區段
 
 通過才能執行：
 git push origin feature/[任務名稱]
@@ -423,21 +423,21 @@ git push origin feature/[任務名稱]
 
 ```
 □ DEV-DOC1. 打開 docs/GAME_DESIGN.md，確認本次實作的功能有對應章節
-              - 若章節仍標記 [DRAFT] 但功能已實作 → 在 commit message 加 [GDD TODO: 章節名稱]
-              - 若功能完全不在 GDD → 立即通知 Designer 角色更新
+			  - 若章節仍標記 [DRAFT] 但功能已實作 → 在 commit message 加 [GDD TODO: 章節名稱]
+			  - 若功能完全不在 GDD → 立即通知 Designer 角色更新
 
 □ DEV-DOC2. 任何輸入映射（Input Map）的改動 → 在 GAME_DESIGN.md 的操控章節加 [GDD TODO]
-              - 範例：本次移除 W 從 jump，改為 Space 唯一 → 通知 Designer 更新操控表
+			  - 範例：本次移除 W 從 jump，改為 Space 唯一 → 通知 Designer 更新操控表
 
 □ DEV-DOC3. 更新 docs/PROJECT_STATUS.md 的「快速總覽」Phase 狀態（PARTIAL → DONE 等）
 
 □ DEV-DOC4. 若發現新 Bug 或設計衝突 → 立即在 docs/ERROR_LOG.md 新增 Warning 記錄
 
 □ DEV-DOC5. 以下改動屬於「設計決策」，必須標記 [GDD TODO] 並通知 Designer：
-              - 攻擊機制改動（方向、傷害、冷卻）
-              - 移動機制改動（速度、按鍵綁定、物理）
-              - UI 改動（佈局、大小、顏色）
-              - 任何影響遊戲體驗的行為改動
+			  - 攻擊機制改動（方向、傷害、冷卻）
+			  - 移動機制改動（速度、按鍵綁定、物理）
+			  - UI 改動（佈局、大小、顏色）
+			  - 任何影響遊戲體驗的行為改動
 ```
 
 ### DEV 已記錄技術規則（不得違反）

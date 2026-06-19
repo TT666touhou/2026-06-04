@@ -32,45 +32,45 @@
 【第-1步：讀取全專案狀態 — 絕對第一步，不可跳過】
 
 □ -1. 讀取 docs/PROJECT_STATUS.md（比任何工作都先做）：
-       Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
-       - 確認「快速總覽」中該 Phase 的狀態，渺認需測試項目
-       - 閱讀「已完成」區塊，明確 Developer 宣稱完成了什麼
-       - 確認「尚未開始（TODO）」區塊，種入類似求
-       - 確認「📁 關鍵檔案索引」，確認將測試正確的場景和腳本
-       ⚠️ 若不讀此文件就開始測試 → 視為嚴重違規，測試結果無效
+	   Get-Content "D:\2026-06-04\docs\PROJECT_STATUS.md"
+	   - 確認「快速總覽」中該 Phase 的狀態，渺認需測試項目
+	   - 閱讀「已完成」區塊，明確 Developer 宣稱完成了什麼
+	   - 確認「尚未開始（TODO）」區塊，種入類似求
+	   - 確認「📁 關鍵檔案索引」，確認將測試正確的場景和腳本
+	   ⚠️ 若不讀此文件就開始測試 → 視為嚴重違規，測試結果無效
 
 【第零步：查詢錯誤知識庫 — 先學已知問題，再測試】
 
 □ 0. 查詢 docs/ERROR_LOG.md（測試前必做）：
-      Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
-      - 確認所有 🔴 Critical 錯誤已無回歸（重新出現）
-      - 查看 🟢 Pattern 區塊，確認已知最佳做法被遵循
-      ⚠️ 若發現 Critical 錯誤回歸 → 立即退回 Developer，更新 ERROR_LOG.md
+	  Get-Content "D:\2026-06-04\docs\ERROR_LOG.md"
+	  - 確認所有 🔴 Critical 錯誤已無回歸（重新出現）
+	  - 查看 🟢 Pattern 區塊，確認已知最佳做法被遵循
+	  ⚠️ 若發現 Critical 錯誤回歸 → 立即退回 Developer，更新 ERROR_LOG.md
 
 【第一步：全面前置驗證 — 任何測試前必做】
 
 □ 1. 靜態語法驗證（第一優先）：
-      $godot = "C:\Users\88698\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
-      Start-Process $godot -ArgumentList @("--headless","--path","D:\2026-06-04","--check-only") `
-        -Wait -NoNewWindow -RedirectStandardError "qa_check.log"
-      Get-Content "qa_check.log"
-      → 必須 0 error，有 error 立即退回 Developer
+	  $godot = "C:\Users\88698\Downloads\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
+	  Start-Process $godot -ArgumentList @("--headless","--path","D:\2026-06-04","--check-only") `
+		-Wait -NoNewWindow -RedirectStandardError "qa_check.log"
+	  Get-Content "qa_check.log"
+	  → 必須 0 error，有 error 立即退回 Developer
 
 □ 2. 依賴性掃描：
-      - 確認 project.godot 中 Autoload 順序正確
-        （NetworkManager → DebugOverlay → DebugBridge）
-      - 確認 addons/gut/plugin.cfg 存在且在 editor_plugins 中啟用
-      - 確認所有 preload 路徑存在（掃描 res:// 引用）
+	  - 確認 project.godot 中 Autoload 順序正確
+		（NetworkManager → DebugOverlay → DebugBridge）
+	  - 確認 addons/gut/plugin.cfg 存在且在 editor_plugins 中啟用
+	  - 確認所有 preload 路徑存在（掃描 res:// 引用）
 
 □ 3. 查詢 Memory MCP 取得測試基準：
-      memory.search_nodes("arch_decision_[功能名稱]")
-      → 取得完成定義（DoD）清單 → 這就是你的測試案例清單
-      memory.search_nodes("review_reflection_[日期]_[功能名稱]")
-      → 取得 Reviewer 的測試重點
+	  memory.search_nodes("arch_decision_[功能名稱]")
+	  → 取得完成定義（DoD）清單 → 這就是你的測試案例清單
+	  memory.search_nodes("review_reflection_[日期]_[功能名稱]")
+	  → 取得 Reviewer 的測試重點
 
 □ 4. 確認 GUT 測試環境：
-      dir D:\2026-06-04\addons\gut\test.gd
-      → 必須存在
+	  dir D:\2026-06-04\addons\gut\test.gd
+	  → 必須存在
 
 【測試完成後 → 更新 docs/ERROR_LOG.md】
 □ 若發現任何新錯誤或回歸問題，立即加入 ERROR_LOG.md 對應區塊
@@ -116,13 +116,13 @@ Start-Sleep -Seconds 5
    執行以下 PowerShell 確認所有 .tscn 引用的 Script 都存在：
    ```powershell
    Get-ChildItem "D:\2026-06-04\scenes" -Recurse -Filter "*.tscn" |
-     ForEach-Object {
-       $content = Get-Content $_.FullName -Raw
-       $scripts = [regex]::Matches($content, 'path="(res://scripts/[^"]+\.gd)"')
-       foreach ($m in $scripts) {
-         $rel = $m.Groups[1].Value.Replace("res://", "D:\2026-06-04\")
+	 ForEach-Object {
+	   $content = Get-Content $_.FullName -Raw
+	   $scripts = [regex]::Matches($content, 'path="(res://scripts/[^"]+\.gd)"')
+	   foreach ($m in $scripts) {
+		 $rel = $m.Groups[1].Value.Replace("res://", "D:\2026-06-04\")
          if (-not (Test-Path $rel)) {
-           Write-Host "❌ 缺失: $($m.Groups[1].Value) (引用於: $($_.Name))" -ForegroundColor Red
+		   Write-Host "❌ 缺失: $($m.Groups[1].Value) (引用於: $($_.Name))" -ForegroundColor Red
          }
        }
      }
@@ -133,8 +133,8 @@ Start-Sleep -Seconds 5
    1. 操控玩家走到地圖邊緣的 RoomTransition 區域
    2. 進入觸發區域，等待房間切換
    3. 觀察 Godot Console：
-      ✅ 正常：看到 "[GameWorld] 房間已載入：" 訊息
-      ❌ 異常：看到 "Can't change this state while flushing queries"
+	  ✅ 正常：看到 "[GameWorld] 房間已載入：" 訊息
+	  ❌ 異常：看到 "Can't change this state while flushing queries"
               → 立即退回 Developer（ERR-001/007 回歸）
    4. 確認切換後新房間正確載入，玩家位置重設
    5. 確認 Console 中 "[GameWorld] 房間已載入" 只出現一次（防重入有效）
@@ -195,7 +195,7 @@ if (Test-Path $jsonPath) {
     Write-Host "   FPS: $($json.fps)"
     
     if ($json.player_count -eq 0) {
-        Write-Host "⚠️ 警告：JSON 中沒有玩家！group 'Players' 可能未正確設定"
+		Write-Host "⚠️ 警告：JSON 中沒有玩家！group 'Players' 可能未正確設定"
     }
 } else {
     Write-Host "❌ DebugBridge JSON 未找到：$jsonPath"
