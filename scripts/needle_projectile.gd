@@ -35,5 +35,5 @@ func _physics_process(delta: float) -> void:
 		return
 	global_position += direction * step
 	# safety: free projectile if it escapes scene bounds (no wall to catch it)
-	if global_position.x < -64 or global_position.x > 544 or global_position.y < -64 or global_position.y > 334:
+	if global_position.x < -64 or global_position.x > 1024 or global_position.y < -64 or global_position.y > 604:
 		queue_free()

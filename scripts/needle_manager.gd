@@ -1,14 +1,12 @@
-# ponytail: rung=5 — needle state machine, ~90 lines
+# ponytail: rung=5 — needle state machine, ~110 lines
 class_name NeedleManager
 extends Node
 
-# Local constants mirror cross-script enums to avoid class_name parse issues
-const _NEEDLE_ATTACK := 0  # NeedleProjectile.NeedleType.ATTACK
-const _NEEDLE_WIRE := 1    # NeedleProjectile.NeedleType.WIRE
-const _ANCHOR_ATTACK := 0  # NeedleAnchor.Type.ATTACK
-const _ANCHOR_WIRE := 1    # NeedleAnchor.Type.WIRE
+const _NEEDLE_ATTACK := 0
+const _NEEDLE_WIRE := 1
+const _ANCHOR_ATTACK := 0
+const _ANCHOR_WIRE := 1
 
-# Preload avoids class_name cross-script reference at parse time
 const _WireConstraintScript = preload("res://scripts/wire_constraint.gd")
 
 @export var max_needles: int = 3
@@ -25,6 +23,8 @@ var _wire_layer: Node = null
 
 signal wire_anchor_ready(anchor)
 signal needle_retrieved(anchor)
+signal wire_needle_launched(proj: Node)
+signal platform_created(anchor1: Node, anchor2: Node)
 
 func _ready() -> void:
 	var root := get_tree().current_scene
@@ -66,6 +66,8 @@ func _spawn_projectile(from: Vector2, dir: Vector2, n_type: int) -> void:
 	proj.embedded.connect(_on_embedded.bind(n_type))
 	_needle_layer.add_child(proj)
 	_in_flight += 1
+	if n_type == _NEEDLE_WIRE:
+		wire_needle_launched.emit(proj)
 
 func _on_embedded(hit_pos: Vector2, collider: Object, n_type: int) -> void:
 	_in_flight = max(0, _in_flight - 1)
@@ -93,6 +95,7 @@ func _try_create_platform() -> void:
 	_wire_layer.add_child(platform)
 	platform.call("setup", wire_anchors[0], wire_anchors[1])
 	_current_platform = platform
+	platform_created.emit(wire_anchors[0], wire_anchors[1])
 
 func _remove_anchor(anchor: Node) -> void:
 	_anchors.erase(anchor)

@@ -7,8 +7,9 @@ extends CharacterBody2D
 @export var reel_speed: float = 100.0
 @export var wire_slack: float = 10.0
 
-var _wire: RefCounted = null   # WireConstraint at runtime
-var _wire_anchor: Node = null  # NeedleAnchor at runtime
+var _wire: RefCounted = null
+var _wire_anchor: Node = null
+var _wire_projectile: Node = null  # in-flight wire needle; cleared on embed
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -17,6 +18,9 @@ var _wire_anchor: Node = null  # NeedleAnchor at runtime
 func _ready() -> void:
 	needle_manager.wire_anchor_ready.connect(_on_wire_anchor_ready)
 	needle_manager.needle_retrieved.connect(_on_needle_retrieved)
+	needle_manager.wire_needle_launched.connect(_on_wire_needle_launched)
+	needle_manager.platform_created.connect(_on_platform_created)
+	wire_renderer.top_level = true  # render in world space, immune to Player scale flip
 	wire_renderer.visible = false
 
 func _physics_process(delta: float) -> void:
@@ -69,22 +73,39 @@ func _cut_wire() -> void:
 	_wire_anchor = null
 	wire_renderer.visible = false
 
+func _on_wire_needle_launched(proj: Node) -> void:
+	_wire_projectile = proj
+
 func _on_wire_anchor_ready(anchor: Node) -> void:
+	_wire_projectile = null
 	_wire = anchor.wire as RefCounted
 	_wire_anchor = anchor
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
-	wire_renderer.visible = true
 
 func _on_needle_retrieved(anchor: Node) -> void:
 	if anchor == _wire_anchor:
 		_cut_wire()
 
+func _on_platform_created(_a1: Node, _a2: Node) -> void:
+	_cut_wire()
+
 func _update_wire_renderer() -> void:
-	if _wire == null or not wire_renderer.visible:
+	# In-flight: show growing line from player to flying needle
+	if _wire_projectile != null and is_instance_valid(_wire_projectile):
+		wire_renderer.visible = true
+		wire_renderer.clear_points()
+		wire_renderer.add_point(global_position)
+		wire_renderer.add_point(_wire_projectile.global_position)
 		return
-	wire_renderer.clear_points()
-	wire_renderer.add_point(Vector2.ZERO)
-	wire_renderer.add_point(to_local(_wire.anchor_pos))
+	_wire_projectile = null
+	# Embedded: show fixed line from player to anchor
+	if _wire != null:
+		wire_renderer.visible = true
+		wire_renderer.clear_points()
+		wire_renderer.add_point(global_position)
+		wire_renderer.add_point(_wire.anchor_pos)
+		return
+	wire_renderer.visible = false
 
 func _update_aim_pivot() -> void:
 	var mouse_local := get_global_mouse_position() - global_position
