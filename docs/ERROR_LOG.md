@@ -760,3 +760,39 @@ region = Rect2(0, 0, 132, 126)
   - `Player.tscn`: `collision_layer=2, collision_mask=1`（player 在 layer 2，仍碰牆壁 layer 1）
   - `NeedleProjectile.tscn` RayCast2D: 明示 `collision_mask=1`（只偵測 layer 1 = 牆/平台）
 - **防範規則**: 投射物/感測器建立時必須明確設 `collision_mask`；Layer 架構建議：Layer 1=World, Layer 2=Player, Layer 3=Enemy, Layer 4=Projectile。
+
+---
+
+## GAP-020 繩子系統三重 Bug + 房間太小（2026-06-20）
+
+### GAP-020a WireRenderer 跟著滑鼠亂動
+
+- **Severity**: High（視覺完全錯誤，繩子感覺「飄」到滑鼠位置）
+- **現象**: 射出 Wire 針並嵌入後，黃色細線從 Player 出發，但終點似乎隨滑鼠移動。
+- **根本原因**: `WireRenderer`（Line2D）是 Player 的子節點，繼承 Player 的 `scale.x = ±1`（左右翻轉鏡像）。`add_point(to_local(_wire.anchor_pos))` 數學上正確，但 Line2D 本身也被 scale 影響，導致視覺位置在 scale 切換時錯位。
+- **修復**: `wire_renderer.top_level = true`（Line2D 在世界座標渲染，脫離 Player transform）；點改為全局座標 `add_point(global_position)` / `add_point(_wire.anchor_pos)`。
+- **防範規則**: 任何需要「在世界空間固定顯示」的子節點 Line2D/Node2D，若父節點有 scale flip，必須設 `top_level = true`。
+
+### GAP-020b 飛行中沒有繩子延伸視效
+
+- **Severity**: Medium（使用者不知道「有沒有射出」，等針嵌入才看到線）
+- **現象**: RMB+LMB 射出 Wire 針，飛行期間螢幕上只有一個 12×2 黃色小點飛過，沒有從 Player 拉出的線條。
+- **根本原因**: `wire_anchor_ready` 信號在針**嵌入後**才發射，WireRenderer 才出現。飛行期間完全無視覺。
+- **修復**: NeedleManager 新增 `wire_needle_launched(proj: Node)` 信號，Player 在 `_update_wire_renderer()` 每幀追蹤 `_wire_projectile.global_position`，畫出延伸線。
+- **防範規則**: 任何飛行投射物若有「從發射點拉線」需求，必須在 launch 時（不是 embed 時）開始渲染視覺線。
+
+### GAP-020c 射出第二根 Wire 針後第一條線仍存在
+
+- **Severity**: Medium（視覺混亂，player 仍被第二個 anchor 約束而非脫繩）
+- **現象**: 兩根 Wire 針都嵌入後，WirePlatform 出現於兩 anchor 之間，但 Player 的細黃線還在（指向第二個 anchor），Player 仍受 WireConstraint 約束。
+- **根本原因**: `_try_create_platform()` 成功建立平台後，沒有通知 Player 切斷繩子約束。第二根針嵌入時 `wire_anchor_ready` 又發射一次，Player._wire 更新為第二個 anchor 的 WireConstraint，Player 繼續被約束在第二個 anchor 上。
+- **修復**: NeedleManager 新增 `platform_created(anchor1, anchor2)` 信號，`_try_create_platform()` 成功後發射；Player 接收後呼叫 `_cut_wire()`（清空 `_wire`、隱藏 WireRenderer）。
+- **防範規則**: 任何「狀態轉移（單針→雙針平台）」必須主動通知相關節點，不能依賴副作用。
+
+### GAP-020d 場景對 Player 太小
+
+- **Severity**: Medium（遊玩空間不夠，無法測試鐘擺和繩子甩動）
+- **現象**: MVP_Test.tscn 房間 480×270 canvas px，player 32×64，內部高度僅 3.7 倍 player 身高，無空間測試 Wire 甩動物理。
+- **根本原因**: 牆壁貼齊 viewport 邊緣，場景 = viewport，無滾動空間。
+- **修復**: 場景擴大至 960×540 canvas px（5 個平台）；Camera2D limit 同步更新；Player 起始位置移至 (480, 490)；NeedleProjectile 安全邊界更新至 1024/604。
+- **防範規則**: MVP 測試場景大小應至少 4× viewport area，確保有足夠空間測試所有移動機制。
