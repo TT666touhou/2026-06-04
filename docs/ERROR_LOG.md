@@ -30,6 +30,7 @@
 | 2026-06-12 | Godot `--check-only` 無法偵測 .tscn 錯誤 | `gw_err.log` 顯示腳本錯誤但 check 指令顯示通過 | `--check-only` 只驗證 GDScript，不完整載入場景 | 需要實際執行（不帶 `--check-only`）或用 `--headless --path <project>` 完整啟動才能發現 .tscn 問題 |
 | 2026-06-12 | `AnimatableBody2D` 沒有碰撞 | 天花板/物理邊界沒有實際碰撞效果 | `AnimatableBody2D` 需要通過程式碼或動畫移動才會觸發碰撞，靜止時不阻擋 | 靜止的邊界牆/天花板改用 `StaticBody2D`；只有需要動態移動的平台才用 `AnimatableBody2D` |
 | 2026-06-13 | [ERR-HUD-003] GDScript Variant 推斷錯誤（Array.back()） | `The variable type is being inferred from a Variant value, so it will be typed as Variant. (Warning treated as error.)` line 83 `player_hud.gd` | `Array.back()` 在 GDScript 4 回傳 `Variant`（非型別化），用 `:=` 推斷時觸發 Variant warning→error | 用明確型別標注：`var last: Node = children.back()` 而非 `var last := children.back()`。原因：Developer 在上一輪修復 HUD 時未做靜態型別全面檢查，Sensor 沒有跑 `--check-only`（v3 缺少此步），未被攔截 |
+| 2026-06-19 | [GAP-016] Shader cache 建立失敗 | `_initialize_cache: Unable to create shader cache directory [ShaderName]RD/... at user://shader_cache.` (10+ 條，D3D12 renderer 初始化時) | `config/name="[TBD]"` 含方括號 `[]`；Godot 的 D3D12 shader cache 在嘗試遞迴建立 `user://shader_cache/` 時失敗（Godot 的 DirAccess 對含有 `[]` 的路徑可能有 glob 解析衝突）。**根本原因**：project name 用佔位符 `[TBD]` 而非有效名稱。 | 1. 將 `config/name` 改為不含特殊字元的名稱（`needle_game`）2. 手動建立 `%APPDATA%\Godot\app_userdata\[ProjectName]\shader_cache` 目錄。**預防**：project name 永遠使用 `snake_case` 或純英數字，絕不使用 `[佔位符]` 格式 |
 
 ---
 

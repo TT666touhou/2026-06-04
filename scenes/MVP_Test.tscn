@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://c4mvp05test"]
+[gd_scene format=3 uid="uid://c4mvp05test"]
 
 [ext_resource type="PackedScene" uid="uid://c4mvp04player" path="res://scenes/Player.tscn" id="1_player"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="2_dbg"]
@@ -56,6 +56,12 @@ color = Color(0.35, 0.35, 0.35, 1)
 
 [node name="Player" parent="." instance=ExtResource("1_player")]
 position = Vector2(240, 220)
+
+[node name="Camera2D" parent="Player"]
+limit_left = 0
+limit_top = 0
+limit_right = 480
+limit_bottom = 270
 
 [node name="WireLayer" type="Node2D" parent="."]
 

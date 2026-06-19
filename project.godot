@@ -10,10 +10,10 @@ config_version=5
 
 [application]
 
-config/name="[TBD]"
+config/name="needle_game"
+run/main_scene="res://scenes/MVP_Test.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
-run/main_scene="res://scenes/MVP_Test.tscn"
 
 [display]
 

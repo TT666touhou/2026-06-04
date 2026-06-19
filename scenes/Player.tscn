@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://c4mvp04player"]
+[gd_scene format=3 uid="uid://c4mvp04player"]
 
 [ext_resource type="Script" path="res://scripts/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://scripts/needle_manager.gd" id="2_nm"]
@@ -36,3 +36,5 @@ script = ExtResource("2_nm")
 needle_proj_scene = ExtResource("3_npscene")
 needle_anchor_scene = ExtResource("4_nascene")
 wire_platform_scene = ExtResource("5_wpscene")
+
+[node name="Camera2D" type="Camera2D" parent="."]
