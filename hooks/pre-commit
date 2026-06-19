@@ -226,9 +226,10 @@ echo "   ✅ 機密掃描通過"
 # [通用規則 3] TODO/FIXME 新增行掃描（警告，不阻斷）
 # ——————————————————————————————————————
 echo "[通用/3] 掃描新增行中的 TODO/FIXME..."
-STAGED_GD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' || true)
+# 排除 addons/ 下的第三方程式碼（GUT 等 addon 的內部 TODO 不屬於本專案）
+STAGED_GD=$(git diff --cached --name-only --diff-filter=ACM | grep '\.gd$' | grep -v '^addons/' || true)
 if [ -n "$STAGED_GD" ]; then
-    TODO_FOUND=$(git diff --cached -- '*.gd' | grep '^+' | grep -v '^+++' | grep -iE '(TODO|FIXME|HACK|XXX)' || true)
+    TODO_FOUND=$(git diff --cached -- $STAGED_GD | grep '^+' | grep -v '^+++' | grep -iE '(TODO|FIXME|HACK|XXX)' || true)
     if [ -n "$TODO_FOUND" ]; then
         echo "⚠️  [警告] 新增代碼中包含 TODO/FIXME（不阻斷，但請留意）："
         echo "$TODO_FOUND" | head -10
@@ -279,13 +280,14 @@ if [ "$ROLE" = "architect" ]; then
     if [ -f ".git/MERGE_HEAD" ]; then
         echo "   ℹ️  合併提交模式：跳過代碼文件檢查（Architect 合併 Developer 分支時允許）"
     else
-        GD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
+        # addons/ 是第三方工具，Architect 有權安裝；僅禁止 scripts/ 和 scenes/ 下的遊戲邏輯
+        GD_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' | grep -v '^addons/' || true)
         if [ -n "$GD_FILES" ]; then
-            echo "❌ [Architect 規則違反] Architect 不應提交代碼文件！"
+            echo "❌ [Architect 規則違反] Architect 不應提交遊戲代碼（addons/ 除外）！"
             echo "$GD_FILES"
             exit 1
         fi
-        echo "   ✅ 無代碼文件，符合 Architect 規則"
+        echo "   ✅ 無遊戲代碼（addons/ 豁免），符合 Architect 規則"
     fi
 
     echo "[Architect/2] 驗證 implementation_plan.md 已修改..."
@@ -397,15 +399,19 @@ fi
 
 # ——————————————————————————————————————
 # [角色規則] QA 專屬檢查
+# QA 可提交 addons/ 和 tests/ 下的程式碼（測試基礎設施）
+# QA 不可自行撰寫遊戲邏輯 .gd（scripts/ 之外規則）
 # ——————————————————————————————————————
 if [ "$ROLE" = "qa" ]; then
-    echo "[QA/1] 驗證不包含代碼文件..."
-    CODE_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(gd|tscn|tres)$' || true)
-    if [ -n "$CODE_FILES" ]; then
-        echo "❌ [QA 規則違反] QA 不應提交代碼文件！"
+    echo "[QA/1] 驗證不包含遊戲邏輯代碼..."
+    # QA 禁止提交 scripts/ 下的 .gd（遊戲邏輯）；addons/ 和 tests/ 允許
+    GAME_CODE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^scripts/.*\.(gd|tscn|tres)$' || true)
+    if [ -n "$GAME_CODE" ]; then
+        echo "❌ [QA 規則違反] QA 不應自行撰寫遊戲邏輯代碼（scripts/）："
+        echo "$GAME_CODE"
         exit 1
     fi
-    echo "   ✅ 無代碼文件，符合 QA 規則"
+    echo "   ✅ 無遊戲邏輯代碼（addons/ / tests/ 允許提交）"
 
     echo "[QA/2] 驗證包含 QA 報告文件..."
     QA_REPORT=$(git diff --cached --name-only --diff-filter=ACM | grep 'docs/qa-report' || true)
