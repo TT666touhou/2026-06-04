@@ -1,7 +1,7 @@
 class_name WirePlatform
 extends StaticBody2D
 
-@export var platform_height: float = 24.0  # min 24px to prevent tunneling at max player speed
+@export var platform_height: float = 4.0  # thin: body-rotation fix makes tunneling non-issue
 
 var _anchor_a: Node2D = null
 var _anchor_b: Node2D = null
@@ -32,9 +32,7 @@ func _update_body() -> void:
 	var dist := a.distance_to(b)
 	if dist < 1.0:
 		return
-	# Keep body un-rotated so one_way_collision direction stays world-up.
-	# Rotate only the CollisionShape2D to align with the wire angle.
 	global_position = (a + b) * 0.5
-	global_rotation = 0.0
+	global_rotation = a.angle_to_point(b)  # body rotates with wire → local +Y ⊥ wire = correct one-way normal
 	(_shape.shape as RectangleShape2D).size = Vector2(dist, platform_height)
-	_shape.rotation = a.angle_to_point(b)
+	_shape.rotation = 0.0  # shape stays local; body rotation handles orientation
