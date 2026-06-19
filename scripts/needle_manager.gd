@@ -89,13 +89,18 @@ func _try_create_platform() -> void:
 	var wire_anchors := get_wire_anchors()
 	if wire_anchors.size() < 2 or wire_platform_scene == null or _wire_layer == null:
 		return
+	# Use the two MOST RECENT wire anchors (rolling window)
+	# Shot 3rd wire needle → platform shifts to anchor2↔anchor3, anchor1 freed for retrieval
+	var n := wire_anchors.size()
+	var a1: Node = wire_anchors[n - 2]
+	var a2: Node = wire_anchors[n - 1]
 	if _current_platform != null:
 		_current_platform.call("dissolve")
 	var platform := wire_platform_scene.instantiate()
 	_wire_layer.add_child(platform)
-	platform.call("setup", wire_anchors[0], wire_anchors[1])
+	platform.call("setup", a1, a2)
 	_current_platform = platform
-	platform_created.emit(wire_anchors[0], wire_anchors[1])
+	platform_created.emit(a1, a2)
 
 func _remove_anchor(anchor: Node) -> void:
 	_anchors.erase(anchor)

@@ -64,11 +64,11 @@ func _apply_wire(delta: float) -> void:
 		return
 	if Input.is_action_pressed("reel_wire"):
 		_wire.reel_in(reel_speed, delta)
-		# E key actively pulls player toward anchor
+		# E key: directly retract position (rope winch, not spring)
 		var to_anchor: Vector2 = _wire.anchor_pos - global_position
 		var dist: float = to_anchor.length()
-		if dist > 0.0:
-			velocity += to_anchor / dist * reel_speed
+		if dist > _wire.max_length and dist > 0.0:
+			position += (to_anchor / dist) * (dist - _wire.max_length)
 	velocity = _wire.apply(global_position, velocity)
 
 func _shoot_needle() -> void:
@@ -91,13 +91,12 @@ func _on_wire_needle_launched(proj: Node) -> void:
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_projectile = null
-	# Don't disrupt existing platform — platform_created will update if needed
-	if _wire_anchor2 != null and is_instance_valid(_wire_anchor2):
-		return
-	_wire = anchor.wire as RefCounted
-	_wire_anchor = anchor
+	# Always allow new wire anchor to become pendulum target.
+	# If was in platform mode: clear it — platform_created will re-establish if NeedleManager decides so.
 	_wire_anchor2 = null
 	_platform_slack = 0.0
+	_wire = anchor.wire as RefCounted
+	_wire_anchor = anchor
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
 
 func _on_needle_retrieved(anchor: Node) -> void:
@@ -122,7 +121,19 @@ func _update_wire_renderer() -> void:
 		_draw_catenary(_wire_anchor.global_position, _wire_anchor2.global_position, _platform_slack)
 		return
 
-	# Priority 2: Pendulum mode — yellow, brightens/thickens under tension
+	# Priority 2: Anchor exists + needle in flight → show anchor → flying needle
+	# (2nd needle launch: user wants to see where the wire will land, not player↔anchor1)
+	if _wire_anchor != null and is_instance_valid(_wire_anchor) \
+			and _wire_projectile != null and is_instance_valid(_wire_projectile):
+		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 0.75)
+		wire_renderer.width = 1.5
+		wire_renderer.visible = true
+		wire_renderer.clear_points()
+		wire_renderer.add_point(_wire_anchor.global_position)
+		wire_renderer.add_point(_wire_projectile.global_position)
+		return
+
+	# Priority 3: Pendulum mode — yellow, brightens/thickens under tension
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var dist := global_position.distance_to(_wire.anchor_pos)
 		var slack := maxf(0.0, _wire.max_length - dist)
@@ -134,7 +145,7 @@ func _update_wire_renderer() -> void:
 		_draw_catenary(global_position, _wire.anchor_pos, slack)
 		return
 
-	# Priority 3: In-flight line — dim, thin; only when no wire connected
+	# Priority 4: In-flight only — dim, thin; no existing wire at all
 	if _wire_projectile != null and is_instance_valid(_wire_projectile):
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 0.6)
 		wire_renderer.width = 1.0
