@@ -11,18 +11,7 @@
 
 ## 進行中 SOP
 
-### §LEARN — GAP-014, GAP-015（開始：2026-06-19）
-
-**觸發原因**：GAP-014（GUT 測試在缺少 Addon 時 Parse Error）、GAP-015（跨腳本 class_name 在 --check-only 導致 Parse Error，上段對話遺留）
-
-| 步驟 | 名稱 | 狀態 | 執行角色 | 完成時間 |
-|------|------|------|----------|---------|
-| Step 1 | CAPTURE — 記錄至 ERROR_LOG.md (GAP-014/015) | DONE | Architect | 2026-06-19 |
-| Step 2 | CROSS-REF — GAP-014/015 相互關聯（test 文件同時受兩個 GAP 影響） | DONE | Architect | 2026-06-19 |
-| Step 3 | PROPAGATE — 建立 tests/.gdignore，阻止 Godot 解析測試目錄 | DONE | Developer | 2026-06-19 |
-| Step 4 | ENFORCE — sensor v12 [22/22]：tests/*.gd extends GutTest 但無 addon → WARN/FAIL | DONE | Developer | 2026-06-19 |
-| Step 5 | VERIFY — 執行 sensor-scan.ps1 確認 PASS | DONE | QA | 2026-06-19 |
-| Step 6 | COMMIT — [ARCH] chore: GAP-014/015 修復 + sensor v12 | PENDING | Architect | — |
+*(目前無進行中的 SOP)*
 
 ---
 
@@ -41,6 +30,19 @@
 ---
 
 ## 已完成 SOP 歷史
+
+### §LEARN — GAP-014, GAP-015（2026-06-19 完成）
+
+**觸發原因**：GAP-014（GUT 測試在缺少 Addon 時 Parse Error）、GAP-015（跨腳本 class_name 在 --check-only 導致 Parse Error，上段對話遺留）
+
+| 步驟 | 名稱 | 狀態 | 執行角色 | 完成時間 |
+|------|------|------|----------|---------|
+| Step 1 | CAPTURE — 記錄至 ERROR_LOG.md (GAP-014/015) | DONE | Architect | 2026-06-19 |
+| Step 2 | CROSS-REF — GAP-014/015 相互關聯 | DONE | Architect | 2026-06-19 |
+| Step 3 | PROPAGATE — 建立 tests/.gdignore | DONE | Developer | 2026-06-19 |
+| Step 4 | ENFORCE — sensor v12 [22/22] | DONE | Developer | 2026-06-19 |
+| Step 5 | VERIFY — sensor 22/22 PASS | DONE | QA | 2026-06-19 |
+| Step 6 | COMMIT — commit 17f0787 | DONE | Architect | 2026-06-19 |
 
 ### §IMPL — MVP Wire Physics System（2026-06-19 完成）
 

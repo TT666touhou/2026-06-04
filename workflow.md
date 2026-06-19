@@ -175,7 +175,7 @@ git config core.hooksPath hooks
 - **Architect**：禁止提交任何 `.gd/.tscn/.tres`
 - **Developer**：`.gd` 提交前必須通過 Godot `--check-only` 語法驗證；禁止在 main 分支提交 `.gd`
 - **QA**：禁止提交任何自行撰寫的新 `.gd/.tscn/.tres`
-- **【強化 v5】Sensor 自動閘門**：pre-commit hook v5+ 在 Developer commit 時**自動執行** `sensor-scan.ps1`（v11/21）；FAIL 項目阻斷 commit。Developer 也可手動執行 `.\scripts\sensor-scan.ps1` 進行提前確認。
+- **【強化 v5】Sensor 自動閘門**：pre-commit hook v5+ 在 Developer commit 時**自動執行** `sensor-scan.ps1`（v12/22）；FAIL 項目阻斷 commit。Developer 也可手動執行 `.\scripts\sensor-scan.ps1` 進行提前確認。
 
 ---
 
@@ -381,7 +381,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | 21 | **函式參數禁基底屬性同名（ERR-033）**：禁用 `visible/position/rotation/scale/name/owner` 作參數名 | `[SENSOR]` Check 13 |
 | 22 | **add_child 前置順序（ERR-034）**：`make_current()`/`set_as_top_level()` 必須在 `add_child()` 之後呼叫 | `[SENSOR]` Check 14/21 |
 
-> **2026-06-19 升級**：以下規則由 I-B/I-C 升級至機器層（sensor v11 / pre-commit v5 / commit-msg v2）
+> **2026-06-19 升級**：以下規則由 I-B/I-C 升級至機器層（sensor v12 / pre-commit v5 / commit-msg v2）
 
 | # | 規則 | 執行機制 |
 |---|------|---------|
@@ -450,7 +450,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 │   └── sensor.md                   → 代碼感知守衛（含觸發器）
 └── scripts/
     ├── set-role.ps1                → v2 新增：必讀文件清單提示（§READ SOP）
-    ├── sensor-scan.ps1             → Sensor 自動掃描腳本（v11/21 checks）
+    ├── sensor-scan.ps1             → Sensor 自動掃描腳本（v12/22 checks）
     ├── dev-submit.ps1              → Developer 投遞流程
     └── utils/
         └── (工具型腳本，不進入測試)
