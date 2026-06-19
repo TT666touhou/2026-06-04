@@ -113,24 +113,31 @@ func _on_platform_created(a1: Node, a2: Node) -> void:
 	_wire_anchor2 = a2
 
 func _update_wire_renderer() -> void:
-	# Priority 1: Platform mode — stays visible even while other needles are in flight
+	# Priority 1: Platform mode — bright gold = walkable signal; stays visible during flight
 	if _wire_anchor2 != null and is_instance_valid(_wire_anchor2) and is_instance_valid(_wire_anchor):
 		wire_renderer.visible = true
+		wire_renderer.default_color = Color(1.0, 0.92, 0.5, 1.0)  # bright gold = platform active
+		wire_renderer.width = 3.0
 		wire_renderer.clear_points()
 		_draw_catenary(_wire_anchor.global_position, _wire_anchor2.global_position, _platform_slack)
 		return
 
-	# Priority 2: Pendulum mode — stays visible even while other needles are in flight
+	# Priority 2: Pendulum mode — yellow, brightens/thickens under tension
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var dist := global_position.distance_to(_wire.anchor_pos)
 		var slack := maxf(0.0, _wire.max_length - dist)
+		var tension := clampf(1.0 - slack / _wire.max_length, 0.0, 1.0)
+		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 1.0).lerp(Color(1.0, 1.0, 0.8, 1.0), tension)
+		wire_renderer.width = 1.5 + tension * 1.5
 		wire_renderer.visible = true
 		wire_renderer.clear_points()
 		_draw_catenary(global_position, _wire.anchor_pos, slack)
 		return
 
-	# Priority 3: In-flight line — only when no wire connected yet
+	# Priority 3: In-flight line — dim, thin; only when no wire connected
 	if _wire_projectile != null and is_instance_valid(_wire_projectile):
+		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 0.6)
+		wire_renderer.width = 1.0
 		wire_renderer.visible = true
 		wire_renderer.clear_points()
 		wire_renderer.add_point(global_position)
@@ -142,11 +149,17 @@ func _update_wire_renderer() -> void:
 
 func _draw_catenary(from: Vector2, to: Vector2, slack: float) -> void:
 	var sag := minf(slack * 0.35, 60.0)
-	# Sag direction: perpendicular to wire direction, biased downward in screen space
-	var wire_vec := to - from
-	var perp := Vector2(-wire_vec.y, wire_vec.x).normalized()
-	if perp.y < 0.0:
-		perp = -perp
+	# Physically correct sag: component of gravity perpendicular to the wire
+	# → zero sag for vertical wire, full downward sag for horizontal wire
+	var wire_vec := (to - from).normalized()
+	var gravity := Vector2(0.0, 1.0)
+	var perp := gravity - gravity.dot(wire_vec) * wire_vec
+	var perp_len := perp.length()
+	if perp_len < 0.01 or sag < 0.5:
+		wire_renderer.add_point(from)
+		wire_renderer.add_point(to)
+		return
+	perp = perp / perp_len
 	for i in range(WIRE_SEGMENTS + 1):
 		var t := float(i) / float(WIRE_SEGMENTS)
 		var pt := from.lerp(to, t)

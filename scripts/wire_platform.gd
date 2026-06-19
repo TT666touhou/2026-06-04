@@ -1,9 +1,7 @@
-# ponytail: rung=5 — one-way physics platform between two anchors
-# Wire visual is owned by player.gd (WireRenderer Line2D); this script only manages collision.
 class_name WirePlatform
 extends StaticBody2D
 
-@export var platform_height: float = 4.0
+@export var platform_height: float = 24.0  # min 24px to prevent tunneling at max player speed
 
 var _anchor_a: Node2D = null
 var _anchor_b: Node2D = null
