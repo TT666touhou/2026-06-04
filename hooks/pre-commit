@@ -14,7 +14,7 @@ set -e
 
 echo ""
 echo "============================================================"
-echo "🔒 [Pre-Commit Hook v3] 角色感知驗證閘門..."
+echo "🔒 [Pre-Commit Hook v4] 角色感知驗證閘門..."
 echo "============================================================"
 
 # ——————————————————————————————————————
@@ -71,9 +71,10 @@ fi
 # 若 docs/sop-state.md 有 PENDING 項目，警告但不阻斷
 # ——————————————————————————————————————
 if [ -f "docs/sop-state.md" ]; then
-    SOP_PENDING=$(grep 'PENDING' docs/sop-state.md || true)
+    # 只計算狀態欄位（第三個 pipe-delimited 欄位）為 PENDING 的表格行
+    SOP_PENDING=$(grep -E '^\s*\|[^|]+\|[^|]+\|\s*PENDING\s*\|' docs/sop-state.md || true)
     if [ -n "$SOP_PENDING" ]; then
-        PENDING_COUNT=$(grep -c 'PENDING' docs/sop-state.md || echo "0")
+        PENDING_COUNT=$(grep -cE '^\s*\|[^|]+\|[^|]+\|\s*PENDING\s*\|' docs/sop-state.md || echo "0")
         echo "⚠️  [SOP 警告] docs/sop-state.md 有 $PENDING_COUNT 個 PENDING 步驟未完成！"
         echo "   這是警告，不阻斷 Commit，但請確認是否應先完成 SOP 再提交。"
         echo "   查看詳情：cat docs/sop-state.md"

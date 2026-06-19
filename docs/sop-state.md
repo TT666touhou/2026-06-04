@@ -22,7 +22,7 @@
 | Step 3 | PROPAGATE — 傳播至 hooks/pre-commit, hooks/pre-push, sensor-scan.ps1 | DONE | Developer | 2026-06-19 |
 | Step 4 | ENFORCE — 機器層實作完成（Block 1-5 all done） | DONE | Developer | 2026-06-19 |
 | Step 5 | VERIFY — 執行 sensor-scan.ps1 確認 PASS | DONE | Developer | 2026-06-19 |
-| Step 6 | COMMIT — [ARCH] chore: commit all workflow enforcement changes | PENDING | Architect | — |
+| Step 6 | COMMIT — [ARCH] chore: commit all workflow enforcement changes | DONE | Architect | 2026-06-19 |
 
 ### §MOD — workflow 強化（開始：2026-06-19）
 
@@ -33,8 +33,8 @@
 | Step ① | Sensor scan — 執行 sensor-scan.ps1 掃描現況 | DONE | Sensor | 2026-06-19 |
 | Step ② | Architect plan — 差距分析 + 4+1 個 Block 計畫 | DONE | Architect | 2026-06-19 |
 | Step ③ | Developer impl — Block 1-5 實作 (v10/15 sensor, hook v4/v2, sop-state.md) | DONE | Developer | 2026-06-19 |
-| Step ④ | Reviewer review — 審查所有變更 | PENDING | Reviewer | — |
-| Step ⑤ | QA verify + commit — 驗收並執行最終 commit+push | PENDING | QA | — |
+| Step ④ | Reviewer review — 審查所有變更 | DONE | Reviewer | 2026-06-19 |
+| Step ⑤ | QA verify + commit — 驗收並執行最終 commit+push | DONE | QA | 2026-06-19 |
 
 ---
 
