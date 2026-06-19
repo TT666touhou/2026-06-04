@@ -1,0 +1,70 @@
+[gd_scene load_steps=5 format=3 uid="uid://c4mvp05test"]
+
+[ext_resource type="PackedScene" uid="uid://c4mvp04player" path="res://scenes/Player.tscn" id="1_player"]
+[ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="2_dbg"]
+
+[sub_resource type="RectangleShape2D" id="1_ground"]
+size = Vector2(480, 16)
+
+[sub_resource type="RectangleShape2D" id="2_plat"]
+size = Vector2(80, 8)
+
+[node name="MVP_Test" type="Node2D"]
+
+[node name="World" type="Node2D" parent="."]
+
+[node name="Ground" type="StaticBody2D" parent="World"]
+position = Vector2(240, 262)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Ground"]
+shape = SubResource("1_ground")
+
+[node name="Visual" type="ColorRect" parent="World/Ground"]
+offset_left = -240.0
+offset_top = -8.0
+offset_right = 240.0
+offset_bottom = 8.0
+color = Color(0.25, 0.25, 0.25, 1)
+
+[node name="Platform_A" type="StaticBody2D" parent="World"]
+position = Vector2(128, 196)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Platform_A"]
+shape = SubResource("2_plat")
+
+[node name="Visual" type="ColorRect" parent="World/Platform_A"]
+offset_left = -40.0
+offset_top = -4.0
+offset_right = 40.0
+offset_bottom = 4.0
+color = Color(0.35, 0.35, 0.35, 1)
+
+[node name="Platform_B" type="StaticBody2D" parent="World"]
+position = Vector2(352, 144)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="World/Platform_B"]
+shape = SubResource("2_plat")
+
+[node name="Visual" type="ColorRect" parent="World/Platform_B"]
+offset_left = -40.0
+offset_top = -4.0
+offset_right = 40.0
+offset_bottom = 4.0
+color = Color(0.35, 0.35, 0.35, 1)
+
+[node name="NeedleLayer" type="Node2D" parent="World"]
+
+[node name="Player" parent="." instance=ExtResource("1_player")]
+position = Vector2(240, 220)
+
+[node name="WireLayer" type="Node2D" parent="."]
+
+[node name="DebugOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("2_dbg")
+
+[node name="DebugPanel" type="PanelContainer" parent="DebugOverlay"]
+offset_right = 220.0
+offset_bottom = 120.0
+
+[node name="DebugLabel" type="Label" parent="DebugOverlay/DebugPanel"]
+text = "[Wire]\n  max_length: --\n  tension:    --\n\n[Player]\n  velocity:   (0, 0)\n  on_floor:   false\n\n[Needles]\n  count:      0 / 3"
