@@ -1207,3 +1207,16 @@ global_rotation = dir.angle()
 - **過程教訓**: `git add a b c <不存在>` 會因 pathspec fatal **中斷且未暫存任何檔**，導致該次 commit 漏掉實際代碼（只含先前 `git rm` 的刪除）→ 後續 ff merge 看似只動 1 檔即露餡。**防範**：刪檔用 `git rm`（已自動暫存），其餘 `git add` 勿混入不存在路徑；commit 後核對 `git show --stat` 檔數符合預期。
 - **設計演進記錄**: 繩經 GAP-034(彈簧)→035(bungee)→037(Verlet視覺+鐘擺)→039(彈簧上甩)→**040(自然鐘擺，無注入)**。結論：視覺用 Verlet、物理用**無注入的鐘擺約束**最自然。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-041 大幅簡化：移除平台/Q/E/F + 右鍵按住盪繩（2026-06-20）
+
+- **Severity**: Feature（重大簡化/重構）
+- **需求（用戶）**: 決定移除複雜機制——(1) 移除平台建立機制，只留盪繩。(2) 盪繩改右鍵按住發射 + 自動收繩；鬆開自動斷開且鋼針一併回收。(3) 移除 Q/E/F 功能。(4) 左鍵攻擊針靠近時自動回收。
+- **實作**:
+  - `needle_manager.gd` 重寫：移除 `wire_platform_scene`/平台/`get_retrieve_info` 優先級/`try_retrieve`；改單一 `_wire_anchor`+`_wire_proj`；新增 `release_wire()`（鬆開取消飛行針或回收錨）、`auto_retrieve_attack(pos)`（攻擊針近距自動回收）。
+  - `player.gd` 重寫：右鍵 pressed→`_start_grapple`（射抓鉤）、released→`_release_grapple`（`release_wire`+清狀態）；`_wire_held` 守「飛行中放開」；左鍵攻擊；每幀 `auto_retrieve_attack`；移除平台/drop-through/pickup UI/Q/E/F/`_cut_wire`/`_draw_catenary`/sag。保留移動慣性/跳躍/Verlet/自然鐘擺。
+  - 刪 `scripts/wire_platform.gd`、`scenes/WirePlatform.tscn`；`Player.tscn` 移除 WirePlatform ext_resource(5_wpscene) + `wire_platform_scene` 賦值。
+  - 保留為未引用資產：`scenes/ui/*`(pickup UI)、project.godot 的 cut_wire/reel_wire/retrieve_needle/drop_through 輸入動作、MVP_Test 的 WireLayer。
+- **驗證**: `test_rope_gap041.gd` → **NM41_TEST_PASS**（max=5、攻擊針近收遠留、release_wire 安全）；gap040/037 PASS；sensor 21/21；`--check-only` 0；run_project 冒煙空（Player.tscn 移除 ext_resource 後載入正常）。淨減 193 行。
+- **防範規則**: 移除 .tscn 的 ext_resource 時，必須同時移除所有對該 id 的賦值（如 `wire_platform_scene = ExtResource("5_wpscene")`），否則 broken ref → 以 run_project 冒煙確認載入。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
