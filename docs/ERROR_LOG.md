@@ -914,3 +914,115 @@ if _wire_anchor != null and _wire_projectile != null and is_instance_valid(_wire
 | 2026-06-20 | NeedleManager 平台 rolling window | `_try_create_platform()` 永遠取 `wire_anchors[n-2]` + `wire_anchors[n-1]`（最新兩根），第三針才能觸發平台移位 |
 | 2026-06-20 | 多針 wire renderer 優先順序 | P1=Platform(anchor1↔anchor2)；P2=Anchor+飛行針(anchor1→proj)；P3=Pendulum(player↔anchor1)；P4=僅飛行(player→proj) |
 | 2026-06-20 | `_on_wire_anchor_ready` 不早返 | 永遠接受新錨點；platform mode 由 NeedleManager 的 `platform_created` 信號重建，player.gd 不負責 gate |
+
+---
+
+## GAP-025 第三針不解散舊平台 + 鋼針速度2倍（2026-06-20）
+
+**症狀（雙重）**：
+1. 射出第三根針後，舊平台（anchor1↔anchor2）立即解散，GDD §2.3「第三針在平台模式下的行為」規定平台應繼續存在。
+2. 鋼針飛行速度過慢（600 px/s），難以命中目標。
+
+**根本原因**：
+1. `needle_manager._try_create_platform()` 採 rolling window（永遠用最新兩根），導致第三針落點後平台移位；`_remove_anchor` 未區分「平台端點」vs「其他針」，任何回收都觸發平台解散。
+2. `needle_projectile.flight_speed = 600.0`——設計決策應為 1200 px/s（快速精準感）。
+
+**修復**：
+- `_try_create_platform`：僅在 `wire_anchors.size() == 2` 時觸發（不再 rolling），第三針只接管 pendulum anchor。
+- 新增 `_platform_anchor_a/_b` 追蹤：只有平台端點回收才呼叫 `platform_dissolved`。
+- `player.gd`：移除 `_wire_anchor2`，改用 `_platform_a/_platform_b` 獨立追蹤；新增 `_platform_renderer` (Line2D) 在 `_ready()` 建立，platform 金線與 pendulum wire 各自獨立渲染。
+- `needle_projectile.flight_speed`：600.0 → 1200.0。
+
+**提交**：`7f4d627`
+
+---
+
+## GAP-026 平台 one-way 卡頭 + 視覺細線 + wire_slack 收緊（2026-06-20）
+
+**症狀（三重）**：
+1. 玩家站在鋼索平台上時會有明顯「卡頭感」——腳陷入平台一截。
+2. 平台線條太粗（3px），視覺上比擺錘繩線重，不協調。
+3. 單錨點繩子初始下垂過大（slack=80），影響鐘擺感。
+
+**根本原因**：
+1. `platform_height = 24.0` 過高；玩家落地後腳底仍有 12px 深度才碰到碰撞底部 → 視覺「卡頭」。
+2. `_platform_renderer.width = 3.0` 過粗。
+3. `wire_slack = 80.0` 初始值過大。
+
+**修復（wire_platform.gd + player.gd）**：
+- `platform_height`：24.0 → 4.0（薄板，消除卡頭深度）
+- `_platform_renderer.width`：3.0 → 1.5
+- `wire_slack`：80.0 → 30.0
+
+**one-way 法向重建**（本 GAP 包含的架構修正）：
+- `global_rotation = wire_angle`（body 跟線旋轉）→ local +Y 垂直線段，one-way 法向在 world space 仍朝上
+- `_shape.rotation = 0.0`（shape 保持 body local 座標）
+- ⚠️ 此方案後來被 GAP-027 二次修正（見下）
+
+**提交**：`94213f7`
+
+---
+
+## GAP-027 平台 one-way 方向在第一錨點靠右時翻轉（2026-06-20）
+
+- **Severity**: High（右牆先射、左牆後射的平台，玩家從下方無法穿透）
+- **類型（§LEARN）**: (A) 實作 Bug — Godot one-way_collision 方向理解錯誤
+- **發現者**: 用戶（遊戲測試）
+- **現象**: 先射右牆（anchor\_a = 右）、再射左牆（anchor\_b = 左）形成的平台，玩家從下方跳躍被完全擋住。先射左牆則正常。
+
+**根本原因**：
+- `global_rotation = a.angle_to_point(b)`：當 a 在右、b 在左時，`angle_to_point` 回傳約 π（180°），導致 StaticBody2D 旋轉 180°。
+- Godot `one_way_collision` 的「朝上」方向是 body local space 的 `(0, -1)` 轉換到世界座標。body 旋轉 180° → world space 朝上變成朝下 → 平台只允許從**上方**穿透（即從下方被擋住）。
+- GAP-026 的修正（`global_rotation = wire_angle`）在 anchor\_a < anchor\_b 時正確，在 anchor\_a > anchor\_b 時重現同問題。
+
+**修復（wire\_platform.gd `_update_body()`）**：
+```gdscript
+var dir := b - a
+if dir.x < 0.0:
+    dir = -dir  # 強制 dir.x ≥ 0，讓旋轉角維持在 ±90° 內
+global_rotation = dir.angle()
+```
+
+**防範規則（新增）**：
+- `one_way_collision` 平台不得讓 body 旋轉超過 ±90°；確保 body local `-Y` 在世界空間仍朝上。
+- **計算平台角度時永遠先正規化方向向量**：`if dir.x < 0: dir = -dir`。
+
+**升級路徑（§LEARN Step 4）**: Sensor Check — wire_platform.gd `_update_body()` 若含 `angle_to_point` 且無方向正規化則 WARN（候補）。
+
+**提交**：`d408e03`
+
+---
+
+## GAP-028 平台視覺下垂 + S 鍵穿透（2026-06-20）
+
+- **Severity**: N/A（新功能，非 bug）
+- **實作者**: Developer
+- **GDD 依據**: §2.3 鋼索平台行為（更新版見 GAME_DESIGN.md）
+
+**功能說明**：
+1. **視覺下垂（Visual Sag）**：玩家站在平台上，catenary 曲線的 `_platform_slack` 朝 `SAG_WEIGHT=20.0` 插值；離開後朝 0 插值。
+2. **S 鍵穿透（Drop-through）**：按下 `drop_through` action → 關閉 mask layer 4（平台碰撞），0.25s 後恢復。
+
+**關鍵實作細節**：
+- `WirePlatform`：`collision_layer` 改為 layer 4（bitmask = 8），不在 default layer 1。
+- `player.gd _ready()`：`set_collision_mask_value(4, true)` → player 也感知 layer 4 的平台。
+- `_update_platform_sag(delta)`：透過 `get_slide_collision(i).get_collider() is WirePlatform` 偵測站台；`lerpf` 控制 `_platform_slack`。
+- Drop-through：`_drop_through_timer = 0.25`; `set_collision_mask_value(4, _drop_through_timer <= 0.0)` 在 `move_and_slide()` 前執行。
+
+**GUT 自動化測試（7/7 PASS）**：
+- layer bitmask = 8，one_way 保留，player mask 含 layer 4，timer 切換 mask，sag 數學（不超出 SAG_WEIGHT），sag 歸零，旋轉 <90°（GAP-027 隨測）。
+
+**GUT 版本問題（衍生）**：GUT v9.6.0 無 `assert_le()`/`assert_ge()`，改用 `assert_true(value <= x)` / `assert_true(value >= x)`。
+
+**提交**：`c257add` + `d5cc703` + `40d96e6`
+
+---
+
+## 🟢 PATTERN — 驗證 SOP（QA / Developer 通用）
+
+| 日期 | 場景 | 正確做法 |
+|------|------|---------|
+| 2026-06-20 | Godot 遊戲執行驗證（QA） | 使用 `mcp__godot__run_project` + `mcp__godot__get_debug_output` 取得 runtime 輸出；或跑 GUT 自動化測試 |
+| 2026-06-20 | **⚠️ computer-use 無法存取 Godot 遊戲** | `request_access` 只適用於 Windows 開始功能表已安裝的 App。Godot 遊戲 EXE（`./Godot_v4.6.2-stable_win64.exe`）不在開始功能表 → `request_access("Godot Engine")` 永遠失敗。正確方案：GUT 自動化測試（首選）；或 `mcp__godot__run_project` + `mcp__godot__get_debug_output`（MCP）；禁止嘗試 computer-use 存取 Godot EXE。 |
+| 2026-06-20 | GUT v9.6.0 assert 語法 | 無 `assert_le()`/`assert_ge()`；改用 `assert_true(value <= x, "msg")` 和 `assert_true(value >= x, "msg")` |
+| 2026-06-20 | one_way_collision 角度計算 | 計算前先正規化：`if dir.x < 0: dir = -dir`；確保 body rotation 在 ±90° 內，否則 one-way normal 翻轉 |

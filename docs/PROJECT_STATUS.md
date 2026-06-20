@@ -14,6 +14,7 @@
 | 0.1 | 工作流建立（roles/ + hooks/ + sensor-scan） | ✅ DONE | 2026-06-19 |
 | 0.2 | GDD 重設（鋼針跑酷新概念） | ✅ DONE | 2026-06-19 |
 | 0.3 | Workflow 強化（GAP-012/013 修復 + Block 1-5） | ✅ DONE | 2026-06-19 |
+| 0.4 | 鋼索系統核心（GAP-017~028：射針/繩索/平台） | ✅ DONE | 2026-06-20 |
 | 1.x | 遊戲核心系統（待 Designer 確認 GDD） | ⏳ PENDING | — |
 
 ---
@@ -60,6 +61,25 @@
   - `scripts/sensor-scan.ps1` v10：15 checks（v5 有 9 checks），check-8 false positive 修復
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
+
+### Phase 0.4 — 鋼索系統核心（GAP-017～028）
+
+- **完成日期**：2026-06-20
+- **實作功能**：
+  - GAP-017：RayCast2D world/local space 修正
+  - GAP-018：UX feedback（視窗 960×540, NeedleAnchor 黃色可見）
+  - GAP-019a/b：Canvas stretch + Camera limit 修正
+  - GAP-020：平台 one-way collision 初版架構
+  - GAP-021a/b/c：繩索多狀態（端點切換 / catenary / one_way）
+  - GAP-022：E 鍵縮線 winch 語意修正
+  - GAP-023：第三針無法牽線（rolling window 修正）
+  - GAP-024：第二針飛行途中線段顯示
+  - GAP-025：第三針保留舊平台 + 針速 2×（1200 px/s）
+  - GAP-026：平台卡頭消除（height 4px）+ 視覺 1.5px + slack 30
+  - GAP-027：one-way 方向正規化（右→左錨點順序不再翻轉）
+  - GAP-028：視覺下垂（SAG 20px lerpf）+ S 鍵穿透（layer 4 timer 0.25s）
+- **GUT 測試**：7/7 PASS（test_platform_sag_dropthrough.gd）
+- **驗證方式記錄**：GUT 自動化 + `mcp__godot__run_project` / `get_debug_output`（非 computer-use）
 
 ---
 
@@ -110,6 +130,11 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Architect | Phase 0.4 完成：補記 GAP-025～028 到 ERROR_LOG；更新 GDD §2.3 鋼索平台行為；更新 PROJECT_STATUS |
+| 2026-06-20 | Developer | GAP-028：平台視覺下垂 + S 鍵穿透（layer 4 / lerpf sag / drop-through timer） |
+| 2026-06-20 | Developer | GAP-027：修正平台 one-way 方向（右→左錨點順序導致翻轉，dir 正規化修復） |
+| 2026-06-20 | Developer | GAP-026：平台卡頭修復（height 24→4）+ 視覺細線 + wire_slack 收緊 |
+| 2026-06-20 | Developer | GAP-025：第三針不解散舊平台 + 針速 600→1200 px/s |
 | 2026-06-19 | Architect | 重設 PROJECT_STATUS：舊 roguelite 內容全清，建立新鋼針遊戲骨架 |
 | 2026-06-19 | Developer | Phase 0.3：Workflow 強化（GAP-012/013 修復，Block 1-5 實作） |
 | 2026-06-19 | Architect | Phase 0.2：GDD 重設（鋼針跑酷概念，全 DRAFT） |
