@@ -10,7 +10,7 @@ const _ANCHOR_WIRE := 1
 const _WireConstraintScript = preload("res://scripts/wire_constraint.gd")
 
 @export var max_needles: int = 3
-@export var retrieve_radius: float = 30.0
+@export var retrieve_radius: float = 60.0
 @export var needle_proj_scene: PackedScene
 @export var needle_anchor_scene: PackedScene
 @export var wire_platform_scene: PackedScene
@@ -54,8 +54,8 @@ func try_retrieve(player_pos: Vector2, connected_anchor: Node = null) -> void:
 # (GAP-032 priority + GAP-033 UI share this). Returns:
 #   { "candidates": Array[{anchor, label, priority}], "target": Node-or-null }
 # Priority (lower first): 0 attack(no wire) < 1 wire/pendulum < 2 platform endpoint.
-# Connected pendulum anchor is always retrievable; others need proximity.
-# Ties within a priority are broken by nearest.
+# All needles require proximity uniformly (GAP-034). connected_anchor only
+# affects priority/label. Ties within a priority are broken by nearest.
 func get_retrieve_info(player_pos: Vector2, connected_anchor: Node = null) -> Dictionary:
 	var candidates: Array = []
 	var target: Node = null
@@ -67,7 +67,7 @@ func get_retrieve_info(player_pos: Vector2, connected_anchor: Node = null) -> Di
 		var is_player_wire: bool = anchor == connected_anchor
 		var is_platform: bool = anchor == _platform_anchor_a or anchor == _platform_anchor_b
 		var dist: float = anchor.global_position.distance_to(player_pos)
-		if not is_player_wire and dist > retrieve_radius:
+		if dist > retrieve_radius:
 			continue
 		var prio: int = _retrieve_priority(anchor, is_platform)
 		candidates.append({

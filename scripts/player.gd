@@ -12,6 +12,10 @@ const PickupPromptScene = preload("res://scenes/ui/pickup_prompt_ui.tscn")
 @export var gravity: float = 980.0
 @export var reel_speed: float = 150.0
 @export var wire_slack: float = 30.0
+@export var swing_accel: float = 500.0     # air-control accel while on the wire (px/s^2)
+@export var swing_air_drag: float = 60.0   # gentle horizontal settle while swinging (px/s^2)
+@export var rope_stiffness: float = 80.0   # elastic rope spring (px/s^2 per px stretch)
+@export var rope_damping: float = 9.0      # along-rope velocity damping (1/s)
 
 var _wire: RefCounted = null
 var _wire_anchor: Node = null       # active pendulum anchor (swinging)
@@ -48,7 +52,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
-	_apply_movement()
+	_apply_movement(delta)
 	_apply_wire(delta)
 	_drop_through_timer = maxf(0.0, _drop_through_timer - delta)
 	set_collision_mask_value(4, _drop_through_timer <= 0.0)
@@ -77,21 +81,23 @@ func _apply_gravity(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y += gravity * delta
 
-func _apply_movement() -> void:
+func _apply_movement(delta: float) -> void:
 	var dir := Input.get_axis("move_left", "move_right")
-	velocity.x = dir * move_speed
+	if _wire != null:
+		# On the wire: input is air-control accel that pumps the swing, preserving
+		# pendulum momentum (GAP-034). Hard-setting velocity.x here killed the swing.
+		velocity.x += dir * swing_accel * delta
+		velocity.x = move_toward(velocity.x, 0.0, swing_air_drag * delta)
+	else:
+		velocity.x = dir * move_speed
 
 func _apply_wire(delta: float) -> void:
 	if _wire == null:
 		return
 	if Input.is_action_pressed("reel_wire"):
+		# Winch: shorten the rope; the elastic spring then pulls the player in.
 		_wire.reel_in(reel_speed, delta)
-		# E key: directly retract position (rope winch, not spring)
-		var to_anchor: Vector2 = _wire.anchor_pos - global_position
-		var dist: float = to_anchor.length()
-		if dist > _wire.max_length and dist > 0.0:
-			position += (to_anchor / dist) * (dist - _wire.max_length)
-	velocity = _wire.apply(global_position, velocity)
+	velocity = _wire.apply(global_position, velocity, delta)
 
 func _shoot_needle() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
@@ -119,6 +125,8 @@ func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_projectile = null
 	_wire = anchor.wire as RefCounted
 	_wire_anchor = anchor
+	_wire.stiffness = rope_stiffness
+	_wire.damping = rope_damping
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
 
 func _on_needle_retrieved(anchor: Node) -> void:
