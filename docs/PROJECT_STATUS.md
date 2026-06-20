@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Reviewer | GAP-034：審查通過 — 彈簧僅 taut 時作用、div-by-zero 已防、damping clampf 有界、max_length 介面不變不影響 renderer/debug；動量保留正確 |
 | 2026-06-20 | Architect | GAP-034：規劃 needle_manager 半徑/統一過濾、wire_constraint 改 spring-damper、player 空中控制保留動量；不新增 class_name |
 | 2026-06-20 | Designer | GAP-034：回收半徑 30→60、所有針一律需夠近（取消擺錘針不限距離）；繩子改彈性 spring-damper + 保留擺盪動量；GDD §2.3/2.4/2.5 |
 | 2026-06-20 | QA | GAP-033：run_project 乾淨啟動（errors 空）、sensor 21/21、--check-only 0；攔截並記錄 class_name 快取 gotcha（--import 修復）；視覺手動清單交玩家 → 通過 |
