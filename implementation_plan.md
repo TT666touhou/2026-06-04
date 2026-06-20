@@ -1,49 +1,50 @@
-# Implementation Plan — Q 斷線 / F 優先級回收（GAP-032，2026-06-20）
+# Implementation Plan — 回收提示 UI（GAP-033，2026-06-20）
 
-## 目標（源自 GDD §2.4）
-1. **Q（cut_wire）** 只切斷「當前 active 擺錘線」；已成平台（無 active 擺錘）時 Q 無作用，且不影響平台狀態。
-2. **F（retrieve_needle）** 依優先級回收：無牽線針(攻擊) > 與玩家相連針(擺錘) > 平台端點針。
-3. 與玩家相連針**不限距離**可回收；其他針需在 `retrieve_radius` 內。同優先級取最近。
+## 目標（源自 GDD §2.5）
+在「當前可回收」的鋼針上方顯示世界座標文字標籤（`[F] 類型`），F 實際會收的那根高亮、其餘暗色，讓玩家確認回收目標（尤其平台針）。UI 架構可復用、後期可加 tween。
 
-## 現況分析
-- `player._cut_wire()`：目前會清掉 `_wire/_wire_anchor` **以及** `_platform_a/_platform_b/_platform_slack` 並隱藏平台 renderer → 等於 Q 也「切斷」平台連結。**不符新設計**。
-- `needle_manager.try_retrieve(player_pos)`：目前對 `_anchors` 依陣列順序取第一個在半徑內者，**無優先級**，且無法區分「與玩家相連」的錨點（該資訊只存在 player `_wire_anchor`）。
-- 平台端點資訊在 needle_manager：`_platform_anchor_a/_platform_anchor_b`；攻擊針判斷：`anchor.type == _ANCHOR_ATTACK`。
+## 新增資源（資料夾已存在：`scripts/ui/`、`scenes/ui/`）
 
-## 變更清單
+### A. 通用世界文字標籤（可復用元件）
+- `scripts/ui/world_label.gd`（`class_name WorldLabel`，extends `Node2D`）
+  - `set_content(text, color)`：設定 Label 文字與顏色
+  - `follow(world_pos)`：將自身移到 `world_pos + world_offset`（`@export var world_offset := Vector2(0,-22)`）
+  - `show_prompt()` / `hide_prompt()`：切換顯示；hidden→visible 時觸發 `play_appear()`（內部 `_active` 旗標避免每幀重觸發）
+  - `play_appear()`：scale 0.7→1 + modulate.a 0→1 的小 tween（**這是後期擴充點**，可換成更花俏的效果而不動呼叫端）
+- `scenes/ui/world_label.tscn`：`WorldLabel`(Node2D + script) → `Label`(置中、font_size 14、黑色 outline 提升可讀性)
 
-### A. `scripts/player.gd`
-1. `_cut_wire()` 改為：僅當 `_wire != null and _wire_anchor != null` 時清 `_wire/_wire_anchor` 並隱藏 `wire_renderer`；**不再觸碰** `_platform_*` 與平台 renderer。無 active 擺錘時直接 return（Q 無作用）。
-2. `_unhandled_input` 中 retrieve 呼叫改為傳入當前擺錘錨點：
-   `needle_manager.try_retrieve(global_position, _wire_anchor)`
+### B. 提示控制器
+- `scripts/ui/pickup_prompt_ui.gd`（`class_name PickupPromptUI`，extends `Node2D`）
+  - `preload` world_label.tscn；維護 `WorldLabel` 物件池
+  - `update_prompts(candidates: Array, target: Node)`：依候選數量擴充池，逐一 `set_content`+`follow`+`show_prompt`；多餘的 `hide_prompt`
+  - 目標色 `target_color`、其餘 `other_color`（@export，便於後期主題化）
+- `scenes/ui/pickup_prompt_ui.tscn`：`PickupPromptUI`(Node2D + script)
 
-### B. `scripts/needle_manager.gd`
-1. `try_retrieve(player_pos: Vector2, connected_anchor: Node = null)`：
-   - 遍歷 `_anchors`，對每個有效錨點計算：
-     - `is_connected = anchor == connected_anchor`
-     - `is_platform = anchor == _platform_anchor_a or anchor == _platform_anchor_b`
-     - `dist = anchor.global_position.distance_to(player_pos)`
-     - `in_range = is_connected or dist <= retrieve_radius`（相連針不限距離）
-   - 在 `in_range` 候選中，依 `_retrieve_priority()`（小=先）選出，最後以 `dist` 破平手。
-   - 選到 → `_remove_anchor(best)`（沿用既有平台解散 / GAP-029 轉擺錘邏輯）。
-2. 新增 `_retrieve_priority(anchor, is_connected, is_platform) -> int`：
-   - 攻擊針（`type == _ANCHOR_ATTACK`）→ 0
-   - 平台端點（`is_platform`）→ 2
-   - 其餘 wire 針（含相連針與脫離後的孤兒 wire 針）→ 1
+## 修改
 
-## 邊界情境
-- **Q 切斷第三針擺錘**：player 清擺錘狀態，該 wire 針成孤兒（仍在 `_anchors`，優先級 1），平台不受影響。
-- **平台存在 + 按 F（不靠近任何針）**：平台端點不在半徑內而跳過；若有 active 擺錘（第三針）則回收之，否則無動作。
-- **平台端點 + 旁邊有攻擊針**：攻擊針優先級 0 先被收，不會誤拆平台。
+### C. `scripts/needle_manager.gd`（DRY：單一回收邏輯來源）
+- 新增 `get_retrieve_info(player_pos, connected_anchor=null) -> Dictionary`
+  回傳 `{ "candidates": Array[{anchor,label,priority}], "target": Node }`，沿用既有優先級/距離規則。
+- 新增 `_retrieve_label(anchor, is_platform, is_player_wire) -> String`：攻擊針→`[F] 攻擊針`、平台→`[F] 平台針`、相連→`[F] 擺錘針`、其餘→`[F] 鋼針`。
+- `try_retrieve()` 改為呼叫 `get_retrieve_info()` 取 `target` 後 `_remove_anchor()`（行為不變，僅去重）。
+
+### D. `scripts/player.gd`
+- `_ready()`：`preload` pickup_prompt_ui.tscn、instantiate、`add_child`（純程式碼整合，**不改 Player.tscn**，沿用既有 `_platform_renderer` 程式碼建立慣例）。
+- `_physics_process()` 末端呼叫 `_update_pickup_prompts()`：
+  取 `needle_manager.get_retrieve_info(global_position, _wire_anchor)` → `_pickup_ui.update_prompts(info.candidates, info.target)`。
+
+## 設計理由
+- 兩層拆分（WorldLabel 元件 + 控制器）= 用戶要求的「可復用、可後期加 tween」結構；WorldLabel 也可用於傷害數字等。
+- 世界座標 Node2D 標籤：相機跟隨玩家時自動正確定位，無需 world→screen 投影。
+- needle_manager 統一回收資訊來源，UI 與實際 F 行為永遠一致（避免兩套邏輯漂移）。
 
 ## 不影響的既有功能
-- `shoot_attack/wire_needle`、平台建立 `_try_create_platform`、`_remove_anchor` 的平台解散與 wire 轉擺錘、sag/drop-through、wire renderer 優先序、E 收線 全部不動。
+- try_retrieve 對外行為不變；_cut_wire、平台、sag、wire renderer、E 收線全不動。Player.tscn 不變。
+
+## 已知簡化（後期可優化）
+- 標籤物件池以索引對應候選；候選增減時可能短暫換位（針數 ≤3，影響極小）。後期可改以 anchor 身分對應 + tween 過場。
 
 ## 驗證計畫（QA）
-- run_project + get_debug_output，手動/腳本驗證：
-  1. 擺錘中 Q → 線斷、針留、平台旗標不變
-  2. 平台模式 Q → 無作用
-  3. F 在攻擊針與相連針同在 → 先收攻擊針
-  4. F 無攻擊針時 → 收相連擺錘針（不限距離）
-  5. F 靠近平台端點且無更高優先 → 收端點、平台解散、另一端轉擺錘
-- sensor-scan.ps1 21/21 PASS（auto on Developer commit）
+- sensor-scan 21/21、`--check-only` 0 errors（Developer commit 自動）。
+- run_project + get_debug_output：乾淨啟動無錯誤/警告。
+- 手動：靠近平台針應看到亮色 `[F] 平台針`；攻擊針在旁時亮色移到攻擊針（驗證 target 高亮邏輯）。

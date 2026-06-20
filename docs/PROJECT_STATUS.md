@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Architect | GAP-033：規劃 WorldLabel(可復用) + PickupPromptUI 控制器 + needle_manager.get_retrieve_info(DRY)；player 程式碼整合不改 .tscn |
 | 2026-06-20 | Designer | GAP-033：定義回收提示 UI（可回收針上方顯示 [F] 文字、目標高亮）；GDD §2.5；可復用 UI 架構放 scripts/ui、scenes/ui |
 | 2026-06-20 | QA | GAP-032：run_project 乾淨啟動（errors 空）；發現並修復 is_connected 遮蔽警告；自動化全 PASS；手動手感清單交玩家實測 → 通過 |
 | 2026-06-20 | Developer | GAP-032：修復 QA 發現的 is_connected 遮蔽 Object.is_connected 警告（改名 is_player_wire）|
