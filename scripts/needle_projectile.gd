@@ -4,10 +4,12 @@ extends Node2D
 
 @export var flight_speed: float = 1200.0
 @export var needle_size: Vector2 = Vector2(12.0, 2.0)
+@export var max_travel: float = 2400.0   # safety: free a needle that never hits anything
 
 enum NeedleType { ATTACK, WIRE }
 var needle_type: NeedleType = NeedleType.ATTACK
 var direction: Vector2 = Vector2.RIGHT
+var _traveled: float = 0.0
 
 signal embedded(hit_pos: Vector2, collider: Object)
 
@@ -34,11 +36,11 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	global_position += direction * step
-	# safety: free projectile if it escapes the play area (no wall to catch it).
-	# Bounds are derived from the viewport so they track the scene size — a hardcoded
-	# 960x540 bound (1024/604) freed every needle on spawn after the scene grew to
-	# 1280x720 (GAP-036), since the player spawns below the old y=604 limit.
-	var bounds := get_viewport_rect().size
-	if global_position.x < -64.0 or global_position.x > bounds.x + 64.0 \
-			or global_position.y < -64.0 or global_position.y > bounds.y + 64.0:
+	# Safety net: free a needle that never hits anything. Culls by TRAVEL DISTANCE,
+	# not screen/scene bounds. get_viewport_rect() returns the (possibly scaled)
+	# viewport size — here 1152x648, not the 1280x720 world — so the previous
+	# viewport-based bound culled needles INSIDE the arena before they reached the
+	# walls (GAP-038). The enclosing walls catch real shots; this is only a fallback.
+	_traveled += step
+	if _traveled > max_travel:
 		queue_free()
