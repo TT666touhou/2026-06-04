@@ -149,7 +149,7 @@ Designer → Architect → Developer → Reviewer → QA
 
 ---
 
-## B. 六個角色速查表
+## B. 角色速查表（6 串行/守衛 + 1 顧問）
 
 | 角色 | .agent-role 值 | 可提交的文件 | 絕對不得提交 | Commit 前綴 | 觸發條件 |
 |------|---------------|------------|------------|------------|---------|
@@ -159,6 +159,9 @@ Designer → Architect → Developer → Reviewer → QA
 | **Reviewer** | `reviewer` | 不提交代碼，只審查 PR | 修改任何代碼 | `[REVIEW]` | Developer 建立 PR 後；限時 **30 分鐘** |
 | **QA** | `qa` | 所有代碼文件（`.gd` `.tscn` `.tres`）+ `docs/qa-report-*.md` | 自行撰寫新代碼 | `[QA]` | Reviewer 批准；限時 **45 分鐘** |
 | **Sensor** | _(無獨立 role)_ | _(不提交)_ 立即掃描並修裁 | 未綁 call_deferred 的場景樹操作 | 無 | 任何角色觸發危險關鍵字時 |
+| **Pixel Consultant** | `pixel-consultant` | `docs/PIXELLAB_KB.md`, `docs/art-*.md`, `docs/`, `roles/` | `.gd` `.tscn` `.tres` | `[PIXEL]` | 用戶提出**像素美術 / PixelLab / Aseprite** 需求時（顧問，非串行）|
+
+> **Pixel Consultant（顧問角色，2026-06-20 新增）**：專責 **PixelLab × Aseprite** 像素美術諮詢——用戶給美術需求，它回「正確作法 + 推薦關鍵字 + 一致性銜接」。權威來源 `docs/PIXELLAB_KB.md`，完整職責 → `roles/pixel-consultant.md`。不寫遊戲程式碼。
 
 > **文件守護責任（Doc Guardian）**：
 > - Designer 是 GAME_DESIGN.md 的唯一維護者，必須在 48h 內回應 [GDD TODO] 標記
@@ -691,8 +694,10 @@ $md = Get-ChildItem $root -Recurse -Filter "*.md" | Where-Object { $_.FullName -
 $all = Get-ChildItem $root -Recurse | Where-Object { $_.Extension -in ".md",".ps1" -and $_.FullName -notmatch "\\archive\\" }
 
 # DEAD-A：過時外部工具引用
+#   注意：PixelLab 已於 2026-06-20 重新啟用為正式美術工具（見 docs/PIXELLAB_KB.md +
+#   Pixel Consultant 角色），故已從本 DEAD 掃描移除，不再視為過時引用。
 $all | ForEach-Object {
-  $h = Select-String "PixelLab|PIXEL-REVIEW|browser_subagent.*allow" $_.FullName
+  $h = Select-String "PIXEL-REVIEW|browser_subagent.*allow" $_.FullName
   if ($h) { $h | ForEach-Object { "[DEAD-A] $($_.Filename) L$($_.LineNumber): $($_.Line.Trim())" } }
 }
 

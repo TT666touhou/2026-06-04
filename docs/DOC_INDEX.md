@@ -16,6 +16,7 @@
 | `docs/PROJECT_STATUS.md` | - | ✏️ 維護 | - | - | ✏️ 更新 |
 | `docs/sop-state.md` | - | ✏️ 管理 SOP | ✏️ 執行步驟 | - | ✏️ 執行步驟 |
 | `docs/qa-report-*.md` | - | - | - | 🔴 唯讀 | ✏️ 建立 |
+| `docs/PIXELLAB_KB.md` | 🔴 唯讀 | 🔴 唯讀 | 🔴 唯讀 | 🔴 唯讀 | 🔴 唯讀 |
 | `workflow.md` | 🔴 唯讀 | ✏️ 版本更新 | 🔴 唯讀 | 🔴 唯讀 | 🔴 唯讀 |
 | `roles/*.md` | 🔴 唯讀 | ✏️ 維護 | 🔴 唯讀 | 🔴 唯讀 | 🔴 唯讀 |
 | `hooks/*` | 🔴 唯讀 | ✏️ 維護 | 🔴 唯讀 | 🔴 唯讀 | 🔴 唯讀 |
@@ -25,6 +26,8 @@
 | `.tres resources` | ❌ 禁止 | ❌ 禁止 | ✏️ 需 LFS Lock | 🔴 唯讀 | ❌ 禁止 |
 
 **圖例：** ✏️ 可修改  🔴 唯讀  ❌ 禁止修改  `-` 不適用
+
+> **Pixel Consultant（顧問角色，`pixel-consultant`）**：上表未列獨立欄；其可維護 `docs/PIXELLAB_KB.md`、`docs/art-*.md`、`roles/pixel-consultant.md`，唯讀其餘 docs，禁碰 `.gd/.tscn/.tres`。完整職責 → `roles/pixel-consultant.md`。
 
 ---
 
@@ -59,6 +62,11 @@
 2. `roles/qa.md` — QA 流程與 DoD
 3. `docs/qa-report-*.md` — 最新 QA 報告（若存在）
 
+### Pixel Consultant 開場必讀
+1. `docs/PIXELLAB_KB.md` — PixelLab 知識庫（權威）
+2. `docs/GAME_DESIGN.md` §7/§9 — 美術方向與尺寸
+3. `roles/pixel-consultant.md` — 角色規則與三段式回覆格式
+
 ---
 
 ## 三、文件版本追蹤
@@ -70,7 +78,9 @@
 | `docs/PROJECT_STATUS.md` | v2 | 2026-06-19 | Architect |
 | `docs/sop-state.md` | v1 | 2026-06-19 | Architect |
 | `docs/ERROR_LOG.md` | — | 2026-06-19 | Architect |
-| `workflow.md` | v7 | 2026-06-19 | Architect |
+| `docs/PIXELLAB_KB.md` | v1 | 2026-06-20 | Pixel Consultant |
+| `roles/pixel-consultant.md` | v1 | 2026-06-20 | Pixel Consultant |
+| `workflow.md` | v8 | 2026-06-20 | Architect |
 | `scripts/sensor-scan.ps1` | v11 | 2026-06-19 | Architect |
 | `hooks/pre-commit` | v5 | 2026-06-19 | Architect |
 | `hooks/commit-msg` | v2 | 2026-06-19 | Architect |

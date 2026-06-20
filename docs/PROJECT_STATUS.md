@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Architect | PixelLab：建立 docs/PIXELLAB_KB.md 知識庫 + roles/pixel-consultant.md 顧問角色；workflow §B 註冊、DOC_INDEX 同步、DEAD-A 掃描移除 PixelLab |
 | 2026-06-20 | QA | GAP-042：實機插樁證明玩家被 Platform_C 擋住(卡住未穿過)、sensor 21/21、--check-only 0 → 通過 |
 | 2026-06-20 | Developer | GAP-042：盪繩收繩穿過平台修復 — global_position 瞬移繞過碰撞，改 move_and_collide |
 | 2026-06-20 | QA | GAP-041：NM41_TEST_PASS(攻擊針自動回收+release安全)、gap040/037 PASS、sensor 21/21、run_project 冒煙空(Player.tscn 載入正常) → 通過 |
