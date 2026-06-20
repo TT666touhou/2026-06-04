@@ -9,7 +9,7 @@ const _ANCHOR_WIRE := 1
 
 const _WireConstraintScript = preload("res://scripts/wire_constraint.gd")
 
-@export var max_needles: int = 3
+@export var max_needles: int = 5
 @export var retrieve_radius: float = 60.0
 @export var needle_proj_scene: PackedScene
 @export var needle_anchor_scene: PackedScene
