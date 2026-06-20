@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Architect | GAP-039：規劃 wire_constraint 彈性收繩、player 輸入/apply、needle_manager 5；workflow §F 新增驗證優先序(headless 首選)、§I-C Rule 24 改述 |
 | 2026-06-20 | Designer | GAP-039：繩改彈性快速收繩(上甩接平台連段)、帶線針改單按右鍵、針數 3→5；GDD §2.1/2.2/2.3/9.1/9.3 |
 | 2026-06-20 | QA | GAP-038：實機插樁驗證針 EMBED at 外牆(traveled=640)、sensor 21/21、--check-only 0 → 通過 |
 | 2026-06-20 | Developer | GAP-038：修復針飛半路消失 — get_viewport_rect 回傳 1152×648≠世界 1280×720，改飛行距離 max_travel 安全網 |

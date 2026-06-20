@@ -1,4 +1,4 @@
-﻿# Godot Multi-Agent 開發工作流（完整規範）v8 (2026-06-19)
+# Godot Multi-Agent 開發工作流（完整規範）v8 (2026-06-19)
 
 > **讀取指示（給 AI）**: 進入任何 Godot 遊戲開發對話時，必須優先讀取此文件。
 > 讀完後，立刻執行「A. 對話開始時的第一步」。
@@ -106,10 +106,10 @@
 ```
 Designer → Architect → Developer → Reviewer → QA
 （設計）    （架構）     （實作）     （審查）    （驗收）
-                                              ↑
-                                           Sensor
-                              （跨階段代碼感知守衛）
-                    觸發時：立即插入工作流
+											  ↑
+										   Sensor
+							  （跨階段代碼感知守衛）
+					觸發時：立即插入工作流
 ```
 
 **角色狀態由 `.agent-role` 文件控制**（純文字，內容為角色名稱小寫）。
@@ -329,7 +329,7 @@ design_[決策名稱]       → 設計師存入的決策（EntityType: GameDesig
 arch_decision_[名稱]   → 架構師存入的架構決策（EntityType: ArchitectureDecision）
 arch_reflection_[日期] → 架構師的反省記錄（EntityType: Reflection）
 task_[功能名稱]         → 任務狀態追蹤（EntityType: Task）
-                           狀態流：PLANNED → IN_DEV → IN_REVIEW → IN_QA → DONE
+						   狀態流：PLANNED → IN_DEV → IN_REVIEW → IN_QA → DONE
 
 dev_reflection_[日期]_[功能] → Developer 的反省記錄（EntityType: Reflection）
 review_reflection_[日期]_[功能] → Reviewer 的反省記錄（EntityType: Reflection）
@@ -364,12 +364,19 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 
 #### 使用規範
 
+> [!IMPORTANT]
+> **【驗證優先序】（2026-06-20 GAP-039 修訂）run_project 純開機效果差、效率低，不再是主驗證手段。**
+> 1. **Headless 自動化測試（首選）**：GUT 或 `godot --headless --path . --script res://tests/xxx.gd`（`extends SceneTree`）。可重複、快、能**斷言邏輯/數值**、無需人工輸入。**純函式 / RefCounted 元件（物理、狀態機、約束）一律優先寫測試**（範例見 `tests/test_rope_gap037.gd`、`test_rope_gap039.gd`）。
+> 2. **暫時插樁 + run_project + get_debug_output**：需要**實機真值**（座標、碰撞、viewport 尺寸等無法純邏輯推算者）時用；插樁（print / auto-fire）查完**即還原**（範例：GAP-038 抓到 `get_viewport_rect=1152×648`）。
+> 3. **run_project 純開機**：僅確認「載入無 Parse/Runtime 錯誤」，**不算行為驗證**。
+> 4. **玩家手動實測**：僅留給無法自動化的**主觀手感**（繩感、跳躍感）。
+
 ```
 [何時使用]
-✅ QA 驗收：run_project → 等待 → get_debug_output → 取代截圖流程
+✅ QA 驗收：優先 headless 測試斷言邏輯；需實機真值才插樁 run_project（見上方優先序）
 ✅ Sensor 掃描：get_debug_output 取得即時 runtime 錯誤（補充靜態 sensor-scan.ps1）
 ✅ Architect 分析：get_project_info 確認專案結構數量符合設計
-✅ Developer 調試：run_project + get_debug_output 取代手動開 Godot 截圖
+✅ Developer 調試：優先 headless 測試；需實機真值才 run_project + get_debug_output 插樁
 ✅ Reviewer 審查：get_uid 確認 UID 正確性
 
 [謹慎使用場景]
@@ -389,13 +396,13 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 // .mcp.json（已 commit）
 {
   "mcpServers": {
-    "godot": {
-      "command": "node",
-      "args": ["D:\\2026-06-04\\node_modules\\@coding-solo\\godot-mcp\\build\\index.js"],
-      "env": {
-        "GODOT_PATH": "C:\\Users\\88698\\Downloads\\Godot_v4.6.2-stable_win64.exe\\Godot_v4.6.2-stable_win64.exe"
-      }
-    }
+	"godot": {
+	  "command": "node",
+	  "args": ["D:\\2026-06-04\\node_modules\\@coding-solo\\godot-mcp\\build\\index.js"],
+	  "env": {
+		"GODOT_PATH": "C:\\Users\\88698\\Downloads\\Godot_v4.6.2-stable_win64.exe\\Godot_v4.6.2-stable_win64.exe"
+	  }
+	}
   }
 }
 ```
@@ -411,27 +418,27 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 
 ```
 [GAME_DESIGN.md 全部 CONFIRMED]
-         ↓  Designer commit → hook 驗證通過
-         ↓  切換角色：set-role.ps1 architect
-         ↓  Architect 讀 DOC_INDEX(-2) + ERROR_LOG(0) + PROJECT_STATUS(-1)
+		 ↓  Designer commit → hook 驗證通過
+		 ↓  切換角色：set-role.ps1 architect
+		 ↓  Architect 讀 DOC_INDEX(-2) + ERROR_LOG(0) + PROJECT_STATUS(-1)
   → 讀 GAME_DESIGN → 寫 implementation_plan.md
   → 寫 arch_reflection → 更新 PROJECT_STATUS
-         ↓  Architect commit → hook 驗證通過
-         ↓  切換角色：set-role.ps1 developer
-         ↓  Developer 讀 DOC_INDEX(-2) + ERROR_LOG(0) + PROJECT_STATUS(-1)
+		 ↓  Architect commit → hook 驗證通過
+		 ↓  切換角色：set-role.ps1 developer
+		 ↓  Developer 讀 DOC_INDEX(-2) + ERROR_LOG(0) + PROJECT_STATUS(-1)
   → 建 worktree → 在 feature 分支寫代碼
   →                   ↓  遇到物理/信號代碼 → [召喚 Sensor]
   Sensor 讀 DOC_INDEX(-2) + ERROR_LOG(-1) → 掃描
   Sensor Level 1（緊急）or Level 2（輕量）→ 修裁 → 通知 Reviewer → 返回
-         ↓  Developer commit（Godot --check-only + BOM + UID 驗證）→ push → PR
+		 ↓  Developer commit（Godot --check-only + BOM + UID 驗證）→ push → PR
   → 寫 dev_reflection → 更新 PROJECT_STATUS
-         ↓  切換角色：set-role.ps1 reviewer
-         ↓  Reviewer 讀 DOC_INDEX(-2) + ERROR_LOG(0) + Memory 設計決策 → 審查 PR
+		 ↓  切換角色：set-role.ps1 reviewer
+		 ↓  Reviewer 讀 DOC_INDEX(-2) + ERROR_LOG(0) + Memory 設計決策 → 審查 PR
   → 執行 BOM + UID + SubResource + callback 鏈追蹤
   → 若發現問題：退回 Developer（視情況召喚 Sensor）
   → 通過：批准 PR → 寫 review_reflection → 更新 PROJECT_STATUS
-         ↓  切換角色：set-role.ps1 qa
-         ↓  QA 讀 DOC_INDEX(-2) + ERROR_LOG(0) + Memory DoD → 執行測試
+		 ↓  切換角色：set-role.ps1 qa
+		 ↓  QA 讀 DOC_INDEX(-2) + ERROR_LOG(0) + Memory DoD → 執行測試
   → 建立 qa-report → 結論
   → 若發現運行時錯誤：召喚 Sensor → Sensor 掃描 → 退回 Developer
   → 全部通過：git commit + push → 更新 PROJECT_STATUS → DONE
@@ -441,13 +448,13 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 
 ```
 [用戶要求修改 WORKFLOW / 規則 / 文件]
-         ↓  必須走 §MOD 5步驟 SOP（禁止繞過直接修改）
+		 ↓  必須走 §MOD 5步驟 SOP（禁止繞過直接修改）
   步驟①（Sensor）：sensor-scan.ps1 現狀掃描
   步驟②（Architect）：差距分析 + 修改計畫（等用戶確認！）
   步驟③（Developer）：實施修改 + Select-String 驗證落地
   步驟④（Reviewer）：新規則衝突審查 + ERROR_LOG 更新
   步驟⑤（QA）：模擬測試驗證（5種情境，至少選1）→ git commit
-         ↓  DONE（所有文件已更新，DOC_INDEX.md 已同步）
+		 ↓  DONE（所有文件已更新，DOC_INDEX.md 已同步）
 ```
 
 ---
@@ -516,7 +523,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | 6 | **測試基準**：QA 只依據 Memory DoD，不依賴 Developer 說明 | [DOC-ONLY] |
 | 8 | **Sensor 優先**：看到 Level 1 觸發條件 → 立即停止，呼叫 Sensor | [DOC-ONLY] |
 | 9 | **反省強制**：Architect/Developer/Reviewer 每次工作後寫反省記錄（Memory MCP） | [DOC-ONLY] |
-| 24 | **GUT 測試**：複雜系統才強制 GUT（非 100% 要求）；QA 在驗收中判斷 | [DOC-ONLY] |
+| 24 | **驗證優先序**：純函式/RefCounted 邏輯（物理/狀態機/約束）優先寫 headless 測試（GUT 或 `--script`）；run_project 純開機僅作冒煙，不算行為驗證（→ §F 驗證優先序，GAP-039） | [DOC-ONLY] |
 
 ---
 
@@ -540,11 +547,11 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 │   ├── qa.md                       → 含 QA-FINAL-DOC + QA 驗收
 │   └── sensor.md                   → 代碼感知守衛（含觸發器）
 └── scripts/
-    ├── set-role.ps1                → v2 新增：必讀文件清單提示（§READ SOP）
-    ├── sensor-scan.ps1             → Sensor 自動掃描腳本（v12/22 checks）
-    ├── dev-submit.ps1              → Developer 投遞流程
-    └── utils/
-        └── (工具型腳本，不進入測試)
+	├── set-role.ps1                → v2 新增：必讀文件清單提示（§READ SOP）
+	├── sensor-scan.ps1             → Sensor 自動掃描腳本（v12/22 checks）
+	├── dev-submit.ps1              → Developer 投遞流程
+	└── utils/
+		└── (工具型腳本，不進入測試)
 ```
 
 > 新專案可直接複製 `hooks/` `roles/` `scripts/` 三個目錄，執行 D2 的 git 設定。
@@ -711,7 +718,7 @@ $md | ForEach-Object {
 ```
 執行掃描：
   Select-String -Path "D:\2026-06-04\**\*.md","D:\2026-06-04\**\*.ps1" `
-    -Pattern "Check \d+/\d+|Sensor v\d+|\d+/21" -Recurse
+	-Pattern "Check \d+/\d+|Sensor v\d+|\d+/21" -Recurse
 
 預期結果：所有 Check 引用均為 X/21；所有 Sensor 版本均為 v11
 任何偏差 → 視為違規，記錄並修復
@@ -846,7 +853,7 @@ $md | ForEach-Object {
 1. 識別你要修改的術語/數字/規則名稱
 2. 執行掃描，找出所有引用該術語的文件：
    Select-String -Path "D:\2026-06-04\**\*.md","D:\2026-06-04\**\*.ps1","D:\2026-06-04\hooks\*" `
-     -Pattern "被修改的術語" -Recurse
+	 -Pattern "被修改的術語" -Recurse
 3. 查閱 §EDIT.3 Cascade Update Matrix，確認聯動文件
 4. 列出完整的需更新文件清單 → 這就是你的 commit 範圍
 ```
