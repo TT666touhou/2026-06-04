@@ -4,7 +4,6 @@
 [ext_resource type="Script" path="res://scripts/needle_manager.gd" id="2_nm"]
 [ext_resource type="PackedScene" uid="uid://c4mvp02proj" path="res://scenes/NeedleProjectile.tscn" id="3_npscene"]
 [ext_resource type="PackedScene" uid="uid://c4mvp01anc" path="res://scenes/NeedleAnchor.tscn" id="4_nascene"]
-[ext_resource type="PackedScene" uid="uid://c4mvp03wplat" path="res://scenes/WirePlatform.tscn" id="5_wpscene"]
 
 [sub_resource type="RectangleShape2D" id="1_rect"]
 size = Vector2(32, 64)
@@ -37,6 +36,5 @@ width = 1.5
 script = ExtResource("2_nm")
 needle_proj_scene = ExtResource("3_npscene")
 needle_anchor_scene = ExtResource("4_nascene")
-wire_platform_scene = ExtResource("5_wpscene")
 
 [node name="Camera2D" type="Camera2D" parent="."]
