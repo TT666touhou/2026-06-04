@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Reviewer | GAP-041：審查通過 — auto_retrieve_attack 近收遠留(測試)、release_wire 冪等(is_instance_valid)、_wire_held 守鬆開時序、無平台殘留、Player.tscn 載入OK；淨減193行 |
 | 2026-06-20 | Architect | GAP-041：規劃重寫 needle_manager(release_wire/auto_retrieve_attack)、player(右鍵按住/移除平台UI)、刪 WirePlatform、改 Player.tscn |
 | 2026-06-20 | Designer | GAP-041：大幅簡化 — 移除平台/Q/E/F/S；盪繩改右鍵按住(自動收繩)、鬆開斷繩+回收；攻擊針靠近自動回收；GDD §2.2/2.3/2.4/2.5/9.1/9.3 |
 | 2026-06-20 | QA | GAP-040：ROPE40_TEST_PASS(斷言無速度注入=自然)、gap037 PASS、sensor 21/21、run_project 冒煙空 → 通過 |
