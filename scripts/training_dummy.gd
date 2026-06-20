@@ -1,9 +1,9 @@
 extends CharacterBody2D
 
-@export var pull_speed: float = 240.0
+@export var knockback_force: float = 500.0
+@export var ground_friction: float = 800.0
 @export var gravity: float = 980.0
 
-var _pull_count: int = 0
 var _player: Node = null
 
 func _ready() -> void:
@@ -19,23 +19,19 @@ func _physics_process(delta: float) -> void:
 		velocity.y += gravity * delta
 	else:
 		velocity.y = 0.0
-
-	if _pull_count > 0 and _player != null and is_instance_valid(_player):
-		var dx: float = _player.global_position.x - global_position.x
-		velocity.x = sign(dx) * pull_speed if abs(dx) > 2.0 else 0.0
-	else:
-		velocity.x = move_toward(velocity.x, 0.0, pull_speed * 4.0 * delta)
-
+		velocity.x = move_toward(velocity.x, 0.0, ground_friction * delta)
 	move_and_slide()
 
 # Called by NeedleManager when a needle embeds in this body.
+# Attack needle (n_type=0) applies a one-shot knockback impulse away from the player.
 func on_needle_embedded(n_type: int) -> void:
-	if n_type == 0:  # ATTACK needle
-		_pull_count += 1
-		if _player == null or not is_instance_valid(_player):
-			_init_player_ref()
-
-# Called by NeedleManager when an embedded needle is removed.
-func on_needle_removed(n_type: int) -> void:
-	if n_type == 0:  # ATTACK needle
-		_pull_count = max(0, _pull_count - 1)
+	if n_type != 0:
+		return
+	if _player == null or not is_instance_valid(_player):
+		_init_player_ref()
+	var dir := Vector2.RIGHT
+	if _player != null and is_instance_valid(_player):
+		dir = (global_position - _player.global_position).normalized()
+	velocity.x += dir.x * knockback_force
+	if is_on_floor():
+		velocity.y -= knockback_force * 0.35
