@@ -1096,3 +1096,19 @@ global_rotation = dir.angle()
 - **防範規則**: 命名區域變數時避免與 Godot 基底類別方法/屬性同名（`is_connected`、`connect`、`name`、`position` 等）；QA 應以 `run_project` 補靜態檢查未覆蓋的載入期警告。
 - **驗證**: sensor 21/21；`--check-only` 0 errors；修復後 run_project errors 為空。GDD §2.4 為設計權威。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-033 回收提示文字 UI + 新 class_name 快取 gotcha（2026-06-20）
+
+- **Severity**: Feature（UX）+ Lesson（工具鏈）
+- **需求（用戶）**: 玩家難以判斷哪些鋼針（尤其平台針）可回收 → 加文字 UI 標示可回收針；建立 `scripts/ui`、`scenes/ui` 資料夾；UI 結構可復用、後期可加 tween。
+- **實作**:
+  - `scripts/ui/world_label.gd` + `scenes/ui/world_label.tscn`：可復用世界座標文字標籤（`follow`、`show/hide_prompt`、`play_appear` tween 擴充點）。
+  - `scripts/ui/pickup_prompt_ui.gd` + `scenes/ui/pickup_prompt_ui.tscn`：物件池控制器，在可回收針上方顯示 `[F] 類型`，F 目標亮色、其餘暗色。
+  - `needle_manager.gd`：新增 `get_retrieve_info()`（候選+target，DRY），`try_retrieve()` 復用；新增 `_retrieve_label()`。
+  - `player.gd`：`_ready` 程式碼 instantiate UI（`top_level=true` 防面向翻轉鏡像），`_physics_process` 每幀更新。
+- **開發中發現的 gotcha（Type D 流程空白）**:
+  - 新增 `class_name WorldLabel` 後，孤立 `godot --check-only`（pre-commit / sensor 使用）報 `Could not find type "WorldLabel"`，因 global class cache（`.godot/`，gitignored）未更新。
+  - **修復**: `godot --headless --path . --import` 重新匯入即註冊。
+- **防範規則**: **新增任何 `class_name` 腳本後，先執行 `godot --headless --path . --import`（或開一次編輯器）更新 global class cache，再 commit/跑 sensor-scan**；否則 `--check-only` 會因找不到型別而 FAIL（非真錯誤）。
+- **驗證**: sensor 21/21；`--check-only` 0 errors；run_project errors 空。視覺標籤需玩家實測（qa-report 清單）。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
