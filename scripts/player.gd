@@ -101,7 +101,13 @@ func _apply_wire(delta: float) -> void:
 		return
 	_wire.auto_reel(delta)                              # auto-pull toward anchor while held
 	var r: Dictionary = _wire.constrain(global_position, velocity)
-	global_position = r["pos"]                         # natural pendulum (no velocity injection)
+	# Apply the rope's position correction via move_and_collide (NOT a direct
+	# global_position teleport, which bypassed collision and let the player pass
+	# through platforms while being reeled toward a wall — GAP-042). move_and_collide
+	# stops at walls/platforms, so the player gets blocked (卡住).
+	var correction: Vector2 = (r["pos"] as Vector2) - global_position
+	if correction != Vector2.ZERO:
+		move_and_collide(correction)
 	velocity = r["vel"]
 
 func _shoot_attack() -> void:
