@@ -1181,3 +1181,16 @@ global_rotation = dir.angle()
 - **防範規則（修正 GAP-036）**: `get_viewport_rect()` 是**視窗/螢幕尺寸（受 stretch/scale 影響）≠ 世界座標範圍**。**禁止用 viewport 尺寸做世界出界/可視判定**；世界範圍回收改用**飛行距離/生命週期**或實際場景/世界參數。（GAP-036 當時以為 viewport 是「非硬編碼」的正解，實為錯誤。）
 - **方法論**: 無法用工具輸入時，以**暫時插樁（auto-fire + print）+ run_project + get_debug_output** 取得實機真值定位（本例一次抓到 vp=1152×648），勝於純臆測。
 - **提交**: 本次 commit（[DEV] 修復 → [QA] 驗收）
+
+## GAP-039 彈性快速收繩(上甩) + 單按右鍵 + 針數5 + 驗證法改良（2026-06-20）
+
+- **Severity**: Feature（手感/操作/數值）+ Process（驗證法）
+- **需求（用戶）**: (1) 線收縮更快 + 一定彈力，達成「朝上射右鍵→上甩→適時第二右鍵成平台→帶動能站上」。(2) 帶線針改單按右鍵。(3) 針數 3→5。(4) workflow 實機驗證效果差/效率低 → 改更好方式（不一定實機）。
+- **實作**:
+  - 繩：`wire_constraint` 由 GAP-037 鐘擺硬約束(`constrain` 夾位置) 改回**彈性 spring + 快 auto-reel**（`apply`：`pull=min(stiffness*stretch,max_accel)` 朝錨點 + 沿繩阻尼；`auto_reel_speed=320`、`stiffness=40`、`damping=4`）。Verlet 視覺保留。收繩快→朝上射針上甩→第二針成平台釋放→帶動能站上。
+  - 輸入：`player._unhandled_input` 右鍵→帶線針、左鍵→攻擊針；`_shoot_needle(wire:bool)`。
+  - 針數：`needle_manager.max_needles 3→5`；`debug_overlay` count/cap 動態。
+  - 驗證法：`workflow §F` 新增**驗證優先序**（1 headless 自動化測試首選 / 2 暫時插樁+run_project 取實機真值 / 3 run_project 純開機僅冒煙 / 4 玩家手感）；`§I-C Rule 24` 改述。
+- **連帶**: GAP-039 移除 `constrain()` → `tests/test_rope_gap037.gd` 的 constrain 斷言過時失效；已修剪為僅測 VerletRope+reel（WireConstraint 由 `test_rope_gap039.gd` 覆蓋）。教訓：改動公開 API（如 constrain→apply）須同步更新對應測試。
+- **驗證（新法示範）**: `test_rope_gap039.gd` → **ROPE39_TEST_PASS**（針數5、彈性朝錨點、**上甩 vel.y<0 & pos 上移**、reel 夾 min）；`test_rope_gap037.gd` → ROPE_TEST_PASS；sensor 21/21；`--check-only` 0；run_project 冒煙 errors 空。連段手感需玩家實測。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）

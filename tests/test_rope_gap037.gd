@@ -1,7 +1,7 @@
-# Headless unit test for GAP-037 rope rewrite (VerletRope + WireConstraint).
+# Headless unit test for the VerletRope visual + WireConstraint reel (GAP-037,
+# trimmed for GAP-039: the old pendulum constrain() was replaced by elastic apply(),
+# which test_rope_gap039.gd now covers).
 # Run: godot --headless --path . --script res://tests/test_rope_gap037.gd
-# These are pure RefCounted components (no scene tree), so they can be exercised
-# without gameplay input — verifies the new runtime code actually executes.
 extends SceneTree
 
 const VerletRopeScript = preload("res://scripts/verlet_rope.gd")
@@ -26,20 +26,9 @@ func _init() -> void:
 			fails += 1; printerr("FAIL verlet non-finite point: ", p)
 			break
 
-	# --- WireConstraint: slack passes through, taut clamps + cancels radial ---
+	# --- WireConstraint reel / auto_reel respect min_length ---
 	var wc: RefCounted = WireConstraintScript.new()
 	wc.setup(Vector2(0, 0), 100.0)
-	var slack: Dictionary = wc.constrain(Vector2(0, 50), Vector2(10, 0))
-	if slack["pos"] != Vector2(0, 50):
-		fails += 1; printerr("FAIL slack moved player: ", slack["pos"])
-	var taut: Dictionary = wc.constrain(Vector2(0, 150), Vector2(0, 100))
-	var d: float = (taut["pos"] as Vector2).distance_to(Vector2(0, 0))
-	if absf(d - 100.0) > 0.5:
-		fails += 1; printerr("FAIL taut not clamped to length: ", d)
-	if (taut["vel"] as Vector2).y > 0.5:
-		fails += 1; printerr("FAIL outward radial not removed: ", taut["vel"])
-
-	# --- reel / auto_reel respect min_length ---
 	wc.reel(50.0, 1.0)
 	if wc.max_length > 100.0 or wc.max_length < wc.min_length - 0.01:
 		fails += 1; printerr("FAIL reel out of range: ", wc.max_length)
