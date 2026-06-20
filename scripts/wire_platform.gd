@@ -9,6 +9,10 @@ var _anchor_b: Node2D = null
 
 @onready var _shape: CollisionShape2D = $CollisionShape2D
 
+func _ready() -> void:
+	set_collision_layer_value(1, false)  # not on default layer 1
+	set_collision_layer_value(4, true)   # layer 4 — player can toggle for drop-through
+
 func setup(anchor_a: Node2D, anchor_b: Node2D) -> void:
 	_anchor_a = anchor_a
 	_anchor_b = anchor_b
