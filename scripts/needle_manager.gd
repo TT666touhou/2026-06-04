@@ -55,10 +55,10 @@ func try_retrieve(player_pos: Vector2, connected_anchor: Node = null) -> void:
 	for anchor in _anchors:
 		if not is_instance_valid(anchor):
 			continue
-		var is_connected: bool = anchor == connected_anchor
+		var is_player_wire: bool = anchor == connected_anchor
 		var is_platform: bool = anchor == _platform_anchor_a or anchor == _platform_anchor_b
 		var dist: float = anchor.global_position.distance_to(player_pos)
-		if not is_connected and dist > retrieve_radius:
+		if not is_player_wire and dist > retrieve_radius:
 			continue
 		var prio: int = _retrieve_priority(anchor, is_platform)
 		if prio < best_priority or (prio == best_priority and dist < best_dist):
