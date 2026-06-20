@@ -353,7 +353,7 @@ if [ "$ROLE" = "developer" ]; then
     fi
     echo "   ✅ 分支檢查通過（目前：$CURRENT_BRANCH）"
 
-    echo "[Developer/auto-sensor] 自動執行 sensor-scan.ps1（v11 / 21 checks）..."
+    echo "[Developer/auto-sensor] 自動執行 sensor-scan.ps1（v12 / 22 checks）..."
     if [ -f "scripts/sensor-scan.ps1" ]; then
         SENSOR_OUT=$(powershell.exe -NoProfile -File "scripts/sensor-scan.ps1" 2>&1)
         SENSOR_FAIL=$(echo "$SENSOR_OUT" | grep "\[FAIL\]" || true)
@@ -372,6 +372,17 @@ if [ "$ROLE" = "developer" ]; then
         echo "   ⚠️  找不到 scripts/sensor-scan.ps1，跳過自動掃描"
     fi
 
+    echo "[Developer/Ponytail-A] 驗證 .gd diff 中含 ponytail: 注解（GLOBAL-RULE-002）..."
+    if [ -n "$CHANGED_GD" ]; then
+        GD_WITH_PONYTAIL=$(git diff --cached -- $CHANGED_GD | grep '^+' | grep -v '^+++' | grep '# ponytail:' || true)
+        if [ -z "$GD_WITH_PONYTAIL" ]; then
+            echo "⚠️  [Developer/Ponytail-A] .gd 修改未包含 '# ponytail: rung=N' 注解"
+            echo "   根據 GLOBAL-RULE-002，代碼修改必須標示使用的 Ponytail Rung"
+            echo "   範例：# ponytail: rung=5"
+        else
+            echo "   ✅ ponytail: 注解存在"
+        fi
+    fi
 
 fi
 

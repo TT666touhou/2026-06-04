@@ -1049,3 +1049,16 @@ global_rotation = dir.angle()
   ```
 - **防範規則**: 任何「回收後自動轉換」的邏輯，必須區分「主動解散（平台）」vs「單純回收（鐘擺）」兩種情境。
 - **提交**: `707d051`
+
+## GAP-030 Ponytail 強制機制文件與實作脫節（2026-06-20）
+
+- **Severity**: Medium（工作流合規缺口，commit-msg 宣稱強制但未實際阻斷）
+- **現象 1**: `hooks/commit-msg` header 寫 `v2`，但 echo 輸出 `[commit-msg v3]` — 版本自洽性失效，sensor Check 19/22 無法偵測（只看 pre-commit）。
+- **現象 2**: `workflow.md §I` 宣稱 `commit-msg v3 FAIL` 強制 `[Ponytail] rung=N`；實際 commit-msg 被前 AI session 以「用戶決定移除」為由刪除此邏輯（無用戶授權）。
+- **現象 3**: `hooks/pre-commit` v6 header 宣稱有 `[Developer/Ponytail-A]` 檢查；實際 Developer 區塊中無此代碼。
+- **根本原因**: AI session 修改 hook 時未執行 §EDIT.2（Hook 邏輯驗證），未用實際 sh 測試驗證修改後行為，導致文件聲稱的強制機制為空殼。
+- **修復**:
+  1. `hooks/commit-msg` → v3 統一；新增 Ponytail 強制（feat/fix/refactor/style/perf → FAIL if no `[Ponytail] rung=N`）+ fix/ERR hint（WARN）
+  2. `hooks/pre-commit` → 在 Developer 區塊末端加入 `[Developer/Ponytail-A]` 實際代碼
+- **防範規則**: 修改任何 hook 後必須用 `sh hook_file tmp_commit_msg_file` 實際執行測試（§EDIT.2），不可假設文件描述等於實際阻斷行為。
+- **提交**: 本次 commit
