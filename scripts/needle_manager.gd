@@ -1,4 +1,4 @@
-# ponytail: rung=5 — needle state machine, ~110 lines
+# needle state machine, ~110 lines
 class_name NeedleManager
 extends Node
 
@@ -116,7 +116,7 @@ func _remove_anchor(anchor: Node) -> void:
 			_platform_anchor_b = null
 			platform_dissolved = true
 	needle_retrieved.emit(anchor)
-	# ponytail: rung=4 — only transition to remaining anchor when platform dissolves,
+	# only transition to remaining anchor when platform dissolves,
 	# not when retrieving the active pendulum anchor (GAP-029)
 	if platform_dissolved:
 		var remaining := get_wire_anchors()

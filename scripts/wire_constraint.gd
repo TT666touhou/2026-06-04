@@ -1,4 +1,4 @@
-# ponytail: rung=5 — velocity projection, ~30 lines, no Node inheritance
+# velocity projection, ~30 lines, no Node inheritance
 class_name WireConstraint
 extends RefCounted
 

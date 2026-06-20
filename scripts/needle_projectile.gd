@@ -1,4 +1,4 @@
-# ponytail: rung=2+5 — Node2D + RayCast2D built-ins, minimal flight logic
+# Node2D + RayCast2D built-ins, minimal flight logic
 class_name NeedleProjectile
 extends Node2D
 

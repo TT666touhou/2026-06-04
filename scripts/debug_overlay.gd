@@ -1,4 +1,4 @@
-# ponytail: rung=2 — CanvasLayer + Label, built-in nodes only
+# CanvasLayer + Label, built-in nodes only
 class_name DebugOverlay
 extends CanvasLayer
 

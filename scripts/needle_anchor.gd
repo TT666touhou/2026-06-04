@@ -1,4 +1,4 @@
-# ponytail: rung=2 — pure data node, no custom logic
+# pure data node, no custom logic
 class_name NeedleAnchor
 extends Node2D
 

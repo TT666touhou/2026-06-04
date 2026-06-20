@@ -1,6 +1,6 @@
 class_name WirePlatform
 extends StaticBody2D
-# ponytail: rung=2 — StaticBody2D + CollisionShape2D built-ins
+# StaticBody2D + CollisionShape2D built-ins
 
 @export var platform_height: float = 6.0
 
