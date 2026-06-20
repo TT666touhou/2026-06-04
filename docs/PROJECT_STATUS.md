@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Architect | GAP-037：規劃 verlet_rope.gd(preload免--import)、wire_constraint 改鐘擺約束+reel、player 整合 Verlet 視覺 |
 | 2026-06-20 | Designer | GAP-037：繩重做 — 視覺改 Verlet 物理繩(去除側向假彎曲)、物理回鐘擺長度約束+auto-reel；研究後不採 Joint(需 RigidBody)；GDD §2.2/2.3 |
 | 2026-06-20 | QA | GAP-036：驗收修復射不出鋼針（算術可證 + run_project errors 空）→ 通過 |
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
