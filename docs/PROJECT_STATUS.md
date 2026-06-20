@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Architect | GAP-035：規劃 wire_constraint always-pull、player 慣性/buffer/coyote/可變跳、MVP_Test 放大 1280×720 外牆重框 |
 | 2026-06-20 | Designer | GAP-035：繩改彈力繩自動拉近(Q切斷)、視窗放大1280×720外牆切齊、Player性能微調、左右慣性、jump buffer/coyote/可變跳；GDD §2.3/9.1/9.4/9.5 |
 | 2026-06-20 | QA | GAP-034：run_project 乾淨啟動（errors 空）、sensor 21/21、--check-only 0；撿針/統一距離靜態可證；繩手感開放 4 @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-034：審查通過 — 彈簧僅 taut 時作用、div-by-zero 已防、damping clampf 有界、max_length 介面不變不影響 renderer/debug；動量保留正確 |
