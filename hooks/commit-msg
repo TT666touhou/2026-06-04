@@ -1,12 +1,12 @@
 #!/bin/sh
 # ==========================================================
-# hooks/commit-msg  (v3 — Ponytail 強制版)
+# hooks/commit-msg  (v4)
 # Commit 訊息格式驗證
 #
 # 觸發時機：git commit 訊息確認後
 # v2: 格式驗證（[ROLE] type: 描述）
-# v3: 新增 Ponytail rung=N 強制（feat/fix/refactor/style/perf → FAIL）
-#     新增 fix commit ERR-XXX/GAP-XXX 引用提示（WARN）
+# v3: (已移除) Ponytail rung=N 強制
+# v4: 移除 Ponytail 強制機制（用戶授權，GAP-031）；保留格式驗證 + fix/ERR 引用提示（WARN）
 # ==========================================================
 
 COMMIT_MSG_FILE=$1
@@ -42,15 +42,15 @@ fi
 
 if [ $FORMAT_OK -eq 0 ]; then
     echo ""
-    echo "❌ [commit-msg v3] Commit 訊息格式不正確！"
+    echo "❌ [commit-msg v4] Commit 訊息格式不正確！"
     echo ""
     echo "   你的訊息：$COMMIT_MSG"
     echo ""
     echo "   正確格式：[ROLE] type: 描述 （至少 3 個字元）"
     echo "   範例："
     echo "     [ARCH] plan: 設計玩家移動系統架構"
-    echo "     [DEV] feat: 實作玩家跳躍功能 [Ponytail] rung=5"
-    echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤 GAP-001 [Ponytail] rung=5"
+    echo "     [DEV] feat: 實作玩家跳躍功能"
+    echo "     [DEV] fix: 修正碰撞偵測在斜面上的錯誤 GAP-001"
     echo "     [REVIEW] review: 審查玩家移動 PR"
     echo "     [QA] test: 驗證玩家移動測試全部通過"
     echo "     docs: 更新 README"
@@ -66,47 +66,12 @@ fi
 TYPE=$(echo "$COMMIT_MSG" | sed 's/^\[\(ARCH\|DEV\|REVIEW\|QA\|DESIGN\)\] //' | cut -d: -f1 | tr -d ' ')
 
 # ——————————————————————————————————————
-# [GLOBAL-RULE-002] Ponytail 強制
-# 代碼類 commit（feat/fix/refactor/style/perf）必須含 [Ponytail] rung=N
-# ——————————————————————————————————————
-CODE_TYPES="feat|fix|refactor|style|perf"
-if echo "$TYPE" | grep -qE "^($CODE_TYPES)$"; then
-    if ! echo "$COMMIT_MSG" | grep -q "\[Ponytail\]"; then
-        echo ""
-        echo "❌ [commit-msg v3 / GLOBAL-RULE-002] 代碼類 commit 必須含 [Ponytail] 標記！"
-        echo ""
-        echo "   你的訊息：$COMMIT_MSG"
-        echo ""
-        echo "   格式：[DEV] $TYPE: 描述 [Ponytail] rung=N"
-        echo "   範例：[DEV] fix: 修正碰撞偵測 GAP-001 [Ponytail] rung=5"
-        echo ""
-        echo "   Ponytail 7-rung（選最低可用的）："
-        echo "     rung=1 YAGNI  rung=2 Godot Built-ins  rung=3 Language Native"
-        echo "     rung=4 Dependency  rung=5 One-liner  rung=6 Minimal  rung=7 Abstraction"
-        echo ""
-        exit 1
-    fi
-    # 確認 [Ponytail] 後有 rung=N
-    if ! echo "$COMMIT_MSG" | grep -qE "\[Ponytail\].*rung=[0-9]"; then
-        echo ""
-        echo "❌ [commit-msg v3 / GLOBAL-RULE-002] [Ponytail] 標記必須包含 rung=N 數字！"
-        echo ""
-        echo "   你的訊息：$COMMIT_MSG"
-        echo "   缺少：rung=N（N 為 1-7 的數字）"
-        echo ""
-        echo "   正確：[DEV] fix: 修正碰撞偵測 [Ponytail] rung=5"
-        echo ""
-        exit 1
-    fi
-fi
-
-# ——————————————————————————————————————
 # [I-B Rule 10] fix commit → 建議引用 ERR-XXX / GAP-XXX（WARN）
 # ——————————————————————————————————————
 if echo "$TYPE" | grep -q "^fix$"; then
     if ! echo "$COMMIT_MSG" | grep -qE "ERR-[0-9]+|GAP-[0-9]+"; then
-        echo "⚠️  [commit-msg v3 / I-B Rule 10] fix: commit 建議引用對應的 ERR-XXX 或 GAP-XXX 編號"
-        echo "   範例：[DEV] fix: 修正碰撞偵測 GAP-029 [Ponytail] rung=5"
+        echo "⚠️  [commit-msg v4 / I-B Rule 10] fix: commit 建議引用對應的 ERR-XXX 或 GAP-XXX 編號"
+        echo "   範例：[DEV] fix: 修正碰撞偵測 GAP-029"
     fi
 fi
 

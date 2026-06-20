@@ -3,16 +3,16 @@
 
 ---
 
-## 1. 技術決策摘要（Ponytail 合規）
+## 1. 技術決策摘要
 
-| 元件 | 方案 | Ponytail Rung | 理由 |
-|------|------|--------------|------|
-| Player 物理體 | `CharacterBody2D` | Rung 2 | Godot 內建平台標準 |
-| Wire 繩索約束 | 速度投影約束（自訂 ~20 行） | Rung 5 | 符合「鬆-緊-E 收線」設計 |
-| Wire 視覺 | `Line2D` 固定顏色 | Rung 2 | Godot 內建，MVP 不需張力色 |
-| 針碰撞偵測 | `RayCast2D` | Rung 2 | 防穿牆，Godot 內建 |
-| 鋼索平台 | 動態生成 `StaticBody2D` | Rung 5 | 兩針間建立一次性物體 |
-| 驗證 | GUT 單元測試 + Debug Overlay | — | 邏輯與實機雙重驗證 |
+| 元件 | 方案 | 理由 |
+|------|------|------|
+| Player 物理體 | `CharacterBody2D` | Godot 內建平台標準 |
+| Wire 繩索約束 | 速度投影約束（自訂 ~20 行） | 符合「鬆-緊-E 收線」設計 |
+| Wire 視覺 | `Line2D` 固定顏色 | Godot 內建，MVP 不需張力色 |
+| 針碰撞偵測 | `RayCast2D` | 防穿牆，Godot 內建 |
+| 鋼索平台 | 動態生成 `StaticBody2D` | 兩針間建立一次性物體 |
+| 驗證 | GUT 單元測試 + Debug Overlay | 邏輯與實機雙重驗證 |
 
 ---
 
@@ -80,7 +80,7 @@ Player (CharacterBody2D)
 
 ```gdscript
 # wire_constraint.gd
-# ponytail: rung=5 — one-liner core + minimal wrapper (~25 lines)
+# 速度投影約束：one-liner core + minimal wrapper (~25 lines)
 class_name WireConstraint
 
 var anchor_pos: Vector2      # 針錨點世界座標
@@ -118,7 +118,7 @@ const MIN_LENGTH := 20.0
 
 ```gdscript
 # player.gd — 所有魔術數字均為 @export，無硬編碼
-# ponytail: rung=2+5 (CharacterBody2D + velocity projection)
+# CharacterBody2D + velocity projection
 
 @export var move_speed: float = 200.0        # px/s 水平速度
 @export var jump_velocity: float = 501.0     # px/s 起跳速度（對應 128px 高）

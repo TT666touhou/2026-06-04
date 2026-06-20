@@ -15,7 +15,21 @@
 
 ---
 
-### §MOD — Ponytail/SOP 強化（開始：2026-06-19）
+### §MOD — Ponytail 機制完整移除（GAP-031，2026-06-20，用戶授權）
+
+**觸發原因**：用戶裁定 Ponytail 7-rung 為舊機制應完整移除；前次移除不徹底，GAP-030 又誤判回加。
+
+| 步驟 | 名稱 | 狀態 | 執行角色 | 完成時間 |
+|------|------|------|----------|---------|
+| Step ① | Sensor scan — 盤點所有 Ponytail 引用（hooks/workflow/sensor/docs/.gd/tools） | DONE | Sensor | 2026-06-20 |
+| Step ② | Architect plan — 區分「機制」與「其他功能」，規劃移除範圍 + GLOBAL-RULE-004 | DONE | Architect | 2026-06-20 |
+| Step ③ | Developer impl — commit-msg v4 + pre-commit v7 + sensor 21 checks + workflow + docs + .gd | DONE | Architect/Developer | 2026-06-20 |
+| Step ④ | Reviewer review — 確認其他閘門未受影響、hook 以 sh 實測 | DONE | Reviewer | 2026-06-20 |
+| Step ⑤ | QA verify + commit — sensor 21/21 PASS + hook 阻斷行為實測 | DONE | QA | 2026-06-20 |
+
+---
+
+### §MOD — Ponytail/SOP 強化（開始：2026-06-19）（註：本 SOP 引入的 Ponytail 機制已由上方 GAP-031 移除）
 
 **觸發原因**：Ponytail `rung=N` 格式未強制、`.gd` ponytail: 注解未驗證、sop-state PENDING 未阻斷 push
 

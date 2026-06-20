@@ -66,26 +66,36 @@
 
 ---
 
-## 【GLOBAL-RULE-002】Ponytail 7-rung ladder 開發哲學（2026-06-17 硬性規則）
+## 【GLOBAL-RULE-002】（已移除）Ponytail 7-rung 機制
+
+> [!NOTE]
+> **Ponytail 7-rung ladder 機制已於 2026-06-20 經用戶授權完整移除（GAP-031）。**
+> commit-msg / pre-commit / sensor-scan 不再有任何 `[Ponytail]` / `rung=N` 強制或檢查。
+> **後續 session 不得以「未授權」為由重新加回此機制**——移除為用戶明確決定。
+> 簡潔/避免過度工程的精神改由 GLOBAL-RULE-004 與各角色 SOP 自律維持。
+
+---
+
+## 【GLOBAL-RULE-004】防止鬼打牆 / 無限循環（2026-06-20 硬性規則）
 
 > [!CAUTION]
-> **任何情況下實作功能或設計架構，必須嚴格遵守 Ponytail 7-rung 決策階梯。**
-> **任何違反「過度工程」的行為都受到嚴格限制。**
+> **AI 不得卡進重試循環。任何動作失敗時，先理解原因再行動，禁止原封不動重試。**
 
-### 階梯原則（從上到下，優先級遞減）
+### 規則細節
 
-1. **YAGNI (You Aren't Gonna Need It)**: 不要寫任何程式碼。挑戰需求本身是否真的必要。
-2. **Godot Built-ins**: 使用 Godot 內建系統（如 Node, Physics, AnimationPlayer, Timer）。這是 Godot 專屬的優先選項。
-3. **Language Native**: 使用 GDScript 語言內建特性（如 Array 方法、Dictionary 操作）。
-4. **Dependency**: 引用現有的專案內模組、腳本。
-5. **One-liner**: 寫一行解決問題的自定義程式碼。
-6. **Minimal implementation**: 寫最少行的自定義程式碼，避免防禦性、未來、過度設計。
-7. **Complete abstraction**: 寫完整的物件導向/抽象架構（最後的選項）。
+| 情境 | 強制做法 |
+|------|---------|
+| 同一指令/commit 連續失敗 | 最多嘗試 **2 次**；第 2 次仍失敗 → 停止，讀錯誤訊息找根因，換方法或向用戶報告具體阻斷點 |
+| commit 被 git hook 阻斷 | 閱讀 hook 輸出 → 修正該項 → 再試一次；不可盲目重複 `git commit` |
+| 同一 Bug 連續失敗 3 次 | 觸發熔斷（§I Rule 5）→ 切換 Architect 重新設計，不得繼續嘗試 |
+| 需要用戶輸入卻無回應 | 依 GLOBAL-RULE-003：最多補問一次 → 之後選最保守可逆選項自行繼續 |
+| 純文件 / hook / 腳本的**小型維護**修改 | 可由單一角色（通常 Architect）走 §MOD 精簡路徑完成，不必強制 5 角色全程切換（避免 ceremony loop）|
 
-### 觸發與機制（Level 1 Strictness）
+### 禁止行為
 
-- 所有角色（Designer, Architect, Developer, Reviewer, QA）均受此規則約束。
-- **Commit 強制檢查**：(1) commit 訊息必須含 `[Ponytail] rung=N` 格式標記（`commit-msg` v3 FAIL 阻斷）；(2) 變更的 `.gd` diff 中必須含 `# ponytail: rung=N` 注解（`pre-commit` v6 Developer/Ponytail-A WARN）。
+- ❌ 連續 3 次以上重複同一個失敗的指令或 commit
+- ❌ 在同一 SOP 步驟間反覆橫跳而無實質進展
+- ❌ 為一個小修改啟動完整 5 角色 + feature branch + PR 的重型流程（除非涉及 `.gd/.tscn/.tres` 遊戲邏輯）
 
 ---
 
@@ -172,8 +182,8 @@ git config core.hooksPath hooks
 
 | 文件 | 觸發時機 | 作用 |
 |------|---------|------|
-| `pre-commit` (v6) | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、編碼、UID、CASCADE 0e/0f、Developer auto-sensor、**Developer/Ponytail-A .gd ponytail: 注解**） |
-| `commit-msg` (v3) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ **Ponytail rung=N 格式強制**（feat/fix/refactor/style/perf → FAIL）+ ERR hint |
+| `pre-commit` (v7) | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、編碼、UID、CASCADE 0e/0f、Developer auto-sensor） |
+| `commit-msg` (v4) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ fix commit ERR-XXX/GAP-XXX 引用提示（WARN） |
 | `prepare-commit-msg` | commit 訊息編輯前 | 自動加入角色前綴 |
 | `pre-push` (v3) | push 前 | 禁止 force push main + **SOP PENDING 阻斷 push** |
 | `post-merge` | merge 後 | 提示更新狀態 |
@@ -198,7 +208,7 @@ git config core.hooksPath hooks
 - **Architect**：禁止提交任何 `.gd/.tscn/.tres`
 - **Developer**：`.gd` 提交前必須通過 Godot `--check-only` 語法驗證；禁止在 main 分支提交 `.gd`
 - **QA**：禁止提交任何自行撰寫的新 `.gd/.tscn/.tres`
-- **【強化 v5】Sensor 自動閘門**：pre-commit hook v5+ 在 Developer commit 時**自動執行** `sensor-scan.ps1`（v12/22）；FAIL 項目阻斷 commit。Developer 也可手動執行 `.\scripts\sensor-scan.ps1` 進行提前確認。
+- **【強化 v5】Sensor 自動閘門**：pre-commit hook v5+ 在 Developer commit 時**自動執行** `sensor-scan.ps1`（21 checks）；FAIL 項目阻斷 commit。Developer 也可手動執行 `.\scripts\sensor-scan.ps1` 進行提前確認。
 
 ---
 
@@ -459,7 +469,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | # | 規則 | 執行機制 |
 |---|------|---------|
 | 2 | **角色隔離**：Designer/Arch/Reviewer/QA commit 不得含 `.gd/.tscn/.tres` | `[HOOK]` pre-commit 角色閘門 |
-| 7 | **格式強制**：所有 commit 須符合 `[ROLE] type: 描述` + Ponytail 標記 | `[HOOK]` commit-msg |
+| 7 | **格式強制**：所有 commit 須符合 `[ROLE] type: 描述` | `[HOOK]` commit-msg |
 | 11 | **編碼強制**：所有 .gd 必須是 UTF-8 無 BOM | `[HOOK+SENSOR]` pre-commit + Check 1 |
 | 12 | **UID 驗證**：複製 .tscn 後 ext_resource UID 不得等於場景自身 UID | `[HOOK+SENSOR]` pre-commit + Check 2 |
 | 16 | **SpriteFrames AtlasTexture**：frame dict 必須用獨立 AtlasTexture sub-resource，禁直接寫 `region` | `[SENSOR]` Check 7 |
@@ -483,14 +493,6 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 | — | **CASCADE: sensor-scan → workflow**：`sensor-scan.ps1` staged 但 `workflow.md` 未同步 → WARN | `[HOOK]` pre-commit 0e |
 | — | **CASCADE: roles → DOC_INDEX**：`roles/*.md` staged 但 `DOC_INDEX.md` 未同步 → WARN | `[HOOK]` pre-commit 0f |
 | — | **hook 版本一致性**：pre-commit header/echo 版本號不符 → FAIL | `[SENSOR]` Check 19/21 FAIL |
-| — | **SAS-A 完整性**：`workflow.md` 以外 `.md` 含完整 Ponytail Rung 1-7 定義 → WARN | `[SENSOR]` Check 20/21 |
-
-> **2026-06-19 升級（第二輪）**：以下規則補強 Ponytail 執行完整性與 SOP 協同強制
-
-| # | 規則 | 執行機制 |
-|---|------|---------|
-| — | **Ponytail rung=N 格式**：`[Ponytail]` 未含 `rung=N` 數字 → FAIL | `[HOOK]` commit-msg v3 FAIL |
-| — | **Ponytail 代碼注解**：Developer `.gd` diff 無 `ponytail:` 注解 → WARN | `[HOOK]` pre-commit v6 Developer/Ponytail-A |
 | — | **SOP 完整性**：`sop-state.md` 有 PENDING 步驟 → 阻斷 push 到 main | `[HOOK]` pre-push v3 FAIL |
 
 ### I-B. 強制力缺口層（§LEARN 追蹤，目標升級為機器執行）
@@ -622,12 +624,6 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 # 依序執行 §SAS.1 各類別掃描（貼入 PowerShell 執行）
 $root = "D:\2026-06-04"
 $md = Get-ChildItem $root -Recurse -Filter "*.md" | Where-Object { $_.FullName -notmatch "\\archive\\" }
-
-# SAS-A：Ponytail 7-rung 完整定義（SAS：workflow.md）
-$md | Where-Object { $_.Name -ne "workflow.md" } | ForEach-Object {
-  $c = (Select-String "Rung \d" $_.FullName).Count
-  if ($c -ge 4) { "[SAS-A VIOLATION] $($_.Name): $c Rung mentions = has full definition" }
-}
 
 # SAS-B：§MOD 完整 5 步驟（SAS：workflow.md）
 $md | Where-Object { $_.Name -ne "workflow.md" } | ForEach-Object {
@@ -860,11 +856,10 @@ $md | ForEach-Object {
 ```
 修改任何 hooks/ 文件後，在 commit 之前：
 1. 逐行驗證所有 exit 路徑 — 確認關鍵檢查未被提前 exit 繞過
-   特別確認：Ponytail check 區塊前沒有任何裸 exit 0
 2. 手動測試三個場景，確認 hook 實際阻斷：
-   ❌ 測試1: commit 訊息不含 [Ponytail] 且代碼無 ponytail: → 必須 exit 1
-   ❌ 測試2: commit 訊息格式不符 [ROLE] type: → 必須 exit 1
-   ❌ 測試3: Designer 嘗試 commit .gd 文件 → 必須 exit 1
+   ❌ 測試1: commit 訊息格式不符 [ROLE] type: → 必須 exit 1
+   ❌ 測試2: Designer 嘗試 commit .gd 文件 → 必須 exit 1
+   ❌ 測試3: Architect 嘗試 commit 遊戲 .gd（addons/ 除外）→ 必須 exit 1
 3. 全部測試通過後才能 commit hook 修改
 ```
 
@@ -877,18 +872,18 @@ $md | ForEach-Object {
 | `hooks/commit-msg` 任何 exit 邏輯 | 執行 EDIT.2 驗證；`workflow.md §C` |
 | `hooks/pre-commit` 角色規則 | 對應 `roles/<role>.md §Hook 驗證`；`docs/DOC_INDEX.md` 職責矩陣 |
 | 任何 role 的讀/寫權限 | `docs/DOC_INDEX.md` 職責矩陣 |
-| `GLOBAL-RULE-001/002` 規則內容 | 各 `roles/*.md` 中引用該規則的段落 |
+| `GLOBAL-RULE-001/003/004` 規則內容 | 各 `roles/*.md` 中引用該規則的段落 |
 | `§READ SOP` 步驟 | `docs/DOC_INDEX.md §READ`；`scripts/set-role.ps1` 必讀清單 |
 | `§MOD SOP` 步驟 | `docs/DOC_INDEX.md §MOD`（引用格式） |
 | `scripts/sensor-scan.ps1`（任何修改） | `workflow.md §I`（規則列表）；pre-commit [0e] 自動 WARN 提醒 |
 | `roles/*.md`（任何修改） | `docs/DOC_INDEX.md` 職責矩陣；pre-commit [0f] 自動 WARN 提醒 |
 
-### EDIT.4 Ponytail 評估與提交
+### EDIT.4 評估與提交
 
 ```
-1. 新增/修改內容：在 Ponytail 7-rung 中選最低可用 Rung（→ workflow.md §GLOBAL-RULE-002）
-2. Commit 訊息含 [Ponytail] 標記
-3. 執行 sensor-scan.ps1 確認全部 PASS（含 Check 21/21 自洽檢查）
+1. 新增/修改內容：優先選最簡單可行方案，避免過度工程（→ GLOBAL-RULE-004）
+2. Commit 訊息符合 `[ROLE] type: 描述`；fix commit 引用 ERR-XXX/GAP-XXX
+3. 執行 sensor-scan.ps1 確認全部 PASS
 4. 若新增規則/SOP/文件 → 更新 docs/DOC_INDEX.md 版本欄位
 ```
 
@@ -905,7 +900,7 @@ $md | ForEach-Object {
 | 內容類別 | 權威來源（SAS） | 其他文件的正確處理 |
 |---------|--------------|----------------|
 | GLOBAL-RULE-001（browser 禁令） | `workflow.md §GLOBAL-RULE-001` | Role files：1 行摘要 + `→ workflow.md §GLOBAL-RULE-001` |
-| GLOBAL-RULE-002（Ponytail 完整定義） | `workflow.md §GLOBAL-RULE-002` | Role files：保留角色專屬 commit 要求 + `→ workflow.md §GLOBAL-RULE-002` |
+| GLOBAL-RULE-004（防循環完整定義） | `workflow.md §GLOBAL-RULE-004` | Role files：1 行摘要 + `→ workflow.md §GLOBAL-RULE-004` |
 | Git Hook 機制完整說明 | `workflow.md §C` | `roles/<role>.md §Hook 驗證`：只保留角色專屬限制 + `→ workflow.md §C` |
 | §READ SOP 完整步驟 | `docs/DOC_INDEX.md §READ` | `workflow.md §READ`：保留摘要表格（現況正確） |
 | §MOD SOP 完整 5 步驟 | `workflow.md §MOD` | `docs/DOC_INDEX.md §MOD`：已精簡為 1 行摘要 + 引用 |
@@ -937,7 +932,7 @@ $md | ForEach-Object {
 
 | 類型 | 定義 | 典型實例 |
 |------|------|---------|
-| **(A) 實作 Bug** | Enforcement 機制程式碼有邏輯錯誤 | commit-msg 格式通過後直接 exit 0，Ponytail 被繞過 |
+| **(A) 實作 Bug** | Enforcement 機制程式碼有邏輯錯誤 | hook 在關鍵檢查前提前 exit 0，導致該檢查被繞過 |
 | **(B) 文件漂移** | 同一資訊存在於 N 個地方，更新時未同步 | sensor-scan 版本號硬編碼在 8+ 個檔案 |
 | **(C) 設計缺陷** | SOP 遺漏了必要的驗證步驟 | §MOD 沒有「驗證 enforcement 機制本身正確運作」的步驟 |
 | **(D) 流程空白** | 規則存在但無任何機制確保其有效性 | sensor-scan.ps1 手動執行在任何 hook/SOP 中都無強制點 |
@@ -976,7 +971,7 @@ Step 5【VERIFY — QA 執行】
   → sensor-scan.ps1 全部 PASS
   → 人工確認修復後的 enforcement 機制按預期工作（眼見為憑）
 
-Step 6【COMMIT — 遵循 §MOD SOP Step 4-5，加 [Ponytail]】
+Step 6【COMMIT — 遵循 §MOD SOP Step 4-5】
 ```
 
 ### LEARN.3 累積防範規則（每次 §LEARN 後增加）

@@ -130,7 +130,8 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
-| 2026-06-20 | Architect | GAP-030：commit-msg v3 Ponytail 強制補實作 + pre-commit Developer/Ponytail-A 補實作 |
+| 2026-06-20 | Architect | GAP-031：用戶授權完整移除 Ponytail 7-rung 機制（hooks v4/v7、sensor 21 checks、workflow GLOBAL-RULE-002）+ 新增 GLOBAL-RULE-004 防循環 |
+| 2026-06-20 | Architect | GAP-030：commit-msg v3 Ponytail 強制補實作 + pre-commit Developer/Ponytail-A 補實作（已由 GAP-031 撤銷）|
 | 2026-06-20 | Developer | GAP-029：F 回收鐘擺錨點線跳到舊錨點（platform_dissolved flag 修復）|
 | 2026-06-20 | Architect | Phase 0.4 完成：補記 GAP-025～028 到 ERROR_LOG；更新 GDD §2.3 鋼索平台行為；更新 PROJECT_STATUS |
 | 2026-06-20 | Developer | GAP-028：平台視覺下垂 + S 鍵穿透（layer 4 / lerpf sag / drop-through timer） |
