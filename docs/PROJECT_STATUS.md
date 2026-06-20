@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Designer | GAP-034：回收半徑 30→60、所有針一律需夠近（取消擺錘針不限距離）；繩子改彈性 spring-damper + 保留擺盪動量；GDD §2.3/2.4/2.5 |
 | 2026-06-20 | QA | GAP-033：run_project 乾淨啟動（errors 空）、sensor 21/21、--check-only 0；攔截並記錄 class_name 快取 gotcha（--import 修復）；視覺手動清單交玩家 → 通過 |
 | 2026-06-20 | Reviewer | GAP-033：審查通過 — get_retrieve_info DRY、try_retrieve 行為不變、PickupPromptUI top_level 防鏡像、.tscn 無 UID 自引用；記錄新 class_name 需 --import 更新快取的 gotcha |
 | 2026-06-20 | Architect | GAP-033：規劃 WorldLabel(可復用) + PickupPromptUI 控制器 + needle_manager.get_retrieve_info(DRY)；player 程式碼整合不改 .tscn |
