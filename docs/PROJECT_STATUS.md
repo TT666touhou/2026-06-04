@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Designer | GAP-037：繩重做 — 視覺改 Verlet 物理繩(去除側向假彎曲)、物理回鐘擺長度約束+auto-reel；研究後不採 Joint(需 RigidBody)；GDD §2.2/2.3 |
 | 2026-06-20 | QA | GAP-036：驗收修復射不出鋼針（算術可證 + run_project errors 空）→ 通過 |
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
