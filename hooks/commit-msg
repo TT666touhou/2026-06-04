@@ -1,6 +1,7 @@
 #!/bin/sh
 # ==========================================================
-# hooks/commit-msg  (v4)
+# hooks/commit-msg  (v5)
+# v5: 新增 [PIXEL] 角色（Pixel Consultant）至格式驗證（2026-06-20）
 # Commit 訊息格式驗證
 #
 # 觸發時機：git commit 訊息確認後
@@ -28,7 +29,7 @@ VALID_TYPES="feat|fix|plan|review|test|docs|refactor|chore|style|perf|ci"
 # 允許的格式：
 # 1. [ROLE] type: 描述 （有角色標籤）
 # 2. type: 描述 （無角色標籤）
-PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA|DESIGN)\] ($VALID_TYPES): .{3,}"
+PATTERN_WITH_ROLE="^\[(ARCH|DEV|REVIEW|QA|DESIGN|PIXEL)\] ($VALID_TYPES): .{3,}"
 PATTERN_WITHOUT_ROLE="^($VALID_TYPES): .{3,}"
 
 # 先驗證格式
@@ -42,7 +43,7 @@ fi
 
 if [ $FORMAT_OK -eq 0 ]; then
     echo ""
-    echo "❌ [commit-msg v4] Commit 訊息格式不正確！"
+    echo "❌ [commit-msg v5] Commit 訊息格式不正確！"
     echo ""
     echo "   你的訊息：$COMMIT_MSG"
     echo ""
@@ -63,14 +64,14 @@ fi
 # ——————————————————————————————————————
 # 提取 type（處理有無 [ROLE] 前綴兩種格式）
 # ——————————————————————————————————————
-TYPE=$(echo "$COMMIT_MSG" | sed 's/^\[\(ARCH\|DEV\|REVIEW\|QA\|DESIGN\)\] //' | cut -d: -f1 | tr -d ' ')
+TYPE=$(echo "$COMMIT_MSG" | sed 's/^\[\(ARCH\|DEV\|REVIEW\|QA\|DESIGN\|PIXEL\)\] //' | cut -d: -f1 | tr -d ' ')
 
 # ——————————————————————————————————————
 # [I-B Rule 10] fix commit → 建議引用 ERR-XXX / GAP-XXX（WARN）
 # ——————————————————————————————————————
 if echo "$TYPE" | grep -q "^fix$"; then
     if ! echo "$COMMIT_MSG" | grep -qE "ERR-[0-9]+|GAP-[0-9]+"; then
-        echo "⚠️  [commit-msg v4 / I-B Rule 10] fix: commit 建議引用對應的 ERR-XXX 或 GAP-XXX 編號"
+        echo "⚠️  [commit-msg v5 / I-B Rule 10] fix: commit 建議引用對應的 ERR-XXX 或 GAP-XXX 編號"
         echo "   範例：[DEV] fix: 修正碰撞偵測 GAP-029"
     fi
 fi

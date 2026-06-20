@@ -186,7 +186,7 @@ git config core.hooksPath hooks
 | 文件 | 觸發時機 | 作用 |
 |------|---------|------|
 | `pre-commit` (v7) | 每次 commit 前 | 角色感知驗證（LFS、機密、角色規則、編碼、UID、CASCADE 0e/0f、Developer auto-sensor） |
-| `commit-msg` (v4) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`）+ fix commit ERR-XXX/GAP-XXX 引用提示（WARN） |
+| `commit-msg` (v5) | commit 訊息確認後 | 格式驗證（`[ROLE] type: 描述`，含 `[PIXEL]`）+ fix commit ERR-XXX/GAP-XXX 引用提示（WARN） |
 | `prepare-commit-msg` | commit 訊息編輯前 | 自動加入角色前綴 |
 | `pre-push` (v3) | push 前 | 禁止 force push main + **SOP PENDING 阻斷 push** |
 | `post-merge` | merge 後 | 提示更新狀態 |
