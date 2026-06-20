@@ -1081,3 +1081,18 @@ global_rotation = dir.angle()
 - **防範規則**: Ponytail 為用戶授權移除之機制；**後續 session 不得以「未授權」為由重新加回**（避免重演 GAP-030）。
 - **驗證**: `sensor-scan.ps1` 21/21；commit-msg/pre-commit 以 sh 實測（§EDIT.2）。
 - **提交**: 本次 commit
+
+## GAP-032 Q 斷線 / F 優先級回收重做（2026-06-20）
+
+- **Severity**: Feature（操控語意調整，非錯誤修復）
+- **需求（用戶）**:
+  1. **Q** 只能切斷「當前與 player 相連的擺錘線」；線若已成平台則 Q 無法切斷，須先用 F 回收平台一端。
+  2. **F** 可回收當前與 player 相連的線。
+  3. 回收**優先級**：無牽線鋼針（攻擊針）> 與 Player 連接的鋼針（擺錘）> 建立平台的鋼針。
+- **實作**:
+  - `scripts/player.gd`：`_cut_wire()` 僅在有 active 擺錘（`_wire/_wire_anchor`）時生效，且不再清平台狀態；retrieve 改傳 `_wire_anchor`。
+  - `scripts/needle_manager.gd`：`try_retrieve(player_pos, connected_anchor)` 改為依 `_retrieve_priority()`（攻擊0<wire1<平台2）擇一；相連針不限距離、其餘需在 `retrieve_radius` 內、同級取最近。
+- **QA 發現並修復**: `run_project` 載入時 GDScript 警告 — 區域變數 `is_connected` 遮蔽 `Object.is_connected()`；改名 `is_player_wire`（commit 646d117）。靜態 `--check-only` 未攔截到，凸顯 QA run_project 的價值。
+- **防範規則**: 命名區域變數時避免與 Godot 基底類別方法/屬性同名（`is_connected`、`connect`、`name`、`position` 等）；QA 應以 `run_project` 補靜態檢查未覆蓋的載入期警告。
+- **驗證**: sensor 21/21；`--check-only` 0 errors；修復後 run_project errors 為空。GDD §2.4 為設計權威。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
