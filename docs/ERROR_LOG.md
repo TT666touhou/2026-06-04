@@ -1112,3 +1112,21 @@ global_rotation = dir.angle()
 - **防範規則**: **新增任何 `class_name` 腳本後，先執行 `godot --headless --path . --import`（或開一次編輯器）更新 global class cache，再 commit/跑 sensor-scan**；否則 `--check-only` 會因找不到型別而 FAIL（非真錯誤）。
 - **驗證**: sensor 21/21；`--check-only` 0 errors；run_project errors 空。視覺標籤需玩家實測（qa-report 清單）。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-034 撿不到平台針（回收半徑根因）+ 繩子改彈性物理（2026-06-20）
+
+- **Severity**: Bug（回收幾何）+ Feature（繩子物理重做）
+- **現象 1（撿不到平台針）**: 即使加了提示 UI（GAP-033），玩家走到平台針旁仍撿不起來。
+  - **根因**: 回收距離以玩家**中心**量測，但 Player collision 32×64、中心在原點 → 腳在中心下方 32px。落在腳邊/平台面的針恆 ≥32px，而 `retrieve_radius=30` → **數學上永遠碰不到**。
+  - **修復**: `retrieve_radius` 30 → **60**（NeedleManager 的 @export 預設；Player.tscn 未覆寫故改 script 即生效）。
+- **現象 2（擺錘針不該無視距離）**: GAP-032 曾讓「與玩家相連的擺錘針」不限距離可回收，用戶要求所有針一律需夠近。
+  - **修復**: `get_retrieve_info` 距離過濾統一為 `dist > retrieve_radius → continue`，移除擺錘針例外（`connected_anchor` 僅留作優先級/標籤）。
+- **現象 3（繩子手感詭異）**: 繩與玩家互動生硬。
+  - **根因 A**: `WireConstraint.apply()` 為硬性截斷（taut 直接刪除徑向速度）→ 無彈性。
+  - **根因 B**: `player._apply_movement()` 每幀 `velocity.x = dir*move_speed` → **殺掉擺盪水平動量**（最大主因）。
+  - **修復**: 繩改 **spring-damper 彈性繩**（Hooke 彈簧 + 沿繩阻尼、保留切向擺盪）；繩上時 `velocity.x` 改為空中控制加速度 + 輕微 air drag，保留鐘擺動量。新增 4 個 @export 供手感微調。
+- **防範規則**:
+  - 凡「以單點距離判定互動範圍」者，須考量該點與角色實際碰撞體的偏移（中心 vs 腳/手），半徑要 ≥ 偏移量 + 期望伸手距離。
+  - 角色在受約束（繩/鉤）狀態下，**不要每幀硬覆寫速度分量**，否則會抹除物理動量；改用加速度疊加。
+- **驗證**: sensor 21/21；`--check-only` 0；run_project errors 空。繩手感與撿針需玩家實測（qa-report 清單）。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
