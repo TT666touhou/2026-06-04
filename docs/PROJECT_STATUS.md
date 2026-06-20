@@ -130,6 +130,8 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | QA | GAP-038：實機插樁驗證針 EMBED at 外牆(traveled=640)、sensor 21/21、--check-only 0 → 通過 |
+| 2026-06-20 | Developer | GAP-038：修復針飛半路消失 — get_viewport_rect 回傳 1152×648≠世界 1280×720，改飛行距離 max_travel 安全網 |
 | 2026-06-20 | QA | GAP-037：headless 單元測試 ROPE_TEST_PASS（Verlet+鐘擺+reel）、sensor 21/21、--check-only 0、run_project errors 空；側向假彎曲根除；繩觀感交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-037：審查通過 — Verlet Jakobsen 釘端正確、constrain 鐘擺(夾位+消徑向)防0、_verlet 各清除路徑 null、max_length 介面保留；修了 tension := 推不出型別的編譯錯 |
 | 2026-06-20 | Architect | GAP-037：規劃 verlet_rope.gd(preload免--import)、wire_constraint 改鐘擺約束+reel、player 整合 Verlet 視覺 |

@@ -1170,3 +1170,14 @@ global_rotation = dir.angle()
 - **防範規則**: (1) 繩索/鏈視覺一律用 Verlet 之類**物理**模型，勿用「垂直於線的假 sag」；(2) 對泛型 `RefCounted` 持有者（鴨子型別）取回傳值要顯式標型別，不可 `:=`。
 - **驗證**: **headless 單元測試 `tests/test_rope_gap037.gd` → ROPE_TEST_PASS**（Verlet 釘端/有限值、鐘擺夾位+消徑向、reel 夾 min）；sensor 21/21；`--check-only` 0；run_project errors 空。繩視覺最終觀感需玩家實測（qa-report 清單）。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-038 針飛到一半消失（GAP-036 用 get_viewport_rect 當世界邊界之誤）（2026-06-20）
+
+- **Severity**: High（核心功能：射針半路消失）
+- **現象**: 針射出後飛到一半就不見（非嵌牆，無錨點留下）。
+- **根因（實機插樁抓到）**: GAP-036 改用 `get_viewport_rect().size` 當**世界出界邊界**。實機 log 顯示它回傳 **(1152, 648)**（= 0.9×1280/720，受 stretch/scale 影響的視窗尺寸），**非 1280×720 世界**。於是出界框 `1216×712` < 外牆 1280×720 → 針在抵達外牆前（x>1216/y>712）就被判出界刪除。
+- **修復**: 移除 viewport 出界判定，改以**飛行距離** `max_travel=2400`（>場景對角線 ~1469）當安全網；正常射擊由封閉外牆攔截嵌入，與視窗/縮放/相機無關。
+- **實機驗證**: 插樁 auto-fire → 修復後 `[needle] EMBED at (1264,485) traveled=640`（命中右外牆內面），不再提早消失。插樁已還原。
+- **防範規則（修正 GAP-036）**: `get_viewport_rect()` 是**視窗/螢幕尺寸（受 stretch/scale 影響）≠ 世界座標範圍**。**禁止用 viewport 尺寸做世界出界/可視判定**；世界範圍回收改用**飛行距離/生命週期**或實際場景/世界參數。（GAP-036 當時以為 viewport 是「非硬編碼」的正解，實為錯誤。）
+- **方法論**: 無法用工具輸入時，以**暫時插樁（auto-fire + print）+ run_project + get_debug_output** 取得實機真值定位（本例一次抓到 vp=1152×648），勝於純臆測。
+- **提交**: 本次 commit（[DEV] 修復 → [QA] 驗收）
