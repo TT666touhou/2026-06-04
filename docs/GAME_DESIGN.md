@@ -163,7 +163,7 @@
 | 屬性 | 值 |
 |------|-----|
 | 節點類型 | `CharacterBody2D` |
-| 佔位尺寸 | 24 × 48 px（棕橘色 ColorRect） |
+| 佔位尺寸 | **32 × 64 px**（棕橘色 ColorRect，與 Player 等高） |
 | 質量行為 | 有重力（落地後靜止；被拉動時移動） |
 | 碰撞層 | Layer 1（與牆/地板/玩家一致） |
 | HP | 無（純物理測試用） |
@@ -172,13 +172,13 @@
 
 | 針種類 | 命中後效果 |
 |--------|-----------|
-| 攻擊針（左鍵） | **插入** + **將木人往玩家方向拉動**（`pull_speed = 240 px/s`，持續至針被回收） |
+| 攻擊針（左鍵） | **插入** + **一次性擊退衝量**（`knockback_force = 500 px/s`，方向：遠離玩家；地面上額外給一個小跳起） |
 | 帶線針（右鍵） | **插入**（不產生拉動；帶線針保持盪繩錨點語義） |
 
-**拉動邏輯（2026-06-21 實作）：**
-- `on_needle_embedded(n_type)` — 由 NeedleManager 呼叫；攻擊針命中時 `_pull_count += 1`
-- `on_needle_removed(n_type)` — 針被回收時 `_pull_count -= 1`
-- `_physics_process` 每幀判斷：若 `_pull_count > 0`，以 `sign(player.x - dummy.x) × pull_speed` 設定 `velocity.x`
+**擊退邏輯（2026-06-21 實作）：**
+- `on_needle_embedded(n_type)` — 由 NeedleManager 呼叫；攻擊針命中時立即計算擊退方向（dummy → player 反方向），疊加 `velocity += dir × knockback_force`；在地面時額外 `velocity.y -= knockback_force × 0.35`（小跳）
+- 地面摩擦：`ground_friction = 800 px/s²`，使木人自然減速停止
+- 無持續效果，無需 `on_needle_removed`
 
 **場景位置（MVP_Test.tscn）：** `Vector2(900, 704)` — 地面上、玩家右側，需要用鉤爪接近。
 
