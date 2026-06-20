@@ -34,6 +34,11 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	global_position += direction * step
-	# safety: free projectile if it escapes scene bounds (no wall to catch it)
-	if global_position.x < -64 or global_position.x > 1024 or global_position.y < -64 or global_position.y > 604:
+	# safety: free projectile if it escapes the play area (no wall to catch it).
+	# Bounds are derived from the viewport so they track the scene size — a hardcoded
+	# 960x540 bound (1024/604) freed every needle on spawn after the scene grew to
+	# 1280x720 (GAP-036), since the player spawns below the old y=604 limit.
+	var bounds := get_viewport_rect().size
+	if global_position.x < -64.0 or global_position.x > bounds.x + 64.0 \
+			or global_position.y < -64.0 or global_position.y > bounds.y + 64.0:
 		queue_free()
