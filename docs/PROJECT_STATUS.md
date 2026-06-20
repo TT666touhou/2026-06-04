@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Developer | GAP-029：F 回收鐘擺錨點線跳到舊錨點（platform_dissolved flag 修復）|
 | 2026-06-20 | Architect | Phase 0.4 完成：補記 GAP-025～028 到 ERROR_LOG；更新 GDD §2.3 鋼索平台行為；更新 PROJECT_STATUS |
 | 2026-06-20 | Developer | GAP-028：平台視覺下垂 + S 鍵穿透（layer 4 / lerpf sag / drop-through timer） |
 | 2026-06-20 | Developer | GAP-027：修正平台 one-way 方向（右→左錨點順序導致翻轉，dir 正規化修復） |

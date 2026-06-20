@@ -1026,3 +1026,26 @@ global_rotation = dir.angle()
 | 2026-06-20 | **⚠️ computer-use 無法存取 Godot 遊戲** | `request_access` 只適用於 Windows 開始功能表已安裝的 App。Godot 遊戲 EXE（`./Godot_v4.6.2-stable_win64.exe`）不在開始功能表 → `request_access("Godot Engine")` 永遠失敗。正確方案：GUT 自動化測試（首選）；或 `mcp__godot__run_project` + `mcp__godot__get_debug_output`（MCP）；禁止嘗試 computer-use 存取 Godot EXE。 |
 | 2026-06-20 | GUT v9.6.0 assert 語法 | 無 `assert_le()`/`assert_ge()`；改用 `assert_true(value <= x, "msg")` 和 `assert_true(value >= x, "msg")` |
 | 2026-06-20 | one_way_collision 角度計算 | 計算前先正規化：`if dir.x < 0: dir = -dir`；確保 body rotation 在 ±90° 內，否則 one-way normal 翻轉 |
+
+---
+
+## GAP-029 F 回收鐘擺錨點後線跳到舊錨點（2026-06-20）
+
+- **Severity**: High（操作錯誤：使用者想停止盪繩，結果線移到不相關的錨點）
+- **現象**: 在鐘擺模式（單一 wire anchor 盪繩）按 F 回收當前錨點後，線跳到另一根已嵌入但沒有連線的舊 wire anchor。
+- **根本原因**: `needle_manager._remove_anchor()` 最後無條件執行：
+  ```gdscript
+  var remaining := get_wire_anchors()
+  if remaining.size() > 0:
+      wire_anchor_ready.emit(remaining[0])  # 永遠 re-emit！
+  ```
+  這讓 player.gd 的 `_on_wire_anchor_ready` 重新建立一條到 `remaining[0]` 的線，覆蓋了 `needle_retrieved` 的清空動作。
+- **修復**: 加入 `platform_dissolved` flag，只在平台解散時才 re-emit（平台端點回收 → 轉換為鐘擺是設計意圖；鐘擺錨點回收 → 線應消失）：
+  ```gdscript
+  if platform_dissolved:
+      var remaining := get_wire_anchors()
+      if remaining.size() > 0:
+          wire_anchor_ready.emit(remaining[0])
+  ```
+- **防範規則**: 任何「回收後自動轉換」的邏輯，必須區分「主動解散（平台）」vs「單純回收（鐘擺）」兩種情境。
+- **提交**: `707d051`
