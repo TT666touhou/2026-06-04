@@ -21,13 +21,10 @@ const VerletRopeScript = preload("res://scripts/verlet_rope.gd")
 @export var coyote_time: float = 0.1       # jump grace after leaving ground
 @export var jump_buffer_time: float = 0.1  # jump grace before landing
 @export var jump_cut: float = 0.45         # upward velocity kept when jump released early
-# Wire tether — elastic reel + swing (GAP-039)
+# Wire tether — natural pendulum + auto-reel (GAP-040)
 @export var swing_accel: float = 500.0     # air-control accel while on the wire (px/s^2)
 @export var swing_air_drag: float = 60.0   # gentle horizontal settle while swinging (px/s^2)
 @export var auto_reel_speed: float = 320.0 # fast auto-pull toward the anchor (px/s)
-@export var rope_stiffness: float = 40.0   # elastic pull per px of stretch (彈力/fling)
-@export var rope_damping: float = 4.0      # low → springy, preserves fling momentum
-@export var rope_max_accel: float = 5000.0 # cap on pull accel
 @export var min_rope_length: float = 24.0  # rope won't reel shorter than this
 @export var reel_speed: float = 200.0      # extra reel while holding E (px/s)
 @export var rope_segments: int = 12        # Verlet rope visual point count
@@ -140,7 +137,9 @@ func _apply_wire(delta: float) -> void:
 	_wire.auto_reel(delta)                              # fast auto-pull toward anchor
 	if Input.is_action_pressed("reel_wire"):
 		_wire.reel(reel_speed, delta)                  # E: reel in faster
-	velocity = _wire.apply(global_position, velocity, delta)  # elastic pull (彈力/fling)
+	var r: Dictionary = _wire.constrain(global_position, velocity)
+	global_position = r["pos"]                         # clamp onto swing circle when taut
+	velocity = r["vel"]                                # outward radial removed → natural swing
 
 func _shoot_needle(wire: bool) -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
@@ -171,9 +170,6 @@ func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_anchor = anchor
 	_wire.min_length = min_rope_length
 	_wire.auto_reel_speed = auto_reel_speed
-	_wire.stiffness = rope_stiffness
-	_wire.damping = rope_damping
-	_wire.max_accel = rope_max_accel
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
 	_verlet = VerletRopeScript.new()
 	_verlet.init(anchor.global_position, global_position, rope_segments)

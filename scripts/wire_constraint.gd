@@ -1,18 +1,17 @@
-# Elastic reel tether (GAP-039), no Node inheritance.
-# Fast auto-reel + a springy pull toward the anchor → reeling builds velocity, so
-# shooting upward flings the player up (momentum carries onto a platform formed by
-# a 2nd anchor). Low damping keeps the "彈力" bounce/momentum. The Verlet rope
-# (player.gd) handles the visual; this is pure physics on `max_length` (rest length).
+# Natural pendulum length-constraint tether (GAP-040), no Node inheritance.
+# Pure distance constraint — it NEVER injects velocity toward the anchor (GAP-039's
+# elastic spring did, which felt like "specially-added" unnatural momentum). The
+# player swings naturally under gravity; reeling (shrinking max_length) pulls the
+# player in via the position clamp, and angular momentum is conserved naturally
+# (swinging speeds up as the rope shortens, like a skater pulling in their arms).
+# The Verlet rope (player.gd) handles the visual via `max_length`.
 class_name WireConstraint
 extends RefCounted
 
 var anchor_pos: Vector2
-var max_length: float                # rope rest length (shrinks via reel); Verlet visual length
+var max_length: float                # rope length = swing radius (shrinks via reel)
 var min_length: float = 24.0
 var auto_reel_speed: float = 320.0   # fast auto-pull toward the anchor (px/s)
-var stiffness: float = 40.0          # elastic pull per px of stretch beyond rest length
-var damping: float = 4.0             # low → springy, preserves fling momentum
-var max_accel: float = 5000.0        # cap on pull accel (avoid teleport-fling)
 
 func setup(pos: Vector2, dist_to_anchor: float) -> void:
 	anchor_pos = pos
@@ -24,22 +23,20 @@ func auto_reel(delta: float) -> void:
 func reel(speed: float, delta: float) -> void:
 	max_length = maxf(min_length, max_length - speed * delta)
 
-# Slack (dist <= rest) → free fall. Taut (dist > rest) → elastic spring pulls the
-# player toward the anchor (capped) with along-rope damping. As auto_reel shrinks
-# rest length, stretch grows → stronger pull → the player is reeled/flung in.
-func apply(player_pos: Vector2, velocity: Vector2, delta: float) -> Vector2:
+# Slack (dist <= length) → free fall. Taut → clamp the player onto the swing circle
+# and cancel only the OUTWARD radial velocity (keeps tangential swing). No velocity
+# is ever added toward the anchor → momentum stays natural. Returns { "pos", "vel" }.
+func constrain(player_pos: Vector2, velocity: Vector2) -> Dictionary:
 	var to_anchor := anchor_pos - player_pos
 	var dist := to_anchor.length()
-	if dist <= 0.001:
-		return velocity
+	if dist <= max_length or dist <= 0.001:
+		return { "pos": player_pos, "vel": velocity }
 	var dir := to_anchor / dist
-	if dist > max_length:
-		var stretch := dist - max_length
-		var pull := minf(stiffness * stretch, max_accel)
-		velocity += dir * (pull * delta)
-		var radial := velocity.dot(dir)
-		velocity -= dir * (radial * clampf(damping * delta, 0.0, 1.0))
-	return velocity
+	var new_pos := anchor_pos - dir * max_length
+	var radial := velocity.dot(dir)   # >0 toward anchor, <0 stretching away
+	if radial < 0.0:
+		velocity -= dir * radial       # remove outward component only
+	return { "pos": new_pos, "vel": velocity }
 
 func tension_ratio(player_pos: Vector2) -> float:
 	if max_length <= 0.0:
