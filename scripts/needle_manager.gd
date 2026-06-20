@@ -106,6 +106,7 @@ func _try_create_platform() -> void:
 
 func _remove_anchor(anchor: Node) -> void:
 	_anchors.erase(anchor)
+	var platform_dissolved := false
 	if _current_platform != null:
 		if anchor == _platform_anchor_a or anchor == _platform_anchor_b:
 			if is_instance_valid(_current_platform):
@@ -113,8 +114,12 @@ func _remove_anchor(anchor: Node) -> void:
 			_current_platform = null
 			_platform_anchor_a = null
 			_platform_anchor_b = null
+			platform_dissolved = true
 	needle_retrieved.emit(anchor)
-	var remaining := get_wire_anchors()
-	if remaining.size() > 0:
-		wire_anchor_ready.emit(remaining[0])
+	# ponytail: rung=4 — only transition to remaining anchor when platform dissolves,
+	# not when retrieving the active pendulum anchor (GAP-029)
+	if platform_dissolved:
+		var remaining := get_wire_anchors()
+		if remaining.size() > 0:
+			wire_anchor_ready.emit(remaining[0])
 	anchor.queue_free()
