@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Designer | GAP-041：大幅簡化 — 移除平台/Q/E/F/S；盪繩改右鍵按住(自動收繩)、鬆開斷繩+回收；攻擊針靠近自動回收；GDD §2.2/2.3/2.4/2.5/9.1/9.3 |
 | 2026-06-20 | QA | GAP-040：ROPE40_TEST_PASS(斷言無速度注入=自然)、gap037 PASS、sensor 21/21、run_project 冒煙空 → 通過 |
 | 2026-06-20 | Reviewer | GAP-040：審查通過 — constrain 無速度注入(自然)、夾位+消徑向、針速2400 抗穿牆OK；test_rope_gap040 斷言無注入；補正 git add 漏提 |
 | 2026-06-20 | Architect | GAP-040：規劃 wire_constraint 改回 constrain(無速度注入)、player 移除彈簧 export、needle flight 2400、測試改寫驗證自然 |
