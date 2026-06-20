@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Reviewer | GAP-032：審查通過 — try_retrieve 向後相容、_remove_anchor 平台/GAP-029 鏈未動、Q 不再清平台狀態、無 .tscn/UID/物理回呼風險 |
 | 2026-06-20 | Architect | GAP-032：implementation_plan 規劃 player._cut_wire 限擺錘 + needle_manager.try_retrieve 優先級選擇 |
 | 2026-06-20 | Designer | GAP-032：定義 Q 只切當前擺錘線（平台不可 Q 切）、F 依優先級回收（無線針>玩家相連針>平台針）；更新 GDD §2.4 |
 | 2026-06-20 | Architect | GAP-031：用戶授權完整移除 Ponytail 7-rung 機制（hooks v4/v7、sensor 21 checks、workflow GLOBAL-RULE-002）+ 新增 GLOBAL-RULE-004 防循環 |
