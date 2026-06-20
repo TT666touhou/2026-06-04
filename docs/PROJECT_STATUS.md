@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | QA | GAP-037：headless 單元測試 ROPE_TEST_PASS（Verlet+鐘擺+reel）、sensor 21/21、--check-only 0、run_project errors 空；側向假彎曲根除；繩觀感交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-037：審查通過 — Verlet Jakobsen 釘端正確、constrain 鐘擺(夾位+消徑向)防0、_verlet 各清除路徑 null、max_length 介面保留；修了 tension := 推不出型別的編譯錯 |
 | 2026-06-20 | Architect | GAP-037：規劃 verlet_rope.gd(preload免--import)、wire_constraint 改鐘擺約束+reel、player 整合 Verlet 視覺 |
 | 2026-06-20 | Designer | GAP-037：繩重做 — 視覺改 Verlet 物理繩(去除側向假彎曲)、物理回鐘擺長度約束+auto-reel；研究後不採 Joint(需 RigidBody)；GDD §2.2/2.3 |

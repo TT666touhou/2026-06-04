@@ -1155,3 +1155,18 @@ global_rotation = dir.angle()
 - **驗證**: 算術可證 — 出生 y≈653 < 720+64=784（新邊界內），舊邏輯 653 > 604（被刪）。sensor 21/21；`--check-only` 0；run_project errors 空。實際射針手感請玩家確認。
 - **防範規則**: **禁止硬編碼場景/視窗尺寸於遊戲邏輯**（邊界、出界判定等）→ 一律由 `get_viewport_rect()` 或場景參數推導；改場景尺寸時須複查所有座標常數（沿用 GAP-035「視窗/外牆/相機 limits 三者一致」並擴及子彈出界邏輯）。
 - **提交**: 本次 commit（[DEV] 修復 → [QA] 驗收）
+
+## GAP-037 繩索詭異側向 S 彎曲 → Verlet 物理繩重做（2026-06-20）
+
+- **Severity**: Feature/Bug（繩視覺與物理重做）
+- **現象（用戶截圖）**: 帶線繩從錨點往**側邊**鼓出成 S 形，非自然繩索。
+- **根因**: `player._update_wire_renderer` 擺錘分支以 `slack = max_length - dist` 餵 `_draw_catenary_line`，sag 方向是**垂直於繩（perp）**。繩近垂直時鬆弛量大 → 往側邊鼓出（假彎曲）；且 bungee 的 `max_length` 是過時的初始距離，被拉近後 slack 暴增 → 彎曲更誇張。視覺與物理（直線拉力）脫節。
+- **技術選型（用戶問「能不能用 Joint」）**: 經網路研究——**採 Verlet integration**（CharacterBody2D 友善，業界 2D 繩首選，如 CRope2D）；**不採 Joint2D**，因其需 RigidBody2D，會棄掉現有 CharacterBody2D 平台/移動/跳躍/慣性/鋼索平台實作，風險過高（社群回報 Joint 抓鉤調校困難）。
+- **重做**:
+  - 新增 `scripts/verlet_rope.gd`（preload，免 --import）：Verlet 積分繩，兩端釘錨點/玩家，重力下垂 + Jakobsen 距離約束 → 自然下垂/繃緊變直，**無側向假彎曲**。
+  - `wire_constraint.gd` 改鐘擺長度約束 `constrain()`：鬆弛自由、繃緊夾位置 + 消朝外徑向速度（真鐘擺）；+ `auto_reel`/`reel`。移除 bungee always-pull。
+  - `player.gd`：`_apply_wire` 用 constrain、`_update_wire_renderer` 擺錘分支改畫 Verlet 點、wire 清除各路徑 null `_verlet`。
+- **開發中編譯錯（已修）**: `var tension := _wire.tension_ratio(...)` ——`_wire` 型別為 `RefCounted`，回傳 Variant，`:=` 無法推型別。改 `var tension: float =`。教訓：對 `RefCounted` 型別變數的方法回傳值用 `:=` 會 FAIL，需顯式標型別。
+- **防範規則**: (1) 繩索/鏈視覺一律用 Verlet 之類**物理**模型，勿用「垂直於線的假 sag」；(2) 對泛型 `RefCounted` 持有者（鴨子型別）取回傳值要顯式標型別，不可 `:=`。
+- **驗證**: **headless 單元測試 `tests/test_rope_gap037.gd` → ROPE_TEST_PASS**（Verlet 釘端/有限值、鐘擺夾位+消徑向、reel 夾 min）；sensor 21/21；`--check-only` 0；run_project errors 空。繩視覺最終觀感需玩家實測（qa-report 清單）。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
