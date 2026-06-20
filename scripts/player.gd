@@ -65,7 +65,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("cut_wire"):
 		_cut_wire()
 	if event.is_action_pressed("retrieve_needle"):
-		needle_manager.try_retrieve(global_position)
+		needle_manager.try_retrieve(global_position, _wire_anchor)
 
 func _apply_gravity(delta: float) -> void:
 	if not is_on_floor():
@@ -96,14 +96,15 @@ func _shoot_needle() -> void:
 		needle_manager.shoot_attack_needle(from, dir)
 
 func _cut_wire() -> void:
+	# Q only severs the active pendulum wire currently connecting the player.
+	# A wire that has become a platform cannot be cut this way — use F to
+	# retrieve one platform endpoint first (GAP-032). The needle stays embedded
+	# and can be retrieved later by F.
+	if _wire == null or _wire_anchor == null:
+		return
 	_wire = null
 	_wire_anchor = null
-	_platform_a = null
-	_platform_b = null
-	_platform_slack = 0.0
 	wire_renderer.visible = false
-	if _platform_renderer != null:
-		_platform_renderer.visible = false
 
 func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj

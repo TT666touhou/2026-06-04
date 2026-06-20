@@ -44,11 +44,37 @@ func shoot_wire_needle(from: Vector2, dir: Vector2) -> void:
 		return
 	_spawn_projectile(from, dir, _NEEDLE_WIRE)
 
-func try_retrieve(player_pos: Vector2) -> void:
+func try_retrieve(player_pos: Vector2, connected_anchor: Node = null) -> void:
+	# Pick one anchor to retrieve by priority (GAP-032):
+	#   0 attack needle (no wire) > 1 wire/pendulum > 2 platform endpoint.
+	# Connected pendulum anchor is always retrievable; others need proximity.
+	# Ties within a priority are broken by nearest.
+	var best: Node = null
+	var best_priority: int = 99
+	var best_dist: float = INF
 	for anchor in _anchors:
-		if is_instance_valid(anchor) and anchor.global_position.distance_to(player_pos) <= retrieve_radius:
-			_remove_anchor(anchor)
-			return
+		if not is_instance_valid(anchor):
+			continue
+		var is_connected: bool = anchor == connected_anchor
+		var is_platform: bool = anchor == _platform_anchor_a or anchor == _platform_anchor_b
+		var dist: float = anchor.global_position.distance_to(player_pos)
+		if not is_connected and dist > retrieve_radius:
+			continue
+		var prio: int = _retrieve_priority(anchor, is_platform)
+		if prio < best_priority or (prio == best_priority and dist < best_dist):
+			best = anchor
+			best_priority = prio
+			best_dist = dist
+	if best != null:
+		_remove_anchor(best)
+
+func _retrieve_priority(anchor: Node, is_platform: bool) -> int:
+	# Lower retrieved first: attack(no wire) < wire/pendulum < platform endpoint
+	if anchor.type == _ANCHOR_ATTACK:
+		return 0
+	if is_platform:
+		return 2
+	return 1
 
 func needle_count() -> int:
 	return _total_count()
