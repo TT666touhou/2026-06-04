@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Designer | GAP-040：繩改回自然鐘擺約束(移除彈簧人工 fling 動量)、針速 1200→2400；GDD §2.3/9.3 |
 | 2026-06-20 | QA | GAP-039：新驗證法示範 — test_rope_gap039 ROPE39_TEST_PASS(上甩 vel.y<0+針數5)、gap037 修剪後 PASS、sensor 21/21、run_project 冒煙空 → 通過 |
 | 2026-06-20 | Reviewer | GAP-039：審查通過 — 彈性 apply 朝錨點 capped+防0、右鍵單按帶線針/左鍵攻擊、max_needles 5、Verlet 視覺一致；headless 測試覆蓋上甩物理 |
 | 2026-06-20 | Architect | GAP-039：規劃 wire_constraint 彈性收繩、player 輸入/apply、needle_manager 5；workflow §F 新增驗證優先序(headless 首選)、§I-C Rule 24 改述 |
