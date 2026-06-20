@@ -1,7 +1,8 @@
 class_name WirePlatform
 extends StaticBody2D
+# ponytail: rung=2 — StaticBody2D + CollisionShape2D built-ins
 
-@export var platform_height: float = 4.0  # thin: body-rotation fix makes tunneling non-issue
+@export var platform_height: float = 6.0
 
 var _anchor_a: Node2D = null
 var _anchor_b: Node2D = null
@@ -12,7 +13,7 @@ func setup(anchor_a: Node2D, anchor_b: Node2D) -> void:
 	_anchor_a = anchor_a
 	_anchor_b = anchor_b
 	_shape.one_way_collision = true
-	_shape.one_way_collision_margin = 8.0  # wider margin helps pass-through reliability
+	_shape.one_way_collision_margin = 2.0
 	var rect := RectangleShape2D.new()
 	_shape.shape = rect
 	_update_body()
@@ -33,6 +34,13 @@ func _update_body() -> void:
 	if dist < 1.0:
 		return
 	global_position = (a + b) * 0.5
-	global_rotation = a.angle_to_point(b)  # body rotates with wire → local +Y ⊥ wire = correct one-way normal
+	# Normalize direction so X is always ≥ 0 → rotation stays within ±90°
+	# This ensures the body's local -Y (one-way normal) always points world-up.
+	# Without this, shooting right-wall first gives angle≈180°, flipping the
+	# one-way direction to world-down and blocking the player from below. (GAP-027)
+	var dir := b - a
+	if dir.x < 0.0:
+		dir = -dir
+	global_rotation = dir.angle()
 	(_shape.shape as RectangleShape2D).size = Vector2(dist, platform_height)
-	_shape.rotation = 0.0  # shape stays local; body rotation handles orientation
+	_shape.rotation = 0.0
