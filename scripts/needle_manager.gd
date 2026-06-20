@@ -94,10 +94,17 @@ func _on_embedded(hit_pos: Vector2, collider: Object, n_type: int) -> void:
 		_wire_anchor = anchor
 		_wire_proj = null
 		wire_anchor_ready.emit(anchor)
+	# Notify the hit body so it can react (e.g. TrainingDummy starts pulling).
+	if collider != null and collider.has_method("on_needle_embedded"):
+		collider.on_needle_embedded(n_type)
 
 func _remove_anchor(anchor: Node) -> void:
 	_anchors.erase(anchor)
 	if anchor == _wire_anchor:
 		_wire_anchor = null
 	needle_retrieved.emit(anchor)
+	# Notify the body the needle was removed from (e.g. TrainingDummy stops pulling).
+	if anchor.attached_body != null and is_instance_valid(anchor.attached_body):
+		if anchor.attached_body.has_method("on_needle_removed"):
+			anchor.attached_body.on_needle_removed(anchor.type)
 	anchor.queue_free()

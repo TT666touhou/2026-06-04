@@ -62,6 +62,19 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 0.5 — 遊戲手感優化 + 木人敵人（GAP-043～045）
+
+- **完成日期**：2026-06-21
+- **實作功能**：
+  - GAP-043：繩子收縮加速（`auto_reel_speed` 320 → 520，`wire_slack` 30 → 15）
+  - GAP-044：鋼針數量 HUD（左上角 CanvasLayer，`●●●○○` 格式，5 格即時更新）
+  - GAP-045：訓練木人（CharacterBody2D 24×48，攻擊針插入 → 往玩家方向拉動 240px/s）
+- **新增檔案**：`scripts/training_dummy.gd`、`scenes/TrainingDummy.tscn`、`scripts/ui/needle_hud.gd`、`scenes/ui/needle_hud.tscn`
+- **修改檔案**：`wire_constraint.gd`、`player.gd`、`needle_manager.gd`（body callbacks）、`MVP_Test.tscn`
+- **GDD 更新**：`docs/GAME_DESIGN.md §5.3` 訓練木人規格
+
+---
+
 ### Phase 0.4 — 鋼索系統核心（GAP-017～028）
 
 - **完成日期**：2026-06-20

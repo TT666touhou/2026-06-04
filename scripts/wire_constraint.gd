@@ -11,7 +11,7 @@ extends RefCounted
 var anchor_pos: Vector2
 var max_length: float                # rope length = swing radius (shrinks via reel)
 var min_length: float = 24.0
-var auto_reel_speed: float = 320.0   # fast auto-pull toward the anchor (px/s)
+var auto_reel_speed: float = 520.0   # fast auto-pull toward the anchor (px/s)
 
 func setup(pos: Vector2, dist_to_anchor: float) -> void:
 	anchor_pos = pos

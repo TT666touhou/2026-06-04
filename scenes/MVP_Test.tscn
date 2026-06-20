@@ -2,6 +2,8 @@
 
 [ext_resource type="PackedScene" uid="uid://c4mvp04player" path="res://scenes/Player.tscn" id="1_player"]
 [ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="2_dbg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/needle_hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" path="res://scenes/TrainingDummy.tscn" id="4_dummy"]
 
 [sub_resource type="RectangleShape2D" id="1_hwall"]
 size = Vector2(1280, 16)
@@ -145,6 +147,11 @@ limit_right = 1280
 limit_bottom = 720
 
 [node name="WireLayer" type="Node2D" parent="."]
+
+[node name="NeedleHUD" parent="." instance=ExtResource("3_hud")]
+
+[node name="TrainingDummy" parent="." instance=ExtResource("4_dummy")]
+position = Vector2(900.0, 704.0)
 
 [node name="DebugOverlay" type="CanvasLayer" parent="."]
 script = ExtResource("2_dbg")
