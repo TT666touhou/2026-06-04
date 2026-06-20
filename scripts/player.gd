@@ -7,15 +7,26 @@ const SAG_SPEED_OFF := 3.0     # lerp rate when wire returns to straight
 const DROP_THROUGH_TIME := 0.25
 const PickupPromptScene = preload("res://scenes/ui/pickup_prompt_ui.tscn")
 
-@export var move_speed: float = 200.0
-@export var jump_velocity: float = 501.0
+@export var move_speed: float = 240.0
+@export var jump_velocity: float = 540.0
 @export var gravity: float = 980.0
-@export var reel_speed: float = 150.0
 @export var wire_slack: float = 30.0
+# Horizontal movement inertia (GAP-035)
+@export var ground_accel: float = 2200.0   # accel toward target speed on ground
+@export var ground_friction: float = 2600.0 # decel when no input on ground
+@export var air_accel: float = 1400.0      # weaker control in air
+@export var air_friction: float = 900.0    # keep more momentum in air
+# Jump feel (GAP-035)
+@export var coyote_time: float = 0.1       # jump grace after leaving ground
+@export var jump_buffer_time: float = 0.1  # jump grace before landing
+@export var jump_cut: float = 0.45         # upward velocity kept when jump released early
+# Bungee tether (GAP-035)
 @export var swing_accel: float = 500.0     # air-control accel while on the wire (px/s^2)
 @export var swing_air_drag: float = 60.0   # gentle horizontal settle while swinging (px/s^2)
-@export var rope_stiffness: float = 80.0   # elastic rope spring (px/s^2 per px stretch)
-@export var rope_damping: float = 9.0      # along-rope velocity damping (1/s)
+@export var rope_stiffness: float = 14.0   # elastic pull toward anchor (hang dist ~ gravity/stiffness)
+@export var rope_damping: float = 6.0      # along-rope velocity damping (bounce control)
+@export var rope_max_accel: float = 3500.0 # cap on pull accel
+@export var reel_boost: float = 2200.0     # extra inward accel while holding E
 
 var _wire: RefCounted = null
 var _wire_anchor: Node = null       # active pendulum anchor (swinging)
@@ -26,6 +37,8 @@ var _platform_slack: float = 0.0
 var _platform_renderer: Line2D = null
 var _on_wire_platform: bool = false
 var _drop_through_timer: float = 0.0
+var _coyote_timer: float = 0.0
+var _jump_buffer_timer: float = 0.0
 var _pickup_ui: Node = null
 
 @onready var needle_manager: Node = $NeedleManager
@@ -54,6 +67,7 @@ func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
 	_apply_movement(delta)
 	_apply_wire(delta)
+	_update_jump(delta)
 	_drop_through_timer = maxf(0.0, _drop_through_timer - delta)
 	set_collision_mask_value(4, _drop_through_timer <= 0.0)
 	move_and_slide()
@@ -63,8 +77,10 @@ func _physics_process(delta: float) -> void:
 	_update_pickup_prompts()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("jump") and is_on_floor():
-		velocity.y = -jump_velocity
+	if event.is_action_pressed("jump"):
+		_jump_buffer_timer = jump_buffer_time   # buffered; executed in _update_jump
+	if event.is_action_released("jump") and velocity.y < 0.0:
+		velocity.y *= jump_cut                   # variable jump height (short hop)
 	if event.is_action_pressed("drop_through") and _on_wire_platform:
 		_drop_through_timer = DROP_THROUGH_TIME
 		velocity.y = maxf(velocity.y, 80.0)
@@ -85,19 +101,42 @@ func _apply_movement(delta: float) -> void:
 	var dir := Input.get_axis("move_left", "move_right")
 	if _wire != null:
 		# On the wire: input is air-control accel that pumps the swing, preserving
-		# pendulum momentum (GAP-034). Hard-setting velocity.x here killed the swing.
+		# momentum (GAP-034). Hard-setting velocity.x here would kill the swing.
 		velocity.x += dir * swing_accel * delta
 		velocity.x = move_toward(velocity.x, 0.0, swing_air_drag * delta)
 	else:
-		velocity.x = dir * move_speed
+		# Inertia-based horizontal movement (GAP-035): accelerate toward target,
+		# decelerate with friction when no input; weaker control in the air.
+		var target := dir * move_speed
+		var rate: float
+		if is_on_floor():
+			rate = ground_accel if dir != 0.0 else ground_friction
+		else:
+			rate = air_accel if dir != 0.0 else air_friction
+		velocity.x = move_toward(velocity.x, target, rate * delta)
+
+func _update_jump(delta: float) -> void:
+	# Coyote time + jump buffer (GAP-035). is_on_floor() reflects last move_and_slide.
+	if is_on_floor():
+		_coyote_timer = coyote_time
+	else:
+		_coyote_timer = maxf(0.0, _coyote_timer - delta)
+	_jump_buffer_timer = maxf(0.0, _jump_buffer_timer - delta)
+	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
+		velocity.y = -jump_velocity
+		_jump_buffer_timer = 0.0
+		_coyote_timer = 0.0
 
 func _apply_wire(delta: float) -> void:
 	if _wire == null:
 		return
-	if Input.is_action_pressed("reel_wire"):
-		# Winch: shorten the rope; the elastic spring then pulls the player in.
-		_wire.reel_in(reel_speed, delta)
 	velocity = _wire.apply(global_position, velocity, delta)
+	if Input.is_action_pressed("reel_wire"):
+		# E: extra inward accel to reel toward the anchor faster.
+		var to_anchor: Vector2 = _wire.anchor_pos - global_position
+		var d: float = to_anchor.length()
+		if d > 0.001:
+			velocity += (to_anchor / d) * (reel_boost * delta)
 
 func _shoot_needle() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
@@ -127,6 +166,7 @@ func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_anchor = anchor
 	_wire.stiffness = rope_stiffness
 	_wire.damping = rope_damping
+	_wire.max_accel = rope_max_accel
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
 
 func _on_needle_retrieved(anchor: Node) -> void:
