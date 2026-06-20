@@ -130,6 +130,8 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | QA | GAP-042：實機插樁證明玩家被 Platform_C 擋住(卡住未穿過)、sensor 21/21、--check-only 0 → 通過 |
+| 2026-06-20 | Developer | GAP-042：盪繩收繩穿過平台修復 — global_position 瞬移繞過碰撞，改 move_and_collide |
 | 2026-06-20 | QA | GAP-041：NM41_TEST_PASS(攻擊針自動回收+release安全)、gap040/037 PASS、sensor 21/21、run_project 冒煙空(Player.tscn 載入正常) → 通過 |
 | 2026-06-20 | Reviewer | GAP-041：審查通過 — auto_retrieve_attack 近收遠留(測試)、release_wire 冪等(is_instance_valid)、_wire_held 守鬆開時序、無平台殘留、Player.tscn 載入OK；淨減193行 |
 | 2026-06-20 | Architect | GAP-041：規劃重寫 needle_manager(release_wire/auto_retrieve_attack)、player(右鍵按住/移除平台UI)、刪 WirePlatform、改 Player.tscn |

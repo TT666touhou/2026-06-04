@@ -1220,3 +1220,13 @@ global_rotation = dir.angle()
 - **驗證**: `test_rope_gap041.gd` → **NM41_TEST_PASS**（max=5、攻擊針近收遠留、release_wire 安全）；gap040/037 PASS；sensor 21/21；`--check-only` 0；run_project 冒煙空（Player.tscn 移除 ext_resource 後載入正常）。淨減 193 行。
 - **防範規則**: 移除 .tscn 的 ext_resource 時，必須同時移除所有對該 id 的賦值（如 `wire_platform_scene = ExtResource("5_wpscene")`），否則 broken ref → 以 run_project 冒煙確認載入。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-042 盪繩收繩穿過平台（直接設 global_position 繞過碰撞）（2026-06-20）
+
+- **Severity**: High（核心：盪繩穿過平台）
+- **現象（用戶）**: 玩家勾到牆壁、被往牆上收繩時，會**穿過中間的平台**；希望被卡住。
+- **根因**: `player._apply_wire` 以 `global_position = r["pos"]`（繩約束位置夾鉗）**直接瞬移**玩家。直接設 `global_position` **繞過 CharacterBody2D 碰撞** → 收繩路徑上的平台不擋人。
+- **修復**: 改 `move_and_collide(r["pos"] - global_position)`，碰撞感知移動，遇牆/平台停住（卡住）。
+- **驗證（暫時插樁 + run_project）**: 自動朝上抓鉤 + log `move_and_collide` 碰撞 → **`blocked by Platform_C at y≈436`（× 1044 幀）**，玩家被平台擋住卡住、未穿過。插樁已還原。sensor 21/21、`--check-only` 0。
+- **防範規則**: **CharacterBody2D 任何需要碰撞的位移，禁止用 `global_position =`／`position =` 直接設定（會瞬移穿牆）**；改用 `move_and_collide`（單次、會回報碰撞）或 `move_and_slide`（速度驅動）。位置型約束（繩/夾鉗）一律走 `move_and_collide`。
+- **提交**: 本次 commit（[DEV] 修復 → [QA] 驗收）
