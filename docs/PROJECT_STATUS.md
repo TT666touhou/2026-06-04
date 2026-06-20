@@ -130,6 +130,8 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | QA | GAP-036：驗收修復射不出鋼針（算術可證 + run_project errors 空）→ 通過 |
+| 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
 | 2026-06-20 | Architect | GAP-035：規劃 wire_constraint always-pull、player 慣性/buffer/coyote/可變跳、MVP_Test 放大 1280×720 外牆重框 |
