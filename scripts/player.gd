@@ -5,6 +5,7 @@ const SAG_WEIGHT := 20.0       # px of sag when player stands on wire
 const SAG_SPEED_ON := 8.0      # lerp rate when sagging under weight
 const SAG_SPEED_OFF := 3.0     # lerp rate when wire returns to straight
 const DROP_THROUGH_TIME := 0.25
+const PickupPromptScene = preload("res://scenes/ui/pickup_prompt_ui.tscn")
 
 @export var move_speed: float = 200.0
 @export var jump_velocity: float = 501.0
@@ -21,6 +22,7 @@ var _platform_slack: float = 0.0
 var _platform_renderer: Line2D = null
 var _on_wire_platform: bool = false
 var _drop_through_timer: float = 0.0
+var _pickup_ui: Node = null
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -40,6 +42,9 @@ func _ready() -> void:
 	_platform_renderer.width = 1.5
 	_platform_renderer.default_color = Color(0.95, 0.9, 0.55, 0.9)
 	add_child(_platform_renderer)
+	_pickup_ui = PickupPromptScene.instantiate()
+	_pickup_ui.top_level = true  # decouple from player's facing-flip (scale.x = -1)
+	add_child(_pickup_ui)
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
@@ -51,6 +56,7 @@ func _physics_process(delta: float) -> void:
 	_update_platform_sag(delta)
 	_update_wire_renderer()
 	_update_aim_pivot()
+	_update_pickup_prompts()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("jump") and is_on_floor():
@@ -217,6 +223,12 @@ func _draw_catenary_line(renderer: Line2D, from: Vector2, to: Vector2, slack: fl
 func _update_aim_pivot() -> void:
 	var mouse_local := get_global_mouse_position() - global_position
 	scale.x = -1.0 if mouse_local.x < 0.0 else 1.0
+
+func _update_pickup_prompts() -> void:
+	if _pickup_ui == null:
+		return
+	var info: Dictionary = needle_manager.get_retrieve_info(global_position, _wire_anchor)
+	_pickup_ui.update_prompts(info["candidates"], info["target"])
 
 func get_wire_tension() -> float:
 	return _wire.tension_ratio(global_position) if _wire != null else 0.0

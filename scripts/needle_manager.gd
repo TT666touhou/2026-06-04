@@ -45,11 +45,20 @@ func shoot_wire_needle(from: Vector2, dir: Vector2) -> void:
 	_spawn_projectile(from, dir, _NEEDLE_WIRE)
 
 func try_retrieve(player_pos: Vector2, connected_anchor: Node = null) -> void:
-	# Pick one anchor to retrieve by priority (GAP-032):
-	#   0 attack needle (no wire) > 1 wire/pendulum > 2 platform endpoint.
-	# Connected pendulum anchor is always retrievable; others need proximity.
-	# Ties within a priority are broken by nearest.
-	var best: Node = null
+	var info := get_retrieve_info(player_pos, connected_anchor)
+	var target: Node = info["target"]
+	if target != null:
+		_remove_anchor(target)
+
+# Single source of truth for "what can F retrieve, and which one would it pick"
+# (GAP-032 priority + GAP-033 UI share this). Returns:
+#   { "candidates": Array[{anchor, label, priority}], "target": Node-or-null }
+# Priority (lower first): 0 attack(no wire) < 1 wire/pendulum < 2 platform endpoint.
+# Connected pendulum anchor is always retrievable; others need proximity.
+# Ties within a priority are broken by nearest.
+func get_retrieve_info(player_pos: Vector2, connected_anchor: Node = null) -> Dictionary:
+	var candidates: Array = []
+	var target: Node = null
 	var best_priority: int = 99
 	var best_dist: float = INF
 	for anchor in _anchors:
@@ -61,12 +70,16 @@ func try_retrieve(player_pos: Vector2, connected_anchor: Node = null) -> void:
 		if not is_player_wire and dist > retrieve_radius:
 			continue
 		var prio: int = _retrieve_priority(anchor, is_platform)
+		candidates.append({
+			"anchor": anchor,
+			"label": _retrieve_label(anchor, is_platform, is_player_wire),
+			"priority": prio,
+		})
 		if prio < best_priority or (prio == best_priority and dist < best_dist):
-			best = anchor
+			target = anchor
 			best_priority = prio
 			best_dist = dist
-	if best != null:
-		_remove_anchor(best)
+	return { "candidates": candidates, "target": target }
 
 func _retrieve_priority(anchor: Node, is_platform: bool) -> int:
 	# Lower retrieved first: attack(no wire) < wire/pendulum < platform endpoint
@@ -75,6 +88,15 @@ func _retrieve_priority(anchor: Node, is_platform: bool) -> int:
 	if is_platform:
 		return 2
 	return 1
+
+func _retrieve_label(anchor: Node, is_platform: bool, is_player_wire: bool) -> String:
+	if anchor.type == _ANCHOR_ATTACK:
+		return "[F] 攻擊針"
+	if is_platform:
+		return "[F] 平台針"
+	if is_player_wire:
+		return "[F] 擺錘針"
+	return "[F] 鋼針"
 
 func needle_count() -> int:
 	return _total_count()
