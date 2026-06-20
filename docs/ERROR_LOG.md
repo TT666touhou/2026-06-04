@@ -1194,3 +1194,16 @@ global_rotation = dir.angle()
 - **連帶**: GAP-039 移除 `constrain()` → `tests/test_rope_gap037.gd` 的 constrain 斷言過時失效；已修剪為僅測 VerletRope+reel（WireConstraint 由 `test_rope_gap039.gd` 覆蓋）。教訓：改動公開 API（如 constrain→apply）須同步更新對應測試。
 - **驗證（新法示範）**: `test_rope_gap039.gd` → **ROPE39_TEST_PASS**（針數5、彈性朝錨點、**上甩 vel.y<0 & pos 上移**、reel 夾 min）；`test_rope_gap037.gd` → ROPE_TEST_PASS；sensor 21/21；`--check-only` 0；run_project 冒煙 errors 空。連段手感需玩家實測。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-040 上甩動量不自然(彈簧注入) → 改回自然鐘擺 + 針速2400（2026-06-20）
+
+- **Severity**: Feature（手感）
+- **需求（用戶）**: (1) GAP-039 的上甩動量「很怪、是特別添加的」，要**自然**（不要人工注入動量）。(2) 針飛行速度太慢，加快。
+- **根因（手感）**: GAP-039 的 `wire_constraint.apply()` 用彈簧 `velocity += dir*pull*delta`，**主動注入朝錨點的速度** → 玩家感覺被「特別添加」地往上甩，不自然。
+- **修復**:
+  - 繩物理改回**自然鐘擺長度約束** `constrain()`：繃緊時只**夾位置到半徑圓** + **消除朝外徑向速度**，**絕不注入任何速度**。動量純由重力盪繩；收繩(縮 `max_length`)靠位置約束 → 角動量守恆自然加速擺盪（如收手加快旋轉）。移除 `stiffness/damping/max_accel` 與彈簧 `apply()`。
+  - `needle_projectile.flight_speed 1200→2400`（抗穿牆：raycast 前探 48px>16px 牆；`max_travel` 仍>對角線）。
+- **驗證（新法）**: `tests/test_rope_gap040.gd` → **ROPE40_TEST_PASS**，關鍵斷言「靜止玩家繃緊 → `constrain` 後 vel≈0（無注入）」直接證明自然；切向保留、徑向消除、reel 夾 min、針數5。sensor 21/21；`--check-only` 0；run_project 冒煙空。
+- **過程教訓**: `git add a b c <不存在>` 會因 pathspec fatal **中斷且未暫存任何檔**，導致該次 commit 漏掉實際代碼（只含先前 `git rm` 的刪除）→ 後續 ff merge 看似只動 1 檔即露餡。**防範**：刪檔用 `git rm`（已自動暫存），其餘 `git add` 勿混入不存在路徑；commit 後核對 `git show --stat` 檔數符合預期。
+- **設計演進記錄**: 繩經 GAP-034(彈簧)→035(bungee)→037(Verlet視覺+鐘擺)→039(彈簧上甩)→**040(自然鐘擺，無注入)**。結論：視覺用 Verlet、物理用**無注入的鐘擺約束**最自然。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
