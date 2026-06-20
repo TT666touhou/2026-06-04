@@ -6,6 +6,7 @@ const SAG_SPEED_ON := 8.0      # lerp rate when sagging under weight
 const SAG_SPEED_OFF := 3.0     # lerp rate when wire returns to straight
 const DROP_THROUGH_TIME := 0.25
 const PickupPromptScene = preload("res://scenes/ui/pickup_prompt_ui.tscn")
+const VerletRopeScript = preload("res://scripts/verlet_rope.gd")
 
 @export var move_speed: float = 240.0
 @export var jump_velocity: float = 540.0
@@ -20,15 +21,16 @@ const PickupPromptScene = preload("res://scenes/ui/pickup_prompt_ui.tscn")
 @export var coyote_time: float = 0.1       # jump grace after leaving ground
 @export var jump_buffer_time: float = 0.1  # jump grace before landing
 @export var jump_cut: float = 0.45         # upward velocity kept when jump released early
-# Bungee tether (GAP-035)
+# Wire tether — pendulum swing + auto-reel (GAP-037)
 @export var swing_accel: float = 500.0     # air-control accel while on the wire (px/s^2)
 @export var swing_air_drag: float = 60.0   # gentle horizontal settle while swinging (px/s^2)
-@export var rope_stiffness: float = 14.0   # elastic pull toward anchor (hang dist ~ gravity/stiffness)
-@export var rope_damping: float = 6.0      # along-rope velocity damping (bounce control)
-@export var rope_max_accel: float = 3500.0 # cap on pull accel
-@export var reel_boost: float = 2200.0     # extra inward accel while holding E
+@export var auto_reel_speed: float = 110.0 # auto-pull toward the anchor on attach (px/s)
+@export var min_rope_length: float = 24.0  # rope won't reel shorter than this
+@export var reel_speed: float = 200.0      # extra reel while holding E (px/s)
+@export var rope_segments: int = 12        # Verlet rope visual point count
 
 var _wire: RefCounted = null
+var _verlet: RefCounted = null      # Verlet rope visual for the active wire
 var _wire_anchor: Node = null       # active pendulum anchor (swinging)
 var _wire_projectile: Node = null
 var _platform_a: Node = null        # platform endpoint A — independent of pendulum state
@@ -130,13 +132,12 @@ func _update_jump(delta: float) -> void:
 func _apply_wire(delta: float) -> void:
 	if _wire == null:
 		return
-	velocity = _wire.apply(global_position, velocity, delta)
+	_wire.auto_reel(delta)                              # auto-pull toward anchor
 	if Input.is_action_pressed("reel_wire"):
-		# E: extra inward accel to reel toward the anchor faster.
-		var to_anchor: Vector2 = _wire.anchor_pos - global_position
-		var d: float = to_anchor.length()
-		if d > 0.001:
-			velocity += (to_anchor / d) * (reel_boost * delta)
+		_wire.reel(reel_speed, delta)                  # E: reel in faster
+	var r: Dictionary = _wire.constrain(global_position, velocity)
+	global_position = r["pos"]                         # clamp onto swing circle when taut
+	velocity = r["vel"]                                # outward radial removed → pendulum
 
 func _shoot_needle() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
@@ -154,6 +155,7 @@ func _cut_wire() -> void:
 	if _wire == null or _wire_anchor == null:
 		return
 	_wire = null
+	_verlet = null
 	_wire_anchor = null
 	wire_renderer.visible = false
 
@@ -164,14 +166,16 @@ func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire_projectile = null
 	_wire = anchor.wire as RefCounted
 	_wire_anchor = anchor
-	_wire.stiffness = rope_stiffness
-	_wire.damping = rope_damping
-	_wire.max_accel = rope_max_accel
+	_wire.min_length = min_rope_length
+	_wire.auto_reel_speed = auto_reel_speed
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
+	_verlet = VerletRopeScript.new()
+	_verlet.init(anchor.global_position, global_position, rope_segments)
 
 func _on_needle_retrieved(anchor: Node) -> void:
 	if anchor == _wire_anchor:
 		_wire = null
+		_verlet = null
 		_wire_anchor = null
 	if anchor == _platform_a or anchor == _platform_b:
 		_platform_a = null
@@ -182,6 +186,7 @@ func _on_needle_retrieved(anchor: Node) -> void:
 
 func _on_platform_created(a1: Node, a2: Node) -> void:
 	_wire = null
+	_verlet = null
 	_wire_anchor = null
 	if _platform_a != a1 or _platform_b != a2:
 		_platform_slack = 30.0  # initial droop; settles via _update_platform_sag
@@ -212,16 +217,17 @@ func _update_wire_renderer() -> void:
 		wire_renderer.add_point(_wire_projectile.global_position)
 		return
 
-	# Priority 2: Pendulum mode — yellow, brightens/thickens under tension
+	# Priority 2: Pendulum mode — Verlet rope (natural droop/straighten, no fake sag)
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
-		var dist := global_position.distance_to(_wire.anchor_pos)
-		var slack := maxf(0.0, _wire.max_length - dist)
-		var tension := clampf(1.0 - slack / _wire.max_length, 0.0, 1.0)
+		var tension: float = _wire.tension_ratio(global_position)
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 1.0).lerp(Color(1.0, 1.0, 0.8, 1.0), tension)
 		wire_renderer.width = 1.5 + tension * 1.5
 		wire_renderer.visible = true
-		wire_renderer.clear_points()
-		_draw_catenary_line(wire_renderer, global_position, _wire.anchor_pos, slack)
+		if _verlet == null:
+			_verlet = VerletRopeScript.new()
+			_verlet.init(_wire.anchor_pos, global_position, rope_segments)
+		_verlet.update(_wire.anchor_pos, global_position, _wire.max_length, get_physics_process_delta_time())
+		wire_renderer.points = _verlet.points
 		return
 
 	# Priority 3: In-flight only — dim, thin; no existing wire at all
