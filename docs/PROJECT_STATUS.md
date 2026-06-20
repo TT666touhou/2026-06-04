@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
 | 2026-06-20 | Architect | GAP-035：規劃 wire_constraint always-pull、player 慣性/buffer/coyote/可變跳、MVP_Test 放大 1280×720 外牆重框 |
 | 2026-06-20 | Designer | GAP-035：繩改彈力繩自動拉近(Q切斷)、視窗放大1280×720外牆切齊、Player性能微調、左右慣性、jump buffer/coyote/可變跳；GDD §2.3/9.1/9.4/9.5 |

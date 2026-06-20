@@ -1130,3 +1130,18 @@ global_rotation = dir.angle()
   - 角色在受約束（繩/鉤）狀態下，**不要每幀硬覆寫速度分量**，否則會抹除物理動量；改用加速度疊加。
 - **驗證**: sensor 21/21；`--check-only` 0；run_project errors 空。繩手感與撿針需玩家實測（qa-report 清單）。
 - **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
+
+## GAP-035 彈力繩自動拉近 + 移動手感機制 + 場景放大（2026-06-20）
+
+- **Severity**: Feature（繩重做 + 手感機制 + 場景）
+- **需求（用戶）**: (1) 繩仍不滿意 → 改「錨點一建立就自動把玩家拉過去」的**彈力繩**，Q 決定切斷，換實作。(2) 外牆沒跟視窗切齊 → 放大對齊。(3) 稍微強化 Player 性能。(4) 加左右移動慣性。(5) 加 buffer 等 2D 必備機制。
+- **實作**:
+  - **彈力繩**（換實作）：`wire_constraint.gd` 由「繃緊才作用的彈簧」改為 **always-pull elastic tether**——恆定朝錨點施加 `min(stiffness*dist, max_accel)` 的彈性拉力 + 沿繩阻尼。命中即自動拉近、過衝回彈；懸掛距離 ≈ `gravity/stiffness`。移除 `reel_in`，E 改為額外朝錨點加速。`max_length` 保留為視覺參考。
+  - **移動慣性**：`player._apply_movement` 非繩上改 `move_toward(velocity.x, dir*move_speed, rate*delta)`，地面/空中分用 `ground/air_accel`、`ground/air_friction`。
+  - **跳躍必備機制**：`_update_jump` 加 coyote time（離地寬容）+ jump buffer（落地前緩衝）；放開跳鍵 `velocity.y *= jump_cut` 可變跳高。
+  - **性能微調**：`move_speed` 200→240、`jump_velocity` 501→540。
+  - **場景放大**：`project.godot` 視窗 960×540→**1280×720**；`MVP_Test.tscn` 四面外牆重框 0..1280/0..720、內部平台與玩家起點 ×4/3、相機 limits→1280×720。
+- **根因（外牆未切齊）**: 外牆原本框 960×540，視窗放大／不一致時不再框滿。統一視窗、外牆、相機 limits 為同一尺寸即切齊。
+- **防範規則**: 邊界外牆尺寸、相機 limits、視窗解析度三者必須一致；改其一須同步另兩者。
+- **驗證**: sensor 21/21；`--check-only` 0；run_project errors 空（1280×720）。繩/移動/跳躍手感需玩家實測，全開 @export 微調（qa-report 清單）。
+- **提交**: 本次 commit（[DESIGN]→[ARCH]→[DEV]→[REVIEW]→[QA] 串行）
