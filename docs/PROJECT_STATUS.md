@@ -130,6 +130,7 @@
 
 | 時間 | 角色 | 更新內容 |
 |------|------|---------|
+| 2026-06-20 | Reviewer | GAP-040：審查通過 — constrain 無速度注入(自然)、夾位+消徑向、針速2400 抗穿牆OK；test_rope_gap040 斷言無注入；補正 git add 漏提 |
 | 2026-06-20 | Architect | GAP-040：規劃 wire_constraint 改回 constrain(無速度注入)、player 移除彈簧 export、needle flight 2400、測試改寫驗證自然 |
 | 2026-06-20 | Designer | GAP-040：繩改回自然鐘擺約束(移除彈簧人工 fling 動量)、針速 1200→2400；GDD §2.3/9.3 |
 | 2026-06-20 | QA | GAP-039：新驗證法示範 — test_rope_gap039 ROPE39_TEST_PASS(上甩 vel.y<0+針數5)、gap037 修剪後 PASS、sensor 21/21、run_project 冒煙空 → 通過 |
