@@ -21,7 +21,7 @@ Write-Host "`n[1] Role: $role" -ForegroundColor Yellow
 Write-Host "`n[2] Recent changes (PROJECT_STATUS.md):" -ForegroundColor Yellow
 (Read-UTF8 "$Root\docs\PROJECT_STATUS.md") |
     Where-Object { $_ -match "^\| 2026" } |
-    Select-Object -Last 5 |
+    Select-Object -First 5 |
     ForEach-Object { Write-Host "  $_" }
 
 # 3. Last 3 GAP headings from ERROR_LOG
