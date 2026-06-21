@@ -103,8 +103,9 @@ func _apply_wire(delta: float) -> void:
 	# Keep anchor_pos in sync — needle_anchor follows the embedded body each frame (GAP-047)
 	if _wire_anchor != null and is_instance_valid(_wire_anchor):
 		_wire.anchor_pos = _wire_anchor.global_position
-	# Wire is hooked to an enemy body: enemy moves toward player, player stays free (GAP-047)
-	if _wire_anchor != null and (_wire_anchor as NeedleAnchor).attached_body != null:
+	# Wire is hooked to a moveable enemy (not a wall): enemy comes to player, player stays free (GAP-047)
+	if _wire_anchor != null and (_wire_anchor as NeedleAnchor).attached_body != null \
+			and not ((_wire_anchor as NeedleAnchor).attached_body is StaticBody2D):
 		return
 	_wire.auto_reel(delta)                              # auto-pull toward anchor while held
 	var r: Dictionary = _wire.constrain(global_position, velocity)
