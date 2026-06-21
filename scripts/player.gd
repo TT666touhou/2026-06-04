@@ -100,6 +100,12 @@ func _update_jump(delta: float) -> void:
 func _apply_wire(delta: float) -> void:
 	if _wire == null:
 		return
+	# Keep anchor_pos in sync — needle_anchor follows the embedded body each frame (GAP-047)
+	if _wire_anchor != null and is_instance_valid(_wire_anchor):
+		_wire.anchor_pos = _wire_anchor.global_position
+	# Wire is hooked to an enemy body: enemy moves toward player, player stays free (GAP-047)
+	if _wire_anchor != null and (_wire_anchor as NeedleAnchor).attached_body != null:
+		return
 	_wire.auto_reel(delta)                              # auto-pull toward anchor while held
 	var r: Dictionary = _wire.constrain(global_position, velocity)
 	# Apply the rope's position correction via move_and_collide (NOT a direct

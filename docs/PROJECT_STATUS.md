@@ -62,6 +62,15 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 0.7 — 針跟隨敵人移動 + 右鍵勾敵人 player 不被拉（GAP-047）
+
+- **完成日期**：2026-06-22
+- **實作功能**：
+  - GAP-047a：`needle_anchor.gd` 加 `_physics_process`，首幀記錄 `_body_offset`，每幀跟隨 `attached_body.global_position`，針視覺正確貼在移動敵人上
+  - GAP-047b：`player.gd` `_apply_wire()` 每幀同步 `_wire.anchor_pos`；若 `attached_body != null`（鉤到敵人）不執行 WireConstraint，player 保持自由移動
+- **修改檔案**：`scripts/needle_anchor.gd`、`scripts/player.gd`
+- **分支**：`feature/gap-046-wire-snap-enemy-pull`
+
 ### Phase 0.6 — 右鍵 snap 彈力 + 右鍵勾敵人往玩家拉近（GAP-046）
 
 - **完成日期**：2026-06-22
