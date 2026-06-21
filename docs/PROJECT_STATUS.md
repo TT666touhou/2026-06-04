@@ -62,6 +62,15 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 0.6 — 右鍵 snap 彈力 + 右鍵勾敵人往玩家拉近（GAP-046）
+
+- **完成日期**：2026-06-22
+- **實作功能**：
+  - GAP-046a：`wire_constraint.gd` 加 `snap_factor=0.35`，繩子拉緊瞬間反彈部分向外速度，產生鞭甩手感
+  - GAP-046b：`training_dummy.gd` 右鍵 wire 針命中（n_type=1）→ 持續以 200px/s 往玩家拉近；wire 釋放時停止
+- **修改檔案**：`scripts/wire_constraint.gd`、`scripts/training_dummy.gd`
+- **分支**：`feature/gap-046-wire-snap-enemy-pull`
+
 ### Phase 0.5 — 遊戲手感優化 + 木人敵人（GAP-043～045）
 
 - **完成日期**：2026-06-21
