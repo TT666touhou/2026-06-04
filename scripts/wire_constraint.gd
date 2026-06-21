@@ -12,6 +12,7 @@ var anchor_pos: Vector2
 var max_length: float                # rope length = swing radius (shrinks via reel)
 var min_length: float = 24.0
 var auto_reel_speed: float = 520.0   # fast auto-pull toward the anchor (px/s)
+var snap_factor: float = 0.35        # fraction of outward speed reflected inward when wire snaps taut (0=pendulum, 1=elastic)
 
 func setup(pos: Vector2, dist_to_anchor: float) -> void:
 	anchor_pos = pos
@@ -35,7 +36,8 @@ func constrain(player_pos: Vector2, velocity: Vector2) -> Dictionary:
 	var new_pos := anchor_pos - dir * max_length
 	var radial := velocity.dot(dir)   # >0 toward anchor, <0 stretching away
 	if radial < 0.0:
-		velocity -= dir * radial       # remove outward component only
+		velocity -= dir * radial                        # remove outward component
+		velocity += dir * (-radial) * snap_factor       # snap-back: reflect fraction inward (GAP-046)
 	return { "pos": new_pos, "vel": velocity }
 
 func tension_ratio(player_pos: Vector2) -> float:
