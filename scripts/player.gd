@@ -24,7 +24,7 @@ const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 720 px
 var _wire: WireConstraint = null
 var _wire_anchor: Node = null
 var _wire_projectile: Node = null
-var _wire_held: bool = false
+# _wire_held removed — turn-based: right-click is one-shot, wire persists until UI disconnect
 
 # Slingshot drag state
 var _sling_dragging: bool = false
@@ -95,13 +95,10 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 				_launch_slingshot(get_global_mouse_position())
 
 	elif mb.button_index == MOUSE_BUTTON_RIGHT:
-		if mb.pressed:
-			_wire_held = true
-			if TurnManager.is_frozen():
-				_start_grapple()
-		else:
-			_wire_held = false
-			_release_grapple()
+		# Turn-based: right-click is one-shot fire, wire persists until UI disconnect.
+		# No release-to-detach; that's handled by a future retrieve UI button.
+		if mb.pressed and TurnManager.is_frozen():
+			_start_grapple()
 
 ## Check if world-space pos is within player collision rect
 func _is_on_player(world_pos: Vector2) -> bool:
@@ -134,7 +131,7 @@ func _update_preview() -> void:
 		var speed := clampf(dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 		var arc := _simulate_arc(global_position, dir * speed, 60)
 		aim_preview.set_slingshot(arc)
-	elif not _wire_held:
+	else:
 		var mouse_w := get_global_mouse_position()
 		var from := throw_origin.global_position
 		var to_mouse := mouse_w - from
@@ -145,8 +142,6 @@ func _update_preview() -> void:
 			aim_preview.set_needle(from, mouse_w, reach)
 		else:
 			aim_preview.clear()
-	else:
-		aim_preview.clear()
 
 ## Simulate a physics arc and return a list of points
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
@@ -217,9 +212,7 @@ func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
-	if not _wire_held:
-		needle_manager.release_wire()
-		return
+	# Turn-based: always accept the anchor (no hold-to-grapple check).
 	_wire_projectile = null
 	_wire = anchor.wire as WireConstraint
 	_wire_anchor = anchor
