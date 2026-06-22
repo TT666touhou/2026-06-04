@@ -62,6 +62,19 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 1.1 — 純鐘擺手感重構（GAP-052）
+
+- **完成日期**：2026-06-22
+- **問題**：GAP-051 Z 方案固定徑向速度導致手感不自然，無法細緻操控（玩家感覺「被強制拉」非「順物理擺盪」）
+- **修復**：
+  - 廢除 Z 方案，改回 `constrain()` 純鐘擺：只取消外向徑向速度，保留切向動量
+  - `snap_factor = 0.0`（純鐘擺，不注入彈力）
+  - 勾住期間停用空中輸入（`swing_accel`），重力完全主導
+  - 位置修正繼續用 `velocity += correction / delta`（保留 `move_and_slide`，不卡地形）
+  - Verlet 繩長回到 `_wire.max_length`
+- **修改檔案**：`scripts/player.gd`、`scripts/wire_constraint.gd`
+- **驗證**：run_project 確認 max_len 平滑 575→24，dist 跟隨 max_len，min_length 後 dist = 24 = max_len 精確穩定，無 error
+
 ### Phase 1.0 — Z 方案：固定徑向拉力取代 auto_reel（GAP-051）
 
 - **完成日期**：2026-06-22
