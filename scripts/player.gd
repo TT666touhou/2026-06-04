@@ -1,32 +1,40 @@
+## Player — Turn-based slingshot + needle controller.
+## GAP-055: Complete rewrite for turn-based system.
+## Movement: slingshot drag (replaces A/D + Space).
+## Needles: left-click = attack, right-click = wire (gated by TurnManager.is_frozen()).
 extends CharacterBody2D
 
-# Movement / game feel (GAP-035)
-@export var move_speed: float = 240.0
-@export var jump_velocity: float = 540.0
+# ── Slingshot ──────────────────────────────────────────────────────────────────
+@export var max_launch_speed: float = 1200.0  # px/s at full drag (640px range at 45°)
+@export var max_drag_pixels: float = 80.0     # screen pixels of drag = full power
 @export var gravity: float = 980.0
-@export var ground_accel: float = 2200.0
-@export var ground_friction: float = 2600.0
-@export var air_accel: float = 1400.0
-@export var air_friction: float = 900.0
-@export var coyote_time: float = 0.1
-@export var jump_buffer_time: float = 0.1
-@export var jump_cut: float = 0.45
-# Wire grapple — hold right-click to grapple+reel, release to detach (GAP-041)
-@export var rope_reel_speed: float = 350.0   # px/s rope shortens while held
-@export var rope_min_length: float = 24.0    # shortest the rope can reel to
-@export var rope_snap_factor: float = 0.35   # inward bounce when rope snaps taut
-@export var swing_accel: float = 150.0       # tangential air control during wire swing (GAP-054)
 
+# ── Wire grapple (retained from GAP-041/053/054) ──────────────────────────────
+@export var rope_reel_speed: float = 350.0
+@export var rope_min_length: float = 24.0
+@export var rope_snap_factor: float = 0.35
+@export var swing_accel: float = 150.0
+
+# ── Needle preview reach per turn ──────────────────────────────────────────────
+const NEEDLE_SPEED: float = 2400.0
+const TURN_DURATION: float = 0.3
+const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 720 px
+
+# ── Internal state ─────────────────────────────────────────────────────────────
 var _wire: WireConstraint = null
 var _wire_anchor: Node = null
 var _wire_projectile: Node = null
 var _wire_held: bool = false
-var _coyote_timer: float = 0.0
-var _jump_buffer_timer: float = 0.0
+
+# Slingshot drag state
+var _sling_dragging: bool = false
+var _sling_start: Vector2 = Vector2.ZERO   # world pos where drag began
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
 @onready var throw_origin: Marker2D = $AimPivot/ThrowOrigin
+
+var aim_preview: Node2D = null
 
 func _ready() -> void:
 	add_to_group("player")
@@ -35,75 +43,137 @@ func _ready() -> void:
 	needle_manager.wire_needle_launched.connect(_on_wire_needle_launched)
 	wire_renderer.top_level = true
 	wire_renderer.visible = false
+	# Create AimPreview dynamically to avoid UID issues with manually edited .tscn
+	var preview_script := load("res://scripts/aim_preview.gd")
+	aim_preview = Node2D.new()
+	aim_preview.name = "AimPreview"
+	aim_preview.top_level = true
+	aim_preview.set_script(preview_script)
+	add_child(aim_preview)
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
-	_apply_movement(delta)
-	_update_jump(delta)
-	_apply_wire_pre(delta)   # remove outward radial vel BEFORE slide
+	_apply_wire_pre(delta)
 	move_and_slide()
-	_apply_wire_post()       # hard-clamp position AFTER slide
-	needle_manager.auto_retrieve_attack(global_position)
+	_apply_wire_post()
 	_update_wire_renderer()
 	_update_aim_pivot()
 
+func _process(_delta: float) -> void:
+	# Preview update runs during FROZEN (time_scale=0), process mode must be ALWAYS
+	if TurnManager.is_frozen():
+		_update_preview()
+	else:
+		aim_preview.clear()
+
+## Input is handled in unhandled_input; this runs regardless of time_scale
+## because InputEvent delivery ignores time_scale.
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("jump"):
-		_jump_buffer_timer = jump_buffer_time
-	if event.is_action_released("jump") and velocity.y < 0.0:
-		velocity.y *= jump_cut
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
-		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
-			_shoot_attack()
-		elif mb.button_index == MOUSE_BUTTON_RIGHT:
-			if mb.pressed:
-				_start_grapple()
+		_handle_mouse_button(mb)
+	elif event is InputEventMouseMotion:
+		if _sling_dragging:
+			aim_preview.queue_redraw()
+
+func _handle_mouse_button(mb: InputEventMouseButton) -> void:
+	if mb.button_index == MOUSE_BUTTON_LEFT:
+		if mb.pressed:
+			var mouse_w := get_global_mouse_position()
+			if _is_on_player(mouse_w):
+				# Start slingshot drag (only in FROZEN)
+				if TurnManager.is_frozen():
+					_sling_dragging = true
+					_sling_start = mouse_w
 			else:
-				_release_grapple()
+				# Attack needle click (only in FROZEN)
+				if TurnManager.is_frozen() and not _sling_dragging:
+					_shoot_attack()
+		else:  # left button released
+			if _sling_dragging:
+				_sling_dragging = false
+				_launch_slingshot(get_global_mouse_position())
+
+	elif mb.button_index == MOUSE_BUTTON_RIGHT:
+		if mb.pressed:
+			_wire_held = true
+			if TurnManager.is_frozen():
+				_start_grapple()
+		else:
+			_wire_held = false
+			_release_grapple()
+
+## Check if world-space pos is within player collision rect
+func _is_on_player(world_pos: Vector2) -> bool:
+	var half := Vector2(16.0, 32.0)
+	var local := world_pos - global_position
+	return abs(local.x) <= half.x and abs(local.y) <= half.y
+
+# ── Slingshot ──────────────────────────────────────────────────────────────────
+
+func _launch_slingshot(release_pos: Vector2) -> void:
+	if not TurnManager.is_frozen():
+		return
+	var drag := release_pos - _sling_start
+	var dist := drag.length()
+	if dist < 4.0:
+		return  # ignore tiny taps
+	var dir := drag.normalized()
+	var speed := clampf(dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+	velocity = dir * speed
+	TurnManager.commit()
+
+# ── Aim preview ────────────────────────────────────────────────────────────────
+
+func _update_preview() -> void:
+	if _sling_dragging:
+		var release := get_global_mouse_position()
+		var drag := release - _sling_start
+		var dist := drag.length()
+		var dir := drag.normalized() if dist > 2.0 else Vector2.RIGHT
+		var speed := clampf(dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+		var arc := _simulate_arc(global_position, dir * speed, 60)
+		aim_preview.set_slingshot(arc)
+	elif not _wire_held:
+		var mouse_w := get_global_mouse_position()
+		var from := throw_origin.global_position
+		var to_mouse := mouse_w - from
+		var dist := to_mouse.length()
+		if dist > 8.0:
+			var dir := to_mouse.normalized()
+			var reach := from + dir * minf(dist, NEEDLE_REACH)
+			aim_preview.set_needle(from, mouse_w, reach)
+		else:
+			aim_preview.clear()
+	else:
+		aim_preview.clear()
+
+## Simulate a physics arc and return a list of points
+func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var pos := start_pos
+	var vel := start_vel
+	var dt := TURN_DURATION / steps
+	pts.append(pos)
+	for _i in range(steps):
+		vel.y += gravity * dt
+		pos += vel * dt
+		pts.append(pos)
+	return pts
+
+# ── Gravity ────────────────────────────────────────────────────────────────────
 
 func _apply_gravity(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y += gravity * delta
 
-func _apply_movement(delta: float) -> void:
-	var dir := Input.get_axis("move_left", "move_right")
-	if _wire != null:
-		# Tangential air control: push along the swing arc perpendicular to the rope (GAP-054)
-		if dir != 0.0:
-			var to_anchor := _wire.anchor_pos - global_position
-			var dist := to_anchor.length()
-			if dist > 0.001:
-				var rope_dir := to_anchor / dist
-				var tangent := Vector2(-rope_dir.y, rope_dir.x)
-				velocity += tangent * dir * swing_accel * delta
-		return
-	var target := dir * move_speed
-	var rate: float
-	if is_on_floor():
-		rate = ground_accel if dir != 0.0 else ground_friction
-	else:
-		rate = air_accel if dir != 0.0 else air_friction
-	velocity.x = move_toward(velocity.x, target, rate * delta)
+# ── Wire (retained from GAP-041/053/054) ───────────────────────────────────────
 
-func _update_jump(delta: float) -> void:
-	if is_on_floor():
-		_coyote_timer = coyote_time
-	else:
-		_coyote_timer = maxf(0.0, _coyote_timer - delta)
-	_jump_buffer_timer = maxf(0.0, _jump_buffer_timer - delta)
-	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
-		velocity.y = -jump_velocity
-		_jump_buffer_timer = 0.0
-		_coyote_timer = 0.0
-
-# Pre-pass: sync anchor position, reel rope, remove outward radial velocity
 func _apply_wire_pre(delta: float) -> void:
 	if _wire == null:
 		return
 	if _wire_anchor != null and is_instance_valid(_wire_anchor):
 		_wire.anchor_pos = _wire_anchor.global_position
-	# Enemy hook: enemy moves toward player; player physics unchanged (GAP-047)
 	var anchor_node := _wire_anchor as NeedleAnchor
 	if anchor_node != null and anchor_node.attached_body != null \
 			and not (anchor_node.attached_body is StaticBody2D):
@@ -111,7 +181,6 @@ func _apply_wire_pre(delta: float) -> void:
 	_wire.reel(delta)
 	velocity = _wire.pre_constrain(global_position, velocity)
 
-# Post-pass: hard-clamp player onto rope circle after move_and_slide
 func _apply_wire_post() -> void:
 	if _wire == null:
 		return
@@ -127,17 +196,17 @@ func _shoot_attack() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
 	var dir := (get_global_mouse_position() - from).normalized()
 	needle_manager.shoot_attack_needle(from, dir)
+	TurnManager.commit()
 
 func _start_grapple() -> void:
-	_wire_held = true
 	if _wire != null or (_wire_projectile != null and is_instance_valid(_wire_projectile)):
 		return
 	var from := throw_origin.global_position if throw_origin else global_position
 	var dir := (get_global_mouse_position() - from).normalized()
 	needle_manager.shoot_wire_needle(from, dir)
+	TurnManager.commit()
 
 func _release_grapple() -> void:
-	_wire_held = false
 	needle_manager.release_wire()
 	_wire = null
 	_wire_anchor = null
@@ -166,7 +235,6 @@ func _on_needle_retrieved(anchor: Node) -> void:
 		wire_renderer.visible = false
 
 func _update_wire_renderer() -> void:
-	# Active wire — straight line (wire under tension; no Verlet droop)
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var tension: float = _wire.tension_ratio(global_position)
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 1.0).lerp(Color(1.0, 1.0, 0.8, 1.0), tension)
@@ -176,7 +244,6 @@ func _update_wire_renderer() -> void:
 		wire_renderer.add_point(global_position)
 		wire_renderer.add_point(_wire.anchor_pos)
 		return
-	# In-flight wire — straight line player → projectile
 	if _wire_projectile != null and is_instance_valid(_wire_projectile):
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 0.6)
 		wire_renderer.width = 1.0

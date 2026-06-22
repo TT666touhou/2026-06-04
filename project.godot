@@ -8,6 +8,10 @@
 
 config_version=5
 
+[autoload]
+
+TurnManager="*res://scripts/turn_manager.gd"
+
 [application]
 
 config/name="needle_game"
