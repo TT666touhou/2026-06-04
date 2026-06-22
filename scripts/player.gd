@@ -12,9 +12,9 @@ extends CharacterBody2D
 @export var jump_buffer_time: float = 0.1
 @export var jump_cut: float = 0.45
 # Wire grapple — hold right-click to grapple+reel, release to detach (GAP-041)
-@export var rope_reel_speed: float = 180.0   # px/s rope shortens while held
+@export var rope_reel_speed: float = 350.0   # px/s rope shortens while held
 @export var rope_min_length: float = 24.0    # shortest the rope can reel to
-@export var rope_snap_factor: float = 0.12   # tiny inward bounce when rope snaps taut
+@export var rope_snap_factor: float = 0.35   # inward bounce when rope snaps taut
 @export var swing_accel: float = 150.0       # tangential air control during wire swing (GAP-054)
 
 var _wire: WireConstraint = null
