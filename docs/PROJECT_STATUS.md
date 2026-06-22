@@ -62,6 +62,16 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### GAP-057 — 彈弓修復 / 繩索拉動 / 被動軌跡預覽（2026-06-23）
+
+- **完成日期**：2026-06-23
+- **修改檔案**：`scripts/player.gd`、`scripts/aim_preview.gd`
+- **修改內容**：
+  - 彈弓：左鍵任意位置開始拖曳（移除 `_is_on_player` 32×64px 精確點選要求）；拖曳 ≥ 15px = 彈弓，< 15px = 攻擊針
+  - 繩索：恢復 `rope_reel_speed = 150.0`；新增 `Space` 鍵 = pass/swing 回合
+  - 預覽：加入被動彈弓軌跡（鼠標方向 60% 速度，半透明淡藍，永遠顯示）；盪繩靜止 kick 20→100 px/s
+- **驗證**：run_project 無語法錯誤，乾淨啟動
+
 ### GDD v5 — 回合制大改 + 最終確認（2026-06-22）
 
 - **完成日期**：2026-06-22

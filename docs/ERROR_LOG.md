@@ -1240,3 +1240,29 @@ global_rotation = dir.angle()
 - **驗證（暫時插樁 + run_project）**: 自動朝上抓鉤 + log `move_and_collide` 碰撞 → **`blocked by Platform_C at y≈436`（× 1044 幀）**，玩家被平台擋住卡住、未穿過。插樁已還原。sensor 21/21、`--check-only` 0。
 - **防範規則**: **CharacterBody2D 任何需要碰撞的位移，禁止用 `global_position =`／`position =` 直接設定（會瞬移穿牆）**；改用 `move_and_collide`（單次、會回報碰撞）或 `move_and_slide`（速度驅動）。位置型約束（繩/夾鉗）一律走 `move_and_collide`。
 - **提交**: 本次 commit（[DEV] 修復 → [QA] 驗收）
+
+## GAP-057 三重修正：彈弓失效 / 繩索不拉人 / 被動軌跡預覽缺失（2026-06-23）
+
+- **Severity**: Critical（玩家完全無法移動）
+
+### 問題 1：彈弓（Slingshot）無法啟動
+
+- **根本原因**: `_is_on_player()` 要求左鍵必須精確點在玩家 32×64px 碰撞體內才能開始拖曳，實際操作幾乎不可能（特別是 32px 寬的角色）
+- **修復**: 移除 `_is_on_player()` 判斷；**任何位置的左鍵按下**皆開始追蹤拖曳；放開時拖曳距離 ≥ 15px → 彈弓發射，< 15px → 攻擊針
+- **防範規則**: 彈弓類操作不要求精確點在角色身上，只看拖曳方向與距離
+
+### 問題 2：繩索不拉動玩家
+
+- **根本原因**: GAP-056 將 `rope_reel_speed = 0.0`，繩索只作為鐘擺約束；且鉤上後無「純盪繩」的回合觸發方式
+- **修復**: 恢復 `rope_reel_speed = 150.0`；新增 `Space` 鍵 = pass/swing 回合（commit 不射針）
+
+### 問題 3：玩家軌跡預覽只在拖曳時顯示
+
+- **根本原因**: 彈弓弧線只在 `_sling_dragging = true` 時出現
+- **修復**: 加入被動彈弓軌跡（鼠標方向 60% 速度，半透明）；拖曳時覆蓋為全亮精確弧線
+- **aim_preview.gd**: `set_slingshot(arc, ghost, is_active)` 新增 bool 參數區分主動/被動顏色
+
+### 附帶修正
+
+- 盪繩靜止 kick：20.0 → 100.0 px/s（靜止懸掛時弧線可見）
+- `to_mouse` 重複宣告 Parser Error → 被動分支改名 `to_mouse_p`

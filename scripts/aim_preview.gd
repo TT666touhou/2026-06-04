@@ -12,6 +12,7 @@ var _needle_beyond_active: bool = false
 var _sling_arc: PackedVector2Array
 var _sling_ghost: Vector2
 var _sling_active: bool = false
+var _sling_is_active: bool = false  # true = dragging (bright), false = passive (dim)
 
 var _swing_arc: PackedVector2Array
 var _swing_active: bool = false
@@ -46,10 +47,11 @@ func set_needle(from: Vector2, reach: Vector2, target: Vector2) -> void:
 	_needle_active = true
 	_needle_beyond_active = target.distance_squared_to(reach) > 16.0
 
-func set_slingshot(arc: PackedVector2Array, ghost: Vector2) -> void:
+func set_slingshot(arc: PackedVector2Array, ghost: Vector2, is_active: bool = true) -> void:
 	_sling_arc = arc
 	_sling_ghost = ghost
 	_sling_active = true
+	_sling_is_active = is_active
 
 func set_swing(arc: PackedVector2Array) -> void:
 	_swing_arc = arc
@@ -71,6 +73,7 @@ func clear_swing() -> void:
 func clear_all() -> void:
 	_needle_active = false
 	_sling_active = false
+	_sling_is_active = false
 	_swing_active = false
 	_btn_rect = Rect2()
 
@@ -89,14 +92,18 @@ func _draw() -> void:
 			_draw_dashed_line(_needle_reach, _needle_beyond, C_BEYOND, 1.5, 5.0, 9.0)
 			draw_circle(_needle_beyond, 3.5, C_BEYOND)
 
-	# Layer 2: slingshot arc + ghost player
+	# Layer 2: slingshot arc + ghost player (bright = active drag; dim = passive direction hint)
 	if _sling_active and _sling_arc.size() >= 2:
-		_draw_dashed_path(_sling_arc, C_SLING, 2.0)
+		var c_line  := C_SLING   if _sling_is_active else Color(C_SLING.r,    C_SLING.g,    C_SLING.b,    0.30)
+		var c_gf    := C_GHOST_F if _sling_is_active else Color(C_GHOST_F.r,  C_GHOST_F.g,  C_GHOST_F.b,  0.08)
+		var c_gl    := C_GHOST_L if _sling_is_active else Color(C_GHOST_L.r,  C_GHOST_L.g,  C_GHOST_L.b,  0.25)
+		_draw_dashed_path(_sling_arc, c_line, 2.0)
 		var ghost_half := Vector2(16, 32)
-		draw_rect(Rect2(_sling_ghost - ghost_half, ghost_half * 2), C_GHOST_F)
-		draw_rect(Rect2(_sling_ghost - ghost_half, ghost_half * 2), C_GHOST_L, false, 1.5)
-		draw_line(_sling_ghost + Vector2(-7, 0), _sling_ghost + Vector2(7, 0), C_SLING, 1.5)
-		draw_line(_sling_ghost + Vector2(0, -7), _sling_ghost + Vector2(0, 7), C_SLING, 1.5)
+		draw_rect(Rect2(_sling_ghost - ghost_half, ghost_half * 2), c_gf)
+		draw_rect(Rect2(_sling_ghost - ghost_half, ghost_half * 2), c_gl, false, 1.5)
+		if _sling_is_active:
+			draw_line(_sling_ghost + Vector2(-7, 0), _sling_ghost + Vector2(7, 0), C_SLING, 1.5)
+			draw_line(_sling_ghost + Vector2(0, -7), _sling_ghost + Vector2(0, 7), C_SLING, 1.5)
 
 	# Layer 3: swing arc
 	if _swing_active and _swing_arc.size() >= 2:

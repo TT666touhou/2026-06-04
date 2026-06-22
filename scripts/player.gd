@@ -9,7 +9,7 @@ extends CharacterBody2D
 @export var gravity: float = 980.0
 
 # ── Wire grapple ──────────────────────────────────────────────────────────────
-@export var rope_reel_speed: float = 0.0      # disabled: no auto-reel in turn-based
+@export var rope_reel_speed: float = 150.0    # px/s pulled toward anchor each turn
 @export var rope_min_length: float = 24.0
 @export var rope_snap_factor: float = 0.35
 
@@ -66,41 +66,44 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
-		var mb := event as InputEventMouseButton
-		_handle_mouse_button(mb)
+		_handle_mouse_button(event as InputEventMouseButton)
 	elif event is InputEventMouseMotion:
 		if _sling_dragging:
 			aim_preview.queue_redraw()
+	elif event is InputEventKey:
+		var kb := event as InputEventKey
+		# Space = pass/swing turn — let physics run without shooting anything
+		if kb.pressed and not kb.echo and kb.keycode == KEY_SPACE:
+			if TurnManager.is_frozen():
+				TurnManager.commit()
 
 func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 	if mb.button_index == MOUSE_BUTTON_LEFT:
 		if mb.pressed:
 			var mouse_w := get_global_mouse_position()
-			# Check disconnect button first
+			# Disconnect button = free action (no turn commit)
 			if TurnManager.is_frozen() and _disconnect_btn_rect.has_area() \
 					and _disconnect_btn_rect.has_point(mouse_w):
 				_release_grapple()
 				return
-			if _is_on_player(mouse_w):
-				if TurnManager.is_frozen():
-					_sling_dragging = true
-					_sling_start = mouse_w
-			else:
-				if TurnManager.is_frozen() and not _sling_dragging:
-					_shoot_attack()
+			# Track drag start from ANYWHERE — drag distance decides slingshot vs attack
+			if TurnManager.is_frozen():
+				_sling_dragging = true
+				_sling_start = mouse_w
 		else:
 			if _sling_dragging:
 				_sling_dragging = false
-				_launch_slingshot(get_global_mouse_position())
+				var mouse_w := get_global_mouse_position()
+				if mouse_w.distance_to(_sling_start) >= 15.0:
+					_launch_slingshot(mouse_w)
+				else:
+					# Short click (< 15 px drag) = attack needle
+					if TurnManager.is_frozen():
+						_shoot_attack()
 
 	elif mb.button_index == MOUSE_BUTTON_RIGHT:
 		if mb.pressed and TurnManager.is_frozen():
 			_start_grapple()
-
-func _is_on_player(world_pos: Vector2) -> bool:
-	var half := Vector2(16.0, 32.0)
-	var local := world_pos - global_position
-	return abs(local.x) <= half.x and abs(local.y) <= half.y
 
 # ── Slingshot ──────────────────────────────────────────────────────────────────
 
@@ -133,16 +136,23 @@ func _update_preview() -> void:
 	else:
 		aim_preview.clear_needle()
 
-	# ── Layer 2: Slingshot arc (shown when dragging) ─────────────────────────
+	# ── Layer 2: Slingshot arc — active drag or passive direction preview ────
 	if _sling_dragging:
 		var drag := mouse_w - _sling_start
 		var sling_dist := drag.length()
 		var sling_dir := drag.normalized() if sling_dist > 2.0 else Vector2.RIGHT
 		var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 		var arc := _simulate_arc(global_position, sling_dir * speed, 80)
-		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position)
+		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
 	else:
-		aim_preview.clear_slingshot()
+		# Passive: always show where player would go if they slingshot toward mouse
+		var to_mouse_p := mouse_w - global_position
+		if to_mouse_p.length() > 30.0:
+			var passive_dir := to_mouse_p.normalized()
+			var arc := _simulate_arc(global_position, passive_dir * max_launch_speed * 0.6, 60)
+			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, false)
+		else:
+			aim_preview.clear_slingshot()
 
 	# ── Layer 3: Wire swing arc + disconnect button (shown when wire active) ──
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
@@ -152,11 +162,11 @@ func _update_preview() -> void:
 		# so the arc is visible even when player is stationary
 		var sim_vel := velocity
 		if sim_vel.length() < 10.0:
-			# Give a minimal tangential nudge to show the swing direction
+			# Tangential nudge so the arc is visible when player is nearly stationary
 			var to_anchor := anchor_pos - global_position
 			if to_anchor.length() > 1.0:
 				var tangent := Vector2(-to_anchor.y, to_anchor.x).normalized()
-				sim_vel = tangent * 20.0
+				sim_vel = tangent * 100.0
 		var swing_arc := _simulate_swing(global_position, sim_vel, anchor_pos, wire_len, 80)
 		aim_preview.set_swing(swing_arc)
 		# Disconnect button world position = above wire anchor
