@@ -14,10 +14,10 @@ const VerletRopeScript = preload("res://scripts/verlet_rope.gd")
 @export var jump_buffer_time: float = 0.1
 @export var jump_cut: float = 0.45
 # Wire grapple — hold right to grapple+reel, release to detach+recycle (GAP-041)
-@export var wire_slack: float = 15.0
+@export var wire_slack: float = 0.0        # initial rope = exact player-to-anchor distance (GAP-050)
 @export var swing_accel: float = 500.0     # air-control accel while on the wire
 @export var swing_air_drag: float = 60.0   # gentle horizontal settle while swinging
-@export var auto_reel_speed: float = 520.0 # auto-pull toward the anchor while held
+@export var auto_reel_speed: float = 300.0 # auto-pull toward the anchor while held (GAP-050: 520→300)
 @export var min_rope_length: float = 24.0
 @export var rope_segments: int = 12        # Verlet rope visual point count
 

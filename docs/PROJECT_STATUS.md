@@ -62,6 +62,15 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 0.9 — 繩長精確化 + 收繩減速（GAP-050）
+
+- **完成日期**：2026-06-22
+- **實作功能**：
+  - GAP-050a：`wire_slack` 從 15.0 → 0.0，繩子初始長度 = 玩家到錨點精確直線距離
+  - GAP-050b：`auto_reel_speed` 從 520 → 300 px/s，盪繩收近速度減慢
+- **修改檔案**：`scripts/player.gd`、`docs/GAME_DESIGN.md §2.3`
+- **驗證方式**：用戶實機測試確認（繩長過長 + 速度過快問題改善）
+
 ### Phase 0.8 — 盪繩卡地形修正：改用滑動修正（GAP-048）
 
 - **完成日期**：2026-06-22
