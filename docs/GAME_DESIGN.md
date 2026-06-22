@@ -86,7 +86,8 @@
 - **自然鐘擺約束**：距離 ≤ `max_length` 鬆弛自由落；> `max_length` 繃緊 → 只夾位置到半徑圓 + **消除朝外徑向速度** → 自然擺盪。**不注入任何速度**（動量純來自重力盪繩，GAP-040）。
 - **鬆開右鍵 → 自動斷開 + 回收**：放開右鍵**立即斷繩**，且該帶線針**一併回收**（返回持有數量）；若在飛行途中放開亦取消並回收。
 - **Verlet 繩視覺**：繩兩端釘在錨點與玩家，重力下垂、繃緊變直，無側向假彎曲（GAP-037）。飛行中：直線 Player → 飛行針。
-- **可調參數（@export）**：`auto_reel_speed`、`min_rope_length`、`swing_accel`、`swing_air_drag`、`rope_segments`。
+- **初始繩長**：命中瞬間玩家到錨點的**精確直線距離**（`wire_slack=0`，GAP-050）；原有 15px 鬆弛已移除。
+- **可調參數（@export）**：`auto_reel_speed`（目前 **300 px/s**，GAP-050 從 520 降低）、`min_rope_length`、`swing_accel`、`swing_air_drag`、`rope_segments`。
 
 ### 2.4 鋼針回收規則（2026-06-20 GAP-041 大幅簡化）[DRAFT]
 
