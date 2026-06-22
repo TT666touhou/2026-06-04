@@ -43,7 +43,6 @@ func _ready() -> void:
 	needle_manager.wire_needle_launched.connect(_on_wire_needle_launched)
 	wire_renderer.top_level = true
 	wire_renderer.visible = false
-	# Create AimPreview dynamically to avoid UID issues with manually edited .tscn
 	var preview_script := load("res://scripts/aim_preview.gd")
 	aim_preview = Node2D.new()
 	aim_preview.name = "AimPreview"
@@ -212,7 +211,7 @@ func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
-	# Turn-based: always accept the anchor (no hold-to-grapple check).
+	print("[PLAYER] Wire anchor ready at ", anchor.global_position)
 	_wire_projectile = null
 	_wire = anchor.wire as WireConstraint
 	_wire_anchor = anchor

@@ -30,6 +30,7 @@ func commit() -> bool:
 	state = State.PLAYING
 	_play_start_ms = Time.get_ticks_msec()
 	Engine.time_scale = 1.0
+	print("[TM] TURN START — time_scale=1")
 	turn_started.emit()
 	return true
 
@@ -39,4 +40,5 @@ func is_frozen() -> bool:
 func _end_turn() -> void:
 	state = State.FROZEN
 	Engine.time_scale = 0.0
+	print("[TM] TURN END — time_scale=0 (freeze)")
 	turn_ended.emit()
