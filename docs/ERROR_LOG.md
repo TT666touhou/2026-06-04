@@ -25,6 +25,7 @@
 | 2026-06-22 | [ERR-GAP050] 繩長比直線距離長 + 盪繩太快 | 命中牆壁時繩子比玩家到錨點直線長 15px；盪繩被拉近速度過快 | `wire_slack=15.0` 在初始繩長加了鬆弛量；`auto_reel_speed=520` 過快 | `wire_slack=0.0`（精確距離）、`auto_reel_speed=520→300`；GDD §2.3 同步更新 |
 | 2026-06-22 | [ERR-GAP048] 盪繩被地形卡住 | 右鍵勾牆盪繩時常卡在平台角落無法繼續移動 | `move_and_collide(correction)` 遇到幾何體完全停止；下一幀繩子繼續拉但玩家被卡死，形成惡性循環 | 把 constraint 位置修正轉換為 `velocity += correction / delta`，讓幀尾唯一的 `move_and_slide()` 統一處理，遇到角落自動沿牆面滑動而非停死 |
 | 2026-06-22 | [ERR-GAP047] NeedleAnchor 不跟隨移動敵人 | 針視覺停在插入點，不隨敵人移動 | `NeedleAnchor` 是純資料 Node2D，`attached_body` 有值但無任何 `_process` 更新 `global_position` | 在 `needle_anchor.gd` 加 `_physics_process`：首幀計算 `_body_offset = global_position - attached_body.global_position`，後續每幀 `global_position = attached_body.global_position + _body_offset` |
+| 2026-06-22 | [ERR-GAP055] 回合制初始實作（設計決策紀錄） | 回合制 MVP：凍結→0.3s 播放→凍結，彈弓移動取代 A/D+Space | 新功能，非錯誤修復 | 新增 `turn_manager.gd`（Autoload，time_scale 管理）、`aim_preview.gd`（虛線預覽）；重寫 `player.gd`（移除即時輸入，加入 slingshot drag + TurnManager gate）。已移除 auto_retrieve_attack。 |
 | 2026-06-22 | [ERR-GAP047] 右鍵勾敵人玩家被拉動 | wire 鉤到敵人時玩家被拉向錨點，與預期相反 | `_apply_wire()` 無條件執行 `WireConstraint.constrain()`，沒有判斷錨點是否在移動 body 上 | `player.gd` `_apply_wire()` 加檢查：每幀同步 `_wire.anchor_pos = _wire_anchor.global_position`；若 `_wire_anchor.attached_body != null` 則 `return` 不執行 constraint |
 
 ---
