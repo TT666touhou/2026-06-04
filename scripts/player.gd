@@ -111,38 +111,47 @@ func _launch_slingshot(release_pos: Vector2) -> void:
 	if not TurnManager.is_frozen():
 		return
 	var drag := release_pos - _sling_start
-	var dist := drag.length()
-	if dist < 4.0:
+	var sling_dist := drag.length()
+	if sling_dist < 4.0:
 		return  # ignore tiny taps
 	var dir := drag.normalized()
-	var speed := clampf(dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+	var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 	velocity = dir * speed
 	TurnManager.commit()
 
 # ── Aim preview ────────────────────────────────────────────────────────────────
 
 func _update_preview() -> void:
+	# Priority 1: Slingshot drag
 	if _sling_dragging:
 		var release := get_global_mouse_position()
 		var drag := release - _sling_start
-		var dist := drag.length()
-		var dir := drag.normalized() if dist > 2.0 else Vector2.RIGHT
-		var speed := clampf(dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+		var sling_dist := drag.length()
+		var dir := drag.normalized() if sling_dist > 2.0 else Vector2.RIGHT
+		var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 		var arc := _simulate_arc(global_position, dir * speed, 60)
-		aim_preview.set_slingshot(arc)
+		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position)
+		return
+	# Priority 2: Wire swing (if wire is active, show next swing arc)
+	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
+		var swing_arc := _simulate_swing(global_position, velocity,
+				_wire.anchor_pos, _wire.length, 60)
+		aim_preview.set_swing(swing_arc)
+		return
+	# Priority 3: Needle trajectory preview
+	var mouse_w := get_global_mouse_position()
+	var from := throw_origin.global_position
+	var to_mouse := mouse_w - from
+	var dist := to_mouse.length()
+	if dist > 8.0:
+		var dir := to_mouse.normalized()
+		var reach_dist := minf(dist, NEEDLE_REACH)
+		var reach := from + dir * reach_dist
+		aim_preview.set_needle(from, reach, mouse_w)
 	else:
-		var mouse_w := get_global_mouse_position()
-		var from := throw_origin.global_position
-		var to_mouse := mouse_w - from
-		var dist := to_mouse.length()
-		if dist > 8.0:
-			var dir := to_mouse.normalized()
-			var reach := from + dir * minf(dist, NEEDLE_REACH)
-			aim_preview.set_needle(from, mouse_w, reach)
-		else:
-			aim_preview.clear()
+		aim_preview.clear()
 
-## Simulate a physics arc and return a list of points
+## Simulate gravity arc for slingshot preview
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	var pos := start_pos
@@ -152,6 +161,35 @@ func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> Packed
 	for _i in range(steps):
 		vel.y += gravity * dt
 		pos += vel * dt
+		pts.append(pos)
+	return pts
+
+## Simulate pendulum swing for wire preview (simplified physics)
+func _simulate_swing(
+	start_pos: Vector2, start_vel: Vector2,
+	anchor_pos: Vector2, wire_len: float, steps: int
+) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var pos := start_pos
+	var vel := start_vel
+	var dt := TURN_DURATION / steps
+	pts.append(pos)
+	for _i in range(steps):
+		vel.y += gravity * dt
+		# Pre: remove outward radial velocity
+		var to_anchor := anchor_pos - pos
+		var d := to_anchor.length()
+		if d > wire_len and d > 0.001:
+			var rope_dir := to_anchor / d
+			var radial := vel.dot(rope_dir)
+			if radial < 0.0:
+				vel -= rope_dir * radial
+		pos += vel * dt
+		# Post: clamp to circle
+		to_anchor = anchor_pos - pos
+		d = to_anchor.length()
+		if d > wire_len and d > 0.001:
+			pos = anchor_pos - (to_anchor / d) * wire_len
 		pts.append(pos)
 	return pts
 
