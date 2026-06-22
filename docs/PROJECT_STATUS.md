@@ -62,6 +62,15 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 1.0 — Z 方案：固定徑向拉力取代 auto_reel（GAP-051）
+
+- **完成日期**：2026-06-22
+- **問題**：收繩時抖動、繩長視覺不穩定（auto_reel + correction 衝量與重力疊加 overshoot）
+- **修復**：廢除 `auto_reel` + `constrain`，改為分解速度為切向 + 徑向，徑向固定 = `auto_reel_speed`（300 px/s）朝錨點；到達 `min_length` 後只保留切向（純鐘擺）
+- **視覺**：Verlet 繩長改用實際玩家到錨點距離，視覺同步精確
+- **驗證**：run_project 自動射繩確認 radial 恆定 300.0，dist 平滑 580→24，無 error
+- **修改檔案**：`scripts/player.gd`
+
 ### Phase 0.9 — 繩長精確化 + 收繩減速（GAP-050）
 
 - **完成日期**：2026-06-22

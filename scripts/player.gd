@@ -97,26 +97,28 @@ func _update_jump(delta: float) -> void:
 		_jump_buffer_timer = 0.0
 		_coyote_timer = 0.0
 
-func _apply_wire(delta: float) -> void:
+func _apply_wire(_delta: float) -> void:
 	if _wire == null:
 		return
 	# Keep anchor_pos in sync — needle_anchor follows the embedded body each frame (GAP-047)
 	if _wire_anchor != null and is_instance_valid(_wire_anchor):
 		_wire.anchor_pos = _wire_anchor.global_position
-	# Wire is hooked to a moveable enemy (not a wall): enemy comes to player, player stays free (GAP-047)
-	# Wire is hooked to a moveable enemy (not a wall): enemy comes to player, player stays free (GAP-047)
+	# Wire is hooked to a moveable enemy: enemy comes to player, player stays free (GAP-047)
 	var _ab: PhysicsBody2D = (_wire_anchor as NeedleAnchor).attached_body if _wire_anchor != null else null
 	if _ab != null and not (_ab is StaticBody2D):
 		return
-	_wire.auto_reel(delta)                              # auto-pull toward anchor while held
-	var r: Dictionary = _wire.constrain(global_position, velocity)
-	# Convert position correction to velocity so the frame-end move_and_slide() can
-	# slide along collision normals instead of stopping dead (GAP-042 used move_and_collide
-	# which stopped at geometry and caused the player to get stuck on ledges — GAP-048).
-	var correction: Vector2 = (r["pos"] as Vector2) - global_position
-	velocity = r["vel"]
-	if correction.length_squared() > 0.0001:
-		velocity += correction / delta
+	# Z approach (GAP-051): decompose velocity into tangential + radial; replace radial
+	# with a fixed pull speed toward the anchor. No position correction, no jitter.
+	var to_anchor: Vector2 = _wire.anchor_pos - global_position
+	var dist: float = to_anchor.length()
+	if dist <= 0.001:
+		return
+	var dir: Vector2 = to_anchor / dist
+	var tangent_vel: Vector2 = velocity - dir * velocity.dot(dir)
+	if dist > _wire.min_length:
+		velocity = tangent_vel + dir * auto_reel_speed   # constant radial pull toward anchor
+	else:
+		velocity = tangent_vel                           # at min_length: pure pendulum swing
 
 func _shoot_attack() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
@@ -173,7 +175,9 @@ func _update_wire_renderer() -> void:
 		if _verlet == null:
 			_verlet = VerletRopeScript.new()
 			_verlet.init(_wire.anchor_pos, global_position, rope_segments)
-		_verlet.update(_wire.anchor_pos, global_position, _wire.max_length, get_physics_process_delta_time())
+		# Use actual distance for visual rope length — Z approach keeps rope visually taut (GAP-051)
+		var _rope_len: float = global_position.distance_to(_wire.anchor_pos)
+		_verlet.update(_wire.anchor_pos, global_position, _rope_len, get_physics_process_delta_time())
 		wire_renderer.points = _verlet.points
 		return
 	# In-flight wire — straight line player → projectile
