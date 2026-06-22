@@ -1,17 +1,17 @@
 ## TurnManager — Autoload singleton
-## Manages the turn cycle: FROZEN (time_scale=0) ↔ PLAYING (time_scale=1, 0.3s)
+## Manages the turn cycle: FROZEN (time_scale=0) ↔ PLAYING (time_scale=1, 1.0s)
 ## GAP-055: Initial implementation for turn-based system
 extends Node
 
 enum State { FROZEN, PLAYING }
 
-const TURN_DURATION: float = 0.3
+const TURN_DURATION: float = 1.0
 
 var state: State = State.FROZEN
 var _play_start_ms: int = 0
 
 signal turn_started
-signal turn_ended  # fired when 0.3s elapses and freeze resumes
+signal turn_ended  # fired when 1.0s elapses and freeze resumes
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS

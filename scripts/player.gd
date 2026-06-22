@@ -1,34 +1,34 @@
 ## Player — Turn-based slingshot + needle controller.
-## GAP-055: Complete rewrite for turn-based system.
-## Movement: slingshot drag (replaces A/D + Space).
-## Needles: left-click = attack, right-click = wire (gated by TurnManager.is_frozen()).
+## GAP-055/056: Rewrite for turn-based system.
+## GAP-056b: Always-on preview, disconnect button, 1.0s turns, fixed swing sim.
 extends CharacterBody2D
 
 # ── Slingshot ──────────────────────────────────────────────────────────────────
-@export var max_launch_speed: float = 1200.0  # px/s at full drag (640px range at 45°)
-@export var max_drag_pixels: float = 80.0     # screen pixels of drag = full power
+@export var max_launch_speed: float = 1200.0  # px/s at full drag
+@export var max_drag_pixels: float = 80.0     # drag distance for full power
 @export var gravity: float = 980.0
 
-# ── Wire grapple (retained from GAP-041/053/054) ──────────────────────────────
-@export var rope_reel_speed: float = 350.0
+# ── Wire grapple ──────────────────────────────────────────────────────────────
+@export var rope_reel_speed: float = 0.0      # disabled: no auto-reel in turn-based
 @export var rope_min_length: float = 24.0
 @export var rope_snap_factor: float = 0.35
-@export var swing_accel: float = 150.0
 
-# ── Needle preview reach per turn ──────────────────────────────────────────────
-const NEEDLE_SPEED: float = 2400.0
-const TURN_DURATION: float = 0.3
-const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 720 px
+# ── Needle reach preview (must match NeedleProjectile.flight_speed × TURN_DURATION) ──
+const NEEDLE_SPEED: float = 800.0
+const TURN_DURATION: float = 1.0
+const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 800 px
 
 # ── Internal state ─────────────────────────────────────────────────────────────
 var _wire: WireConstraint = null
-var _wire_anchor: Node = null
+var _wire_anchor: Node2D = null
 var _wire_projectile: Node = null
-# _wire_held removed — turn-based: right-click is one-shot, wire persists until UI disconnect
 
-# Slingshot drag state
+# Slingshot drag
 var _sling_dragging: bool = false
-var _sling_start: Vector2 = Vector2.ZERO   # world pos where drag began
+var _sling_start: Vector2 = Vector2.ZERO
+
+# Disconnect button rect (world coords) — set by _update_preview, read by input
+var _disconnect_btn_rect: Rect2 = Rect2()
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -59,14 +59,11 @@ func _physics_process(delta: float) -> void:
 	_update_aim_pivot()
 
 func _process(_delta: float) -> void:
-	# Preview update runs during FROZEN (time_scale=0), process mode must be ALWAYS
 	if TurnManager.is_frozen():
 		_update_preview()
 	else:
-		aim_preview.clear()
+		aim_preview.clear_all()
 
-## Input is handled in unhandled_input; this runs regardless of time_scale
-## because InputEvent delivery ignores time_scale.
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
@@ -79,27 +76,27 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 	if mb.button_index == MOUSE_BUTTON_LEFT:
 		if mb.pressed:
 			var mouse_w := get_global_mouse_position()
+			# Check disconnect button first
+			if TurnManager.is_frozen() and _disconnect_btn_rect.has_area() \
+					and _disconnect_btn_rect.has_point(mouse_w):
+				_release_grapple()
+				return
 			if _is_on_player(mouse_w):
-				# Start slingshot drag (only in FROZEN)
 				if TurnManager.is_frozen():
 					_sling_dragging = true
 					_sling_start = mouse_w
 			else:
-				# Attack needle click (only in FROZEN)
 				if TurnManager.is_frozen() and not _sling_dragging:
 					_shoot_attack()
-		else:  # left button released
+		else:
 			if _sling_dragging:
 				_sling_dragging = false
 				_launch_slingshot(get_global_mouse_position())
 
 	elif mb.button_index == MOUSE_BUTTON_RIGHT:
-		# Turn-based: right-click is one-shot fire, wire persists until UI disconnect.
-		# No release-to-detach; that's handled by a future retrieve UI button.
 		if mb.pressed and TurnManager.is_frozen():
 			_start_grapple()
 
-## Check if world-space pos is within player collision rect
 func _is_on_player(world_pos: Vector2) -> bool:
 	var half := Vector2(16.0, 32.0)
 	var local := world_pos - global_position
@@ -113,45 +110,64 @@ func _launch_slingshot(release_pos: Vector2) -> void:
 	var drag := release_pos - _sling_start
 	var sling_dist := drag.length()
 	if sling_dist < 4.0:
-		return  # ignore tiny taps
+		return
 	var dir := drag.normalized()
 	var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 	velocity = dir * speed
 	TurnManager.commit()
 
-# ── Aim preview ────────────────────────────────────────────────────────────────
+# ── Always-on preview — all layers drawn simultaneously ────────────────────────
 
 func _update_preview() -> void:
-	# Priority 1: Slingshot drag
-	if _sling_dragging:
-		var release := get_global_mouse_position()
-		var drag := release - _sling_start
-		var sling_dist := drag.length()
-		var dir := drag.normalized() if sling_dist > 2.0 else Vector2.RIGHT
-		var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
-		var arc := _simulate_arc(global_position, dir * speed, 60)
-		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position)
-		return
-	# Priority 2: Wire swing (if wire is active, show next swing arc)
-	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
-		var swing_arc := _simulate_swing(global_position, velocity,
-				_wire.anchor_pos, _wire.length, 60)
-		aim_preview.set_swing(swing_arc)
-		return
-	# Priority 3: Needle trajectory preview
 	var mouse_w := get_global_mouse_position()
+
+	# ── Layer 1: Needle trajectory (always shown) ────────────────────────────
 	var from := throw_origin.global_position
 	var to_mouse := mouse_w - from
 	var dist := to_mouse.length()
 	if dist > 8.0:
-		var dir := to_mouse.normalized()
+		var needle_dir := to_mouse.normalized()
 		var reach_dist := minf(dist, NEEDLE_REACH)
-		var reach := from + dir * reach_dist
+		var reach := from + needle_dir * reach_dist
 		aim_preview.set_needle(from, reach, mouse_w)
 	else:
-		aim_preview.clear()
+		aim_preview.clear_needle()
 
-## Simulate gravity arc for slingshot preview
+	# ── Layer 2: Slingshot arc (shown when dragging) ─────────────────────────
+	if _sling_dragging:
+		var drag := mouse_w - _sling_start
+		var sling_dist := drag.length()
+		var sling_dir := drag.normalized() if sling_dist > 2.0 else Vector2.RIGHT
+		var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+		var arc := _simulate_arc(global_position, sling_dir * speed, 80)
+		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position)
+	else:
+		aim_preview.clear_slingshot()
+
+	# ── Layer 3: Wire swing arc + disconnect button (shown when wire active) ──
+	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
+		var anchor_pos := _wire_anchor.global_position
+		var wire_len := _wire.length
+		# Use a small initial kick toward perpendicular if velocity is near zero
+		# so the arc is visible even when player is stationary
+		var sim_vel := velocity
+		if sim_vel.length() < 10.0:
+			# Give a minimal tangential nudge to show the swing direction
+			var to_anchor := anchor_pos - global_position
+			if to_anchor.length() > 1.0:
+				var tangent := Vector2(-to_anchor.y, to_anchor.x).normalized()
+				sim_vel = tangent * 20.0
+		var swing_arc := _simulate_swing(global_position, sim_vel, anchor_pos, wire_len, 80)
+		aim_preview.set_swing(swing_arc)
+		# Disconnect button world position = above wire anchor
+		var btn_world := anchor_pos + Vector2(0, -28)
+		_disconnect_btn_rect = Rect2(btn_world - Vector2(28, 12), Vector2(56, 24))
+		aim_preview.set_disconnect_button(_disconnect_btn_rect)
+	else:
+		aim_preview.clear_swing()
+		_disconnect_btn_rect = Rect2()
+		aim_preview.set_disconnect_button(Rect2())
+
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	var pos := start_pos
@@ -164,7 +180,6 @@ func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> Packed
 		pts.append(pos)
 	return pts
 
-## Simulate pendulum swing for wire preview (simplified physics)
 func _simulate_swing(
 	start_pos: Vector2, start_vel: Vector2,
 	anchor_pos: Vector2, wire_len: float, steps: int
@@ -176,16 +191,16 @@ func _simulate_swing(
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
-		# Pre: remove outward radial velocity
+		# Pre: cancel outward (away-from-anchor) radial velocity when taut
 		var to_anchor := anchor_pos - pos
 		var d := to_anchor.length()
-		if d > wire_len and d > 0.001:
+		if d > 0.001:
 			var rope_dir := to_anchor / d
 			var radial := vel.dot(rope_dir)
-			if radial < 0.0:
-				vel -= rope_dir * radial
+			if d >= wire_len and radial < 0.0:
+				vel -= rope_dir * radial  # cancel outward component
 		pos += vel * dt
-		# Post: clamp to circle
+		# Post: hard-clamp to rope circle
 		to_anchor = anchor_pos - pos
 		d = to_anchor.length()
 		if d > wire_len and d > 0.001:
@@ -199,7 +214,7 @@ func _apply_gravity(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y += gravity * delta
 
-# ── Wire (retained from GAP-041/053/054) ───────────────────────────────────────
+# ── Wire ───────────────────────────────────────────────────────────────────────
 
 func _apply_wire_pre(delta: float) -> void:
 	if _wire == null:
@@ -244,22 +259,24 @@ func _release_grapple() -> void:
 	_wire_anchor = null
 	_wire_projectile = null
 	wire_renderer.visible = false
+	_disconnect_btn_rect = Rect2()
+	aim_preview.set_disconnect_button(Rect2())
 
 func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
-	print("[PLAYER] Wire anchor ready at ", anchor.global_position)
+	print("[PLAYER] Wire anchor ready at ", (anchor as Node2D).global_position)
 	_wire_projectile = null
 	_wire = anchor.wire as WireConstraint
-	_wire_anchor = anchor
+	_wire_anchor = anchor as Node2D
 	_wire.min_length = rope_min_length
 	_wire.reel_speed = rope_reel_speed
 	_wire.snap_factor = rope_snap_factor
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position))
 
 func _on_needle_retrieved(anchor: Node) -> void:
-	if anchor == _wire_anchor:
+	if (anchor as Node2D) == _wire_anchor:
 		_wire = null
 		_wire_anchor = null
 		wire_renderer.visible = false

@@ -2,7 +2,7 @@
 class_name NeedleProjectile
 extends Node2D
 
-@export var flight_speed: float = 2400.0
+@export var flight_speed: float = 800.0
 @export var needle_size: Vector2 = Vector2(12.0, 2.0)
 @export var max_travel: float = 2400.0   # safety: free a needle that never hits anything
 
