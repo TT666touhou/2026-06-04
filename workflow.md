@@ -372,7 +372,7 @@ blocked_issue_[日期]   → 熔斷事件記錄（EntityType: BlockedIssue）
 > 1. **Headless 自動化測試（首選）**：GUT 或 `godot --headless --path . --script res://tests/xxx.gd`（`extends SceneTree`）。可重複、快、能**斷言邏輯/數值**、無需人工輸入。**純函式 / RefCounted 元件（物理、狀態機、約束）一律優先寫測試**（範例見 `tests/test_rope_gap037.gd`、`test_rope_gap039.gd`）。
 > 2. **暫時插樁 + run_project + get_debug_output**：需要**實機真值**（座標、碰撞、viewport 尺寸等無法純邏輯推算者）時用；插樁（print / auto-fire）查完**即還原**（範例：GAP-038 抓到 `get_viewport_rect=1152×648`）。
 > 3. **run_project 純開機**：僅確認「載入無 Parse/Runtime 錯誤」，**不算行為驗證**。
-> 4. **玩家手動實測**：僅留給無法自動化的**主觀手感**（繩感、跳躍感）。
+> 4. **玩家手動實測**：僅留給無法自動化的**主觀手感**（繩感、跳躍感）。**被動等待** — AI 實作完後告知參數數值即停止，**絕不追問「你測試了嗎？結果如何？」**。用戶有回饋自然會說。
 
 ```
 [何時使用]
