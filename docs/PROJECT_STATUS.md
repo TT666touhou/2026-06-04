@@ -62,6 +62,15 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 0.8 — 盪繩卡地形修正：改用滑動修正（GAP-048）
+
+- **完成日期**：2026-06-22
+- **問題**：右鍵勾牆盪繩時常被平台/角落卡住無法繼續移動
+- **根因**：`_apply_wire()` 用 `move_and_collide(correction)` 應用繩子位置修正，遇到地形完全停止；下一幀繩子繼續拉但玩家被卡死，形成惡性循環
+- **修復**：位置修正改為 `velocity += correction / delta`，讓幀尾唯一的 `move_and_slide()` 統一處理，遇到角落自動沿牆面滑動（A 方案）
+- **修改檔案**：`scripts/player.gd`
+- **驗證**：run_project 自動射繩確認玩家從 (640,672) 正常拉至錨點 (1248,508)，無 error
+
 ### Phase 0.7 — 針跟隨敵人移動 + 右鍵勾敵人 player 不被拉（GAP-047）
 
 - **完成日期**：2026-06-22

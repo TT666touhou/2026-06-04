@@ -110,14 +110,13 @@ func _apply_wire(delta: float) -> void:
 		return
 	_wire.auto_reel(delta)                              # auto-pull toward anchor while held
 	var r: Dictionary = _wire.constrain(global_position, velocity)
-	# Apply the rope's position correction via move_and_collide (NOT a direct
-	# global_position teleport, which bypassed collision and let the player pass
-	# through platforms while being reeled toward a wall — GAP-042). move_and_collide
-	# stops at walls/platforms, so the player gets blocked (卡住).
+	# Convert position correction to velocity so the frame-end move_and_slide() can
+	# slide along collision normals instead of stopping dead (GAP-042 used move_and_collide
+	# which stopped at geometry and caused the player to get stuck on ledges — GAP-048).
 	var correction: Vector2 = (r["pos"] as Vector2) - global_position
-	if correction != Vector2.ZERO:
-		move_and_collide(correction)
 	velocity = r["vel"]
+	if correction.length_squared() > 0.0001:
+		velocity += correction / delta
 
 func _shoot_attack() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
