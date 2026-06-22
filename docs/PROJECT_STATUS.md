@@ -62,6 +62,13 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 1.3 — 盪繩切向空中控制（GAP-054）
+
+- **完成日期**：2026-06-22
+- **功能**：右鍵盪繩時，左右方向鍵沿擺弧切線方向施加 150 px/s² 加速度（像推鞦韆）
+- **設計**：`swing_accel=150.0`（@export 可調），切線 = 繩方向旋轉 90°，不影響法向/重力
+- **修改檔案**：`scripts/player.gd`
+
 ### Phase 1.2 — 盪繩全面重寫：pre/post split + 直線繩（GAP-053）
 
 - **完成日期**：2026-06-22

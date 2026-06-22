@@ -15,6 +15,7 @@ extends CharacterBody2D
 @export var rope_reel_speed: float = 180.0   # px/s rope shortens while held
 @export var rope_min_length: float = 24.0    # shortest the rope can reel to
 @export var rope_snap_factor: float = 0.12   # tiny inward bounce when rope snaps taut
+@export var swing_accel: float = 150.0       # tangential air control during wire swing (GAP-054)
 
 var _wire: WireConstraint = null
 var _wire_anchor: Node = null
@@ -66,9 +67,17 @@ func _apply_gravity(delta: float) -> void:
 		velocity.y += gravity * delta
 
 func _apply_movement(delta: float) -> void:
-	if _wire != null:
-		return  # pendulum: gravity only, no air-control input
 	var dir := Input.get_axis("move_left", "move_right")
+	if _wire != null:
+		# Tangential air control: push along the swing arc perpendicular to the rope (GAP-054)
+		if dir != 0.0:
+			var to_anchor := _wire.anchor_pos - global_position
+			var dist := to_anchor.length()
+			if dist > 0.001:
+				var rope_dir := to_anchor / dist
+				var tangent := Vector2(-rope_dir.y, rope_dir.x)
+				velocity += tangent * dir * swing_accel * delta
+		return
 	var target := dir * move_speed
 	var rate: float
 	if is_on_floor():
