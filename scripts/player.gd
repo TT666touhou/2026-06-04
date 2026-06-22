@@ -1,7 +1,5 @@
 extends CharacterBody2D
 
-const VerletRopeScript = preload("res://scripts/verlet_rope.gd")
-
 # Movement / game feel (GAP-035)
 @export var move_speed: float = 240.0
 @export var jump_velocity: float = 540.0
@@ -13,19 +11,15 @@ const VerletRopeScript = preload("res://scripts/verlet_rope.gd")
 @export var coyote_time: float = 0.1
 @export var jump_buffer_time: float = 0.1
 @export var jump_cut: float = 0.45
-# Wire grapple — hold right to grapple+reel, release to detach+recycle (GAP-041)
-@export var wire_slack: float = 0.0        # initial rope = exact player-to-anchor distance (GAP-050)
-@export var swing_accel: float = 500.0     # air-control accel while on the wire
-@export var swing_air_drag: float = 60.0   # gentle horizontal settle while swinging
-@export var auto_reel_speed: float = 300.0 # auto-pull toward the anchor while held (GAP-050: 520→300)
-@export var min_rope_length: float = 24.0
-@export var rope_segments: int = 12        # Verlet rope visual point count
+# Wire grapple — hold right-click to grapple+reel, release to detach (GAP-041)
+@export var rope_reel_speed: float = 180.0   # px/s rope shortens while held
+@export var rope_min_length: float = 24.0    # shortest the rope can reel to
+@export var rope_snap_factor: float = 0.12   # tiny inward bounce when rope snaps taut
 
-var _wire: RefCounted = null
-var _verlet: RefCounted = null
+var _wire: WireConstraint = null
 var _wire_anchor: Node = null
 var _wire_projectile: Node = null
-var _wire_held: bool = false               # right mouse button currently held
+var _wire_held: bool = false
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
 
@@ -44,10 +38,11 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
 	_apply_movement(delta)
-	_apply_wire(delta)
 	_update_jump(delta)
+	_apply_wire_pre(delta)   # remove outward radial vel BEFORE slide
 	move_and_slide()
-	needle_manager.auto_retrieve_attack(global_position)  # left-needle proximity pickup
+	_apply_wire_post()       # hard-clamp position AFTER slide
+	needle_manager.auto_retrieve_attack(global_position)
 	_update_wire_renderer()
 	_update_aim_pivot()
 
@@ -55,7 +50,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("jump"):
 		_jump_buffer_timer = jump_buffer_time
 	if event.is_action_released("jump") and velocity.y < 0.0:
-		velocity.y *= jump_cut                  # variable jump height
+		velocity.y *= jump_cut
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and mb.pressed:
@@ -71,18 +66,16 @@ func _apply_gravity(delta: float) -> void:
 		velocity.y += gravity * delta
 
 func _apply_movement(delta: float) -> void:
-	var dir := Input.get_axis("move_left", "move_right")
 	if _wire != null:
-		return  # gravity-only during wire swing; no air-control input (GAP-052)
+		return  # pendulum: gravity only, no air-control input
+	var dir := Input.get_axis("move_left", "move_right")
+	var target := dir * move_speed
+	var rate: float
+	if is_on_floor():
+		rate = ground_accel if dir != 0.0 else ground_friction
 	else:
-		# Inertia-based horizontal movement (GAP-035)
-		var target := dir * move_speed
-		var rate: float
-		if is_on_floor():
-			rate = ground_accel if dir != 0.0 else ground_friction
-		else:
-			rate = air_accel if dir != 0.0 else air_friction
-		velocity.x = move_toward(velocity.x, target, rate * delta)
+		rate = air_accel if dir != 0.0 else air_friction
+	velocity.x = move_toward(velocity.x, target, rate * delta)
 
 func _update_jump(delta: float) -> void:
 	if is_on_floor():
@@ -95,26 +88,31 @@ func _update_jump(delta: float) -> void:
 		_jump_buffer_timer = 0.0
 		_coyote_timer = 0.0
 
-func _apply_wire(delta: float) -> void:
+# Pre-pass: sync anchor position, reel rope, remove outward radial velocity
+func _apply_wire_pre(delta: float) -> void:
 	if _wire == null:
 		return
-	# Keep anchor_pos in sync — needle_anchor follows the embedded body each frame (GAP-047)
 	if _wire_anchor != null and is_instance_valid(_wire_anchor):
 		_wire.anchor_pos = _wire_anchor.global_position
-	# Wire is hooked to a moveable enemy: enemy comes to player, player stays free (GAP-047)
-	var _ab: PhysicsBody2D = (_wire_anchor as NeedleAnchor).attached_body if _wire_anchor != null else null
-	if _ab != null and not (_ab is StaticBody2D):
+	# Enemy hook: enemy moves toward player; player physics unchanged (GAP-047)
+	var anchor_node := _wire_anchor as NeedleAnchor
+	if anchor_node != null and anchor_node.attached_body != null \
+			and not (anchor_node.attached_body is StaticBody2D):
 		return
-	# Pure pendulum constraint + auto_reel (GAP-052):
-	# constrain() cancels outward radial velocity → natural pendulum arc.
-	# Correction applied as velocity so move_and_slide() slides along terrain (not stuck).
-	_wire.auto_reel(delta)
-	var r: Dictionary = _wire.constrain(global_position, velocity)
-	var correction: Vector2 = (r["pos"] as Vector2) - global_position
-	velocity = r["vel"]
-	if correction.length_squared() > 0.0001:
-		velocity += correction / delta
+	_wire.reel(delta)
+	velocity = _wire.pre_constrain(global_position, velocity)
 
+# Post-pass: hard-clamp player onto rope circle after move_and_slide
+func _apply_wire_post() -> void:
+	if _wire == null:
+		return
+	var anchor_node := _wire_anchor as NeedleAnchor
+	if anchor_node != null and anchor_node.attached_body != null \
+			and not (anchor_node.attached_body is StaticBody2D):
+		return
+	var r := _wire.post_constrain(global_position, velocity)
+	global_position = r["pos"] as Vector2
+	velocity = r["vel"] as Vector2
 
 func _shoot_attack() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
@@ -124,18 +122,17 @@ func _shoot_attack() -> void:
 func _start_grapple() -> void:
 	_wire_held = true
 	if _wire != null or (_wire_projectile != null and is_instance_valid(_wire_projectile)):
-		return                                         # already grappling / firing
+		return
 	var from := throw_origin.global_position if throw_origin else global_position
 	var dir := (get_global_mouse_position() - from).normalized()
 	needle_manager.shoot_wire_needle(from, dir)
 
 func _release_grapple() -> void:
 	_wire_held = false
-	needle_manager.release_wire()                      # cancel in-flight proj or recycle anchor
+	needle_manager.release_wire()
 	_wire = null
 	_wire_anchor = null
 	_wire_projectile = null
-	_verlet = null
 	wire_renderer.visible = false
 
 func _on_wire_needle_launched(proj: Node) -> void:
@@ -143,36 +140,32 @@ func _on_wire_needle_launched(proj: Node) -> void:
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
 	if not _wire_held:
-		needle_manager.release_wire()                  # released mid-flight → don't attach, recycle
+		needle_manager.release_wire()
 		return
 	_wire_projectile = null
-	_wire = anchor.wire as RefCounted
+	_wire = anchor.wire as WireConstraint
 	_wire_anchor = anchor
-	_wire.min_length = min_rope_length
-	_wire.auto_reel_speed = auto_reel_speed
-	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position) + wire_slack)
-	_verlet = VerletRopeScript.new()
-	_verlet.init(anchor.global_position, global_position, rope_segments)
+	_wire.min_length = rope_min_length
+	_wire.reel_speed = rope_reel_speed
+	_wire.snap_factor = rope_snap_factor
+	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position))
 
 func _on_needle_retrieved(anchor: Node) -> void:
 	if anchor == _wire_anchor:
 		_wire = null
 		_wire_anchor = null
-		_verlet = null
 		wire_renderer.visible = false
 
 func _update_wire_renderer() -> void:
-	# Active wire — Verlet rope (natural droop/straighten)
+	# Active wire — straight line (wire under tension; no Verlet droop)
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var tension: float = _wire.tension_ratio(global_position)
 		wire_renderer.default_color = Color(0.95, 0.9, 0.55, 1.0).lerp(Color(1.0, 1.0, 0.8, 1.0), tension)
-		wire_renderer.width = 1.5 + tension * 1.5
+		wire_renderer.width = 1.0 + tension * 2.0
 		wire_renderer.visible = true
-		if _verlet == null:
-			_verlet = VerletRopeScript.new()
-			_verlet.init(_wire.anchor_pos, global_position, rope_segments)
-		_verlet.update(_wire.anchor_pos, global_position, _wire.max_length, get_physics_process_delta_time())
-		wire_renderer.points = _verlet.points
+		wire_renderer.clear_points()
+		wire_renderer.add_point(global_position)
+		wire_renderer.add_point(_wire.anchor_pos)
 		return
 	# In-flight wire — straight line player → projectile
 	if _wire_projectile != null and is_instance_valid(_wire_projectile):
@@ -193,4 +186,4 @@ func get_wire_tension() -> float:
 	return _wire.tension_ratio(global_position) if _wire != null else 0.0
 
 func get_wire_length() -> float:
-	return _wire.max_length if _wire != null else 0.0
+	return _wire.length if _wire != null else 0.0

@@ -62,6 +62,18 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### Phase 1.2 — 盪繩全面重寫：pre/post split + 直線繩（GAP-053）
+
+- **完成日期**：2026-06-22
+- **問題**：速度分段感（velocity += correction/delta 衝量與重力疊加 overshoot）+ 繩子視覺分段（Verlet 12段下垂）
+- **修復**：
+  - `WireConstraint` 重寫：`pre_constrain()`（移除外向徑向速度）+ `post_constrain()`（direct global_position 賦值，不注入速度）
+  - `_physics_process` 改為 pre→move_and_slide→post 架構
+  - 廢除 Verlet rope 視覺，改用直線 Line2D（2 點：player + anchor）
+  - 移除 `swing_accel`, `swing_air_drag`, `wire_slack` exports；新增 `rope_reel_speed`, `rope_min_length`, `rope_snap_factor`
+  - `_wire` 型別從 `RefCounted` 改為 `WireConstraint`（修復 GDScript parse error）
+- **修改檔案**：`scripts/wire_constraint.gd`、`scripts/player.gd`
+
 ### Phase 1.1 — 純鐘擺手感重構（GAP-052）
 
 - **完成日期**：2026-06-22

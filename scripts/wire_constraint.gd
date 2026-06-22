@@ -1,46 +1,54 @@
-# Natural pendulum length-constraint tether (GAP-040), no Node inheritance.
-# Pure distance constraint — it NEVER injects velocity toward the anchor (GAP-039's
-# elastic spring did, which felt like "specially-added" unnatural momentum). The
-# player swings naturally under gravity; reeling (shrinking max_length) pulls the
-# player in via the position clamp, and angular momentum is conserved naturally
-# (swinging speeds up as the rope shortens, like a skater pulling in their arms).
-# The Verlet rope (player.gd) handles the visual via `max_length`.
+# Rope-length constraint for wire grapple.
+# Split into pre/post move_and_slide passes to avoid velocity-injection oscillation.
+# pre_constrain: removes outward radial velocity (pendulum arc, no bounce).
+# post_constrain: hard-clamps position onto rope circle + projects velocity to tangent.
 class_name WireConstraint
 extends RefCounted
 
 var anchor_pos: Vector2
-var max_length: float                # rope length = swing radius (shrinks via reel)
+var length: float
 var min_length: float = 24.0
-var auto_reel_speed: float = 520.0   # fast auto-pull toward the anchor (px/s)
-var snap_factor: float = 0.0         # pure pendulum: no energy injection when rope snaps taut (GAP-052)
+var reel_speed: float = 180.0
+var snap_factor: float = 0.12  # tiny inward bounce when rope snaps taut
 
-func setup(pos: Vector2, dist_to_anchor: float) -> void:
+func setup(pos: Vector2, initial_length: float) -> void:
 	anchor_pos = pos
-	max_length = dist_to_anchor
+	length = initial_length
 
-func auto_reel(delta: float) -> void:
-	max_length = maxf(min_length, max_length - auto_reel_speed * delta)
+func reel(delta: float) -> void:
+	length = maxf(min_length, length - reel_speed * delta)
 
-func reel(speed: float, delta: float) -> void:
-	max_length = maxf(min_length, max_length - speed * delta)
-
-# Slack (dist <= length) → free fall. Taut → clamp the player onto the swing circle
-# and cancel only the OUTWARD radial velocity (keeps tangential swing). No velocity
-# is ever added toward the anchor → momentum stays natural. Returns { "pos", "vel" }.
-func constrain(player_pos: Vector2, velocity: Vector2) -> Dictionary:
+# Call BEFORE move_and_slide.
+# Removes outward radial velocity so the player can't stretch the rope further.
+# Adds a tiny inward bounce (snap_factor) for rope-snap elasticity feel.
+func pre_constrain(player_pos: Vector2, vel: Vector2) -> Vector2:
 	var to_anchor := anchor_pos - player_pos
 	var dist := to_anchor.length()
-	if dist <= max_length or dist <= 0.001:
-		return { "pos": player_pos, "vel": velocity }
+	if dist <= length or dist < 0.001:
+		return vel
 	var dir := to_anchor / dist
-	var new_pos := anchor_pos - dir * max_length
-	var radial := velocity.dot(dir)   # >0 toward anchor, <0 stretching away
+	var radial := vel.dot(dir)  # +toward anchor, -away
 	if radial < 0.0:
-		velocity -= dir * radial                        # remove outward component
-		velocity += dir * (-radial) * snap_factor       # snap-back: reflect fraction inward (GAP-046)
-	return { "pos": new_pos, "vel": velocity }
+		vel -= dir * radial                    # cancel outward
+		vel += dir * (-radial) * snap_factor   # tiny elastic bounce
+	return vel
+
+# Call AFTER move_and_slide.
+# Hard-clamps player onto rope circle and removes any remaining outward radial velocity.
+# Direct position assignment (not velocity injection) avoids the overshoot cycle.
+func post_constrain(player_pos: Vector2, vel: Vector2) -> Dictionary:
+	var to_anchor := anchor_pos - player_pos
+	var dist := to_anchor.length()
+	if dist <= length or dist < 0.001:
+		return {"pos": player_pos, "vel": vel}
+	var dir := to_anchor / dist
+	var new_pos := anchor_pos - dir * length
+	var radial := vel.dot(dir)
+	if radial < 0.0:
+		vel -= dir * radial  # remove any residual outward velocity
+	return {"pos": new_pos, "vel": vel}
 
 func tension_ratio(player_pos: Vector2) -> float:
-	if max_length <= 0.0:
+	if length <= 0.0:
 		return 0.0
-	return clampf((anchor_pos - player_pos).length() / max_length, 0.0, 1.0)
+	return clampf((anchor_pos - player_pos).length() / length, 0.0, 1.0)
