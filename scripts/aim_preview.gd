@@ -21,6 +21,7 @@ var _swing_arc: PackedVector2Array
 var _swing_active: bool = false
 
 var _btn_rect: Rect2 = Rect2()  # disconnect button, world coords
+var _btn_queued: bool = false   # true = disconnect is queued (show cancel state)
 
 var _hover_pos: Vector2      # player center in world coords
 var _hover_half: Vector2     # player body half-size
@@ -82,8 +83,9 @@ func set_player_hover(center: Vector2, half: Vector2) -> void:
 func clear_player_hover() -> void:
 	_hover_active = false
 
-func set_disconnect_button(rect: Rect2) -> void:
+func set_disconnect_button(rect: Rect2, is_queued: bool = false) -> void:
 	_btn_rect = rect
+	_btn_queued = is_queued
 
 func clear_needle() -> void:
 	_needle_active = false
@@ -103,6 +105,7 @@ func clear_all() -> void:
 	_swing_active = false
 	_hover_active = false
 	_btn_rect = Rect2()
+	_btn_queued = false
 
 ## Legacy compat
 func clear() -> void:
@@ -150,18 +153,27 @@ func _draw() -> void:
 		draw_circle(end_pt, 5.0, C_SWING_END)
 		draw_arc(end_pt, 5.0, 0.0, TAU, 12, C_SWING, 1.5)
 
-	# Layer 4: disconnect wire button
+	# Layer 4: disconnect wire button (two states: normal / queued)
 	if _btn_rect.has_area():
-		draw_rect(_btn_rect, C_BTN_BG)
-		draw_rect(_btn_rect, C_BTN_BORD, false, 2.0)
-		# Draw "✂ 斷開" text placeholder as two lines (no font available in _draw)
-		# Use a simple X mark as button icon
-		var cx := _btn_rect.get_center()
-		var hw := 8.0
-		draw_line(cx + Vector2(-hw, -hw * 0.5), cx + Vector2(hw, hw * 0.5), C_BTN_TEXT, 2.0)
-		draw_line(cx + Vector2(-hw, hw * 0.5), cx + Vector2(hw, -hw * 0.5), C_BTN_TEXT, 2.0)
-		draw_circle(cx + Vector2(-hw - 4, 0), 2.5, C_BTN_BORD)  # scissors left
-		draw_circle(cx + Vector2(hw + 4, 0), 2.5, C_BTN_BORD)   # scissors right
+		var font := ThemeDB.fallback_font
+		var font_size := 13
+		if _btn_queued:
+			# Queued state: red-orange bg, "取消" label
+			var bg := Color(0.80, 0.20, 0.10, 0.92)
+			var bord := Color(1.00, 0.45, 0.20, 1.00)
+			draw_rect(_btn_rect, bg)
+			draw_rect(_btn_rect, bord, false, 2.5)
+			# Pulsing border hint: draw outer rect slightly larger
+			var outer := _btn_rect.grow(2.0)
+			draw_rect(outer, Color(bord.r, bord.g, bord.b, 0.35), false, 1.0)
+			var cx := _btn_rect.get_center()
+			draw_string(font, cx + Vector2(-18, 5), "✕ 取消", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, C_BTN_TEXT)
+		else:
+			# Normal state: dark bg, "✂ 斷開" label
+			draw_rect(_btn_rect, C_BTN_BG)
+			draw_rect(_btn_rect, C_BTN_BORD, false, 2.0)
+			var cx := _btn_rect.get_center()
+			draw_string(font, cx + Vector2(-22, 5), "✂ 斷開", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, C_BTN_TEXT)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

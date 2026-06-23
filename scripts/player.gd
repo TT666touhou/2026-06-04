@@ -33,6 +33,8 @@ var _rmb_prev: bool = false
 
 # Disconnect button rect (world coords) — set by _update_preview, read by input
 var _disconnect_btn_rect: Rect2 = Rect2()
+# When true, wire releases at next turn start (not immediately)
+var _disconnect_queued: bool = false
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -57,6 +59,7 @@ func _ready() -> void:
 	set_process_unhandled_input(false)
 	_lmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	_rmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	TurnManager.turn_started.connect(_on_turn_started)
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
@@ -81,7 +84,7 @@ func _poll_mouse() -> void:
 	if lmb and not _lmb_prev:
 		if TurnManager.is_frozen():
 			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
-				_release_grapple()
+				_disconnect_queued = not _disconnect_queued  # toggle: queue or cancel
 			elif _is_on_player(mouse_w):
 				_sling_dragging = true
 				_sling_start = mouse_w
@@ -98,6 +101,11 @@ func _poll_mouse() -> void:
 
 	_lmb_prev = lmb
 	_rmb_prev = rmb
+
+func _on_turn_started() -> void:
+	if _disconnect_queued:
+		_disconnect_queued = false
+		_release_grapple()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
@@ -160,15 +168,14 @@ func _update_preview() -> void:
 			var sling_dist := to_mouse_p.length()
 			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 			var start_vel := sling_dir * speed
-			# Pass wire params if wire is active — arc will respect rope constraint
-			var w_anchor := _wire_anchor.global_position if (_wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor)) else Vector2.ZERO
-			var w_len := _wire.length if (_wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor)) else 0.0
+			# Pass wire params only if wire active AND disconnect not queued
+			var wire_live := (_wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor) and not _disconnect_queued)
+			var w_anchor := _wire_anchor.global_position if wire_live else Vector2.ZERO
+			var w_len := _wire.length if wire_live else 0.0
 			var r1 := _simulate_arc_result(global_position, start_vel, 60, w_anchor, w_len)
 			var arc: PackedVector2Array = r1["arc"]
 			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
-			# Second-turn: only show landing dot (not long dashed line)
-			var r2 := _simulate_arc_result(arc[-1], r1["end_vel"], 60)
-			aim_preview.set_slingshot2(r2["arc"])
+			aim_preview.clear_slingshot2()
 	else:
 		aim_preview.clear_slingshot()
 		aim_preview.clear_slingshot2()
@@ -177,15 +184,20 @@ func _update_preview() -> void:
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var anchor_pos := _wire_anchor.global_position
 		var wire_len := _wire.length
-		var wire_arc := _simulate_wire_pull(global_position, velocity, anchor_pos, wire_len, 60)
-		aim_preview.set_swing(wire_arc)
+		if _disconnect_queued:
+			# Show free-fall arc (wire will release at turn start)
+			var free_arc := _simulate_arc_result(global_position, velocity, 60)
+			aim_preview.set_swing(free_arc["arc"])
+		else:
+			var wire_arc := _simulate_wire_pull(global_position, velocity, anchor_pos, wire_len, 60)
+			aim_preview.set_swing(wire_arc)
 		var btn_world := anchor_pos + Vector2(0, -28)
-		_disconnect_btn_rect = Rect2(btn_world - Vector2(28, 12), Vector2(56, 24))
-		aim_preview.set_disconnect_button(_disconnect_btn_rect)
+		_disconnect_btn_rect = Rect2(btn_world - Vector2(36, 14), Vector2(72, 28))
+		aim_preview.set_disconnect_button(_disconnect_btn_rect, _disconnect_queued)
 	else:
 		aim_preview.clear_swing()
 		_disconnect_btn_rect = Rect2()
-		aim_preview.set_disconnect_button(Rect2())
+		aim_preview.set_disconnect_button(Rect2(), false)
 
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
 	return _simulate_arc_result(start_pos, start_vel, steps)["arc"]
@@ -311,13 +323,14 @@ func _start_grapple() -> void:
 	TurnManager.commit()
 
 func _release_grapple() -> void:
+	_disconnect_queued = false
 	needle_manager.release_wire()
 	_wire = null
 	_wire_anchor = null
 	_wire_projectile = null
 	wire_renderer.visible = false
 	_disconnect_btn_rect = Rect2()
-	aim_preview.set_disconnect_button(Rect2())
+	aim_preview.set_disconnect_button(Rect2(), false)
 
 func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
