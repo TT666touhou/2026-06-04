@@ -72,38 +72,42 @@ func _unhandled_input(event: InputEvent) -> void:
 			aim_preview.queue_redraw()
 	elif event is InputEventKey:
 		var kb := event as InputEventKey
-		# Space = pass/swing turn — let physics run without shooting anything
 		if kb.pressed and not kb.echo and kb.keycode == KEY_SPACE:
 			if TurnManager.is_frozen():
 				TurnManager.commit()
 
 func _handle_mouse_button(mb: InputEventMouseButton) -> void:
+	var mouse_w := get_global_mouse_position()
+
 	if mb.button_index == MOUSE_BUTTON_LEFT:
-		if mb.pressed:
-			var mouse_w := get_global_mouse_position()
-			# Disconnect button = free action (no turn commit)
-			if TurnManager.is_frozen() and _disconnect_btn_rect.has_area() \
-					and _disconnect_btn_rect.has_point(mouse_w):
+		if mb.pressed and TurnManager.is_frozen():
+			# Disconnect button = free action
+			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
 				_release_grapple()
 				return
-			# Track drag start from ANYWHERE — drag distance decides slingshot vs attack
-			if TurnManager.is_frozen():
-				_sling_dragging = true
-				_sling_start = mouse_w
-		else:
-			if _sling_dragging:
-				_sling_dragging = false
-				var mouse_w := get_global_mouse_position()
-				if mouse_w.distance_to(_sling_start) >= 15.0:
-					_launch_slingshot(mouse_w)
-				else:
-					# Short click (< 15 px drag) = attack needle
-					if TurnManager.is_frozen():
-						_shoot_attack()
+			# Left-click = shoot attack needle immediately
+			_shoot_attack()
 
 	elif mb.button_index == MOUSE_BUTTON_RIGHT:
 		if mb.pressed and TurnManager.is_frozen():
-			_start_grapple()
+			if _is_on_player(mouse_w):
+				# Right-click ON player = start slingshot drag
+				_sling_dragging = true
+				_sling_start = mouse_w
+			else:
+				# Right-click OFF player = wire grapple
+				_start_grapple()
+		elif not mb.pressed:
+			# Right released = fire slingshot if dragging
+			if _sling_dragging:
+				_sling_dragging = false
+				_launch_slingshot(mouse_w)
+
+func _is_on_player(world_pos: Vector2) -> bool:
+	# Slightly larger than actual 32×64 body for usability
+	var half := Vector2(28.0, 48.0)
+	var local := world_pos - global_position
+	return abs(local.x) <= half.x and abs(local.y) <= half.y
 
 # ── Slingshot ──────────────────────────────────────────────────────────────────
 
@@ -139,17 +143,15 @@ func _update_preview() -> void:
 		aim_preview.clear_needle()
 
 	# ── Layer 2: Slingshot arc — active drag or passive direction preview ────
-	# Both active drag and passive preview use player→mouse direction
-	# so preview always matches the actual launch (which also uses player→release).
-	var to_mouse_p := mouse_w - global_position
-	if to_mouse_p.length() > 8.0:
-		var sling_dir := to_mouse_p.normalized()
-		var sling_dist := to_mouse_p.length()
-		var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
-		if not _sling_dragging:
-			speed = max_launch_speed * 0.6  # passive: show at 60% for hint
-		var arc := _simulate_arc(global_position, sling_dir * speed, 80)
-		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, _sling_dragging)
+	# Slingshot arc: ONLY shown while actively right-dragging from player body
+	if _sling_dragging:
+		var to_mouse_p := mouse_w - global_position
+		if to_mouse_p.length() > 8.0:
+			var sling_dir := to_mouse_p.normalized()
+			var sling_dist := to_mouse_p.length()
+			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+			var arc := _simulate_arc(global_position, sling_dir * speed, 80)
+			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
 	else:
 		aim_preview.clear_slingshot()
 
