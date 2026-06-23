@@ -59,12 +59,15 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	_update_aim_pivot()  # always update facing — runs even when frozen
+	# Safety: if LMB is physically up but drag state is stuck, reset it
+	if _sling_dragging and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_sling_dragging = false
 	if TurnManager.is_frozen():
 		_update_preview()
 	else:
 		aim_preview.clear_all()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event as InputEventMouseButton)
 	elif event is InputEventMouseMotion:
@@ -86,39 +89,30 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 				_release_grapple()
 				return
 			if _is_on_player(mouse_w):
-				# Left-click ON player = start slingshot drag
 				_sling_dragging = true
 				_sling_start = mouse_w
 			else:
-				# Left-click OFF player = shoot attack needle
 				_shoot_attack()
-		elif not mb.pressed:
-			# Left released = fire slingshot if dragging
-			if _sling_dragging:
-				_sling_dragging = false
-				_launch_slingshot(mouse_w)
+		elif not mb.pressed and _sling_dragging:
+			_sling_dragging = false
+			_launch_slingshot(mouse_w)
 
 	elif mb.button_index == MOUSE_BUTTON_RIGHT:
 		if mb.pressed and TurnManager.is_frozen():
-			# Right-click = wire grapple
 			_start_grapple()
 
 func _is_on_player(world_pos: Vector2) -> bool:
-	# Slightly larger than actual 32×64 body for usability
-	var half := Vector2(28.0, 48.0)
-	var local := world_pos - global_position
-	return abs(local.x) <= half.x and abs(local.y) <= half.y
+	# Circle radius 50px — generous hitbox so user can easily click the character
+	return (world_pos - global_position).length_squared() <= 50.0 * 50.0
 
 # ── Slingshot ──────────────────────────────────────────────────────────────────
 
 func _launch_slingshot(release_pos: Vector2) -> void:
 	if not TurnManager.is_frozen():
 		return
-	# Direction and power are relative to PLAYER POSITION, not press point.
-	# This matches the passive and active previews (both use player→mouse).
 	var drag := release_pos - global_position
 	var sling_dist := drag.length()
-	if sling_dist < 4.0:
+	if sling_dist < 2.0:
 		return
 	var dir := drag.normalized()
 	var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
