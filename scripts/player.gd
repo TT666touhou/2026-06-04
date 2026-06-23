@@ -139,6 +139,30 @@ func _update_preview() -> void:
 	var mouse_w := get_global_mouse_position()
 	var hover_player := _is_on_player(mouse_w)
 
+	# ── Layer 0.5: Wire needle preview (right-click) — only when no wire active ──
+	if _wire == null and not _sling_dragging:
+		var from := throw_origin.global_position if throw_origin else global_position
+		var to_mouse_dir := (mouse_w - from)
+		if to_mouse_dir.length() > 4.0:
+			var dir := to_mouse_dir.normalized()
+			var max_reach := NEEDLE_REACH
+			var space := get_world_2d().direct_space_state
+			var query := PhysicsRayQueryParameters2D.create(from, from + dir * max_reach, 1)
+			query.exclude = [get_rid()]
+			var hit := space.intersect_ray(query)
+			var has_anchor: bool = not hit.is_empty()
+			var anchor_pt: Vector2 = hit["position"] if has_anchor else from + dir * max_reach
+			aim_preview.set_wire_needle(from, anchor_pt, has_anchor)
+			if has_anchor:
+				var pred_len := global_position.distance_to(anchor_pt)
+				var pred_arc := _simulate_wire_pull(global_position, velocity, anchor_pt, pred_len, 60)
+				aim_preview.set_wire_predict(pred_arc)
+			else:
+				aim_preview.clear_wire_predict()
+	else:
+		aim_preview.clear_wire_needle()
+		aim_preview.clear_wire_predict()
+
 	# ── Layer 1: Needle trajectory — HIDDEN when hovering player (slingshot mode) ─
 	if not hover_player and not _sling_dragging:
 		var from := global_position  # fire from player center

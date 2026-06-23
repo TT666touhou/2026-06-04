@@ -20,6 +20,14 @@ var _sling2_active: bool = false
 var _swing_arc: PackedVector2Array
 var _swing_active: bool = false
 
+# Wire needle preview (right-click action)
+var _wire_needle_from: Vector2
+var _wire_needle_to: Vector2
+var _wire_needle_has_anchor: bool = false
+var _wire_needle_active: bool = false
+var _wire_predict_arc: PackedVector2Array
+var _wire_predict_active: bool = false
+
 var _btn_rect: Rect2 = Rect2()  # disconnect button, world coords
 var _btn_queued: bool = false   # true = disconnect is queued (show cancel state)
 
@@ -28,6 +36,9 @@ var _hover_half: Vector2     # player body half-size
 var _hover_active: bool = false
 
 # ── Colors ─────────────────────────────────────────────────────────────────────
+const C_WIRE_NEEDLE  := Color(0.25, 0.95, 1.00, 0.90)  # cyan = wire needle flight
+const C_WIRE_ANCHOR  := Color(0.25, 0.95, 1.00, 1.00)  # bright cyan = anchor point
+const C_WIRE_PREDICT := Color(0.25, 0.80, 1.00, 0.55)  # dim cyan = post-attach trajectory
 const C_NEEDLE    := Color(1.0, 0.88, 0.30, 0.95)
 const C_BEYOND    := Color(1.0, 0.55, 0.15, 0.38)
 const C_SLING     := Color(0.35, 0.75, 1.00, 0.85)
@@ -71,6 +82,22 @@ func set_slingshot2(arc: PackedVector2Array) -> void:
 func clear_slingshot2() -> void:
 	_sling2_active = false
 
+func set_wire_needle(from: Vector2, to: Vector2, has_anchor: bool) -> void:
+	_wire_needle_from = from
+	_wire_needle_to = to
+	_wire_needle_has_anchor = has_anchor
+	_wire_needle_active = true
+
+func clear_wire_needle() -> void:
+	_wire_needle_active = false
+
+func set_wire_predict(arc: PackedVector2Array) -> void:
+	_wire_predict_arc = arc
+	_wire_predict_active = true
+
+func clear_wire_predict() -> void:
+	_wire_predict_active = false
+
 func set_swing(arc: PackedVector2Array) -> void:
 	_swing_arc = arc
 	_swing_active = true
@@ -104,6 +131,8 @@ func clear_all() -> void:
 	_sling2_active = false
 	_swing_active = false
 	_hover_active = false
+	_wire_needle_active = false
+	_wire_predict_active = false
 	_btn_rect = Rect2()
 	_btn_queued = false
 
@@ -119,6 +148,28 @@ func _draw() -> void:
 		var r := Rect2(_hover_pos - _hover_half, _hover_half * 2)
 		draw_rect(r, C_HOVER_FILL)
 		draw_rect(r, C_HOVER_BORD, false, 2.0)
+
+	# Layer 0.5: wire needle preview (right-click) — cyan
+	if _wire_predict_active and _wire_predict_arc.size() >= 2:
+		_draw_dashed_path(_wire_predict_arc, C_WIRE_PREDICT, 1.5)
+		draw_circle(_wire_predict_arc[-1], 4.0, C_WIRE_PREDICT)
+
+	if _wire_needle_active:
+		_draw_dashed_line(_wire_needle_from, _wire_needle_to, C_WIRE_NEEDLE, 2.0, 8.0, 5.0)
+		if _wire_needle_has_anchor:
+			# Diamond anchor marker
+			var p := _wire_needle_to
+			var s := 6.0
+			draw_line(p + Vector2(0, -s), p + Vector2(s, 0), C_WIRE_ANCHOR, 2.0)
+			draw_line(p + Vector2(s, 0), p + Vector2(0, s), C_WIRE_ANCHOR, 2.0)
+			draw_line(p + Vector2(0, s), p + Vector2(-s, 0), C_WIRE_ANCHOR, 2.0)
+			draw_line(p + Vector2(-s, 0), p + Vector2(0, -s), C_WIRE_ANCHOR, 2.0)
+		else:
+			# No hit — small X at max range
+			var p := _wire_needle_to
+			var s := 4.0
+			draw_line(p + Vector2(-s, -s), p + Vector2(s, s), Color(C_WIRE_NEEDLE.r, C_WIRE_NEEDLE.g, C_WIRE_NEEDLE.b, 0.5), 1.5)
+			draw_line(p + Vector2(s, -s), p + Vector2(-s, s), Color(C_WIRE_NEEDLE.r, C_WIRE_NEEDLE.g, C_WIRE_NEEDLE.b, 0.5), 1.5)
 
 	# Layer 1: needle (always on top for readability)
 	if _needle_active:
