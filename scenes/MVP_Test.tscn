@@ -141,8 +141,9 @@ color = Color(0.35, 0.35, 0.35, 1)
 position = Vector2(640, 653)
 
 [node name="Camera2D" parent="Player"]
+offset = Vector2(0, 120)
 limit_left = 0
-limit_top = 0
+limit_top = -360
 limit_right = 1280
 limit_bottom = 720
 

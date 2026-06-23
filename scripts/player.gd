@@ -56,9 +56,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_apply_wire_post()
 	_update_wire_renderer()
-	_update_aim_pivot()
 
 func _process(_delta: float) -> void:
+	_update_aim_pivot()  # always update facing — runs even when frozen
 	if TurnManager.is_frozen():
 		_update_preview()
 	else:
@@ -129,21 +129,30 @@ func _launch_slingshot(release_pos: Vector2) -> void:
 
 func _update_preview() -> void:
 	var mouse_w := get_global_mouse_position()
+	var hover_player := _is_on_player(mouse_w)
 
-	# ── Layer 1: Needle trajectory (always shown) ────────────────────────────
-	var from := throw_origin.global_position
-	var to_mouse := mouse_w - from
-	var dist := to_mouse.length()
-	if dist > 8.0:
-		var needle_dir := to_mouse.normalized()
-		var reach_dist := minf(dist, NEEDLE_REACH)
-		var reach := from + needle_dir * reach_dist
-		aim_preview.set_needle(from, reach, mouse_w)
+	# ── Layer 1: Needle trajectory — HIDDEN when hovering player (slingshot mode) ─
+	if not hover_player and not _sling_dragging:
+		var from := global_position  # fire from player center
+		var to_mouse := mouse_w - from
+		var dist := to_mouse.length()
+		if dist > 8.0:
+			var needle_dir := to_mouse.normalized()
+			var reach_dist := minf(dist, NEEDLE_REACH)
+			var reach := from + needle_dir * reach_dist
+			aim_preview.set_needle(from, reach, mouse_w)
+		else:
+			aim_preview.clear_needle()
 	else:
 		aim_preview.clear_needle()
 
-	# ── Layer 2: Slingshot arc — active drag or passive direction preview ────
-	# Slingshot arc: ONLY shown while actively right-dragging from player body
+	# ── Layer 1b: Player highlight — shown when hovering (slingshot mode ready) ─
+	if hover_player and not _sling_dragging:
+		aim_preview.set_player_hover(global_position, Vector2(16, 32))
+	else:
+		aim_preview.clear_player_hover()
+
+	# ── Layer 2: Slingshot arc — ONLY during active left-drag from player body ─
 	if _sling_dragging:
 		var to_mouse_p := mouse_w - global_position
 		if to_mouse_p.length() > 8.0:

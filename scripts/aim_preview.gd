@@ -19,6 +19,10 @@ var _swing_active: bool = false
 
 var _btn_rect: Rect2 = Rect2()  # disconnect button, world coords
 
+var _hover_pos: Vector2      # player center in world coords
+var _hover_half: Vector2     # player body half-size
+var _hover_active: bool = false
+
 # ── Colors ─────────────────────────────────────────────────────────────────────
 const C_NEEDLE    := Color(1.0, 0.88, 0.30, 0.95)
 const C_BEYOND    := Color(1.0, 0.55, 0.15, 0.38)
@@ -27,6 +31,8 @@ const C_GHOST_F   := Color(0.35, 0.75, 1.00, 0.22)
 const C_GHOST_L   := Color(0.35, 0.75, 1.00, 0.80)
 const C_SWING     := Color(0.45, 1.00, 0.55, 0.80)
 const C_SWING_END := Color(0.45, 1.00, 0.55, 0.50)
+const C_HOVER_FILL := Color(1.0, 1.0, 1.0, 0.08)   # subtle player hover fill
+const C_HOVER_BORD := Color(1.0, 0.85, 0.30, 0.90)  # bright yellow-white border = slingshot ready
 const C_BTN_BG    := Color(0.15, 0.15, 0.15, 0.85)
 const C_BTN_BORD  := Color(1.00, 0.38, 0.22, 1.00)
 const C_BTN_TEXT  := Color(1.00, 1.00, 1.00, 1.00)
@@ -57,6 +63,14 @@ func set_swing(arc: PackedVector2Array) -> void:
 	_swing_arc = arc
 	_swing_active = true
 
+func set_player_hover(center: Vector2, half: Vector2) -> void:
+	_hover_pos = center
+	_hover_half = half
+	_hover_active = true
+
+func clear_player_hover() -> void:
+	_hover_active = false
+
 func set_disconnect_button(rect: Rect2) -> void:
 	_btn_rect = rect
 
@@ -75,6 +89,7 @@ func clear_all() -> void:
 	_sling_active = false
 	_sling_is_active = false
 	_swing_active = false
+	_hover_active = false
 	_btn_rect = Rect2()
 
 ## Legacy compat
@@ -84,6 +99,12 @@ func clear() -> void:
 # ── Draw ───────────────────────────────────────────────────────────────────────
 
 func _draw() -> void:
+	# Layer 0: player hover highlight (slingshot mode indicator)
+	if _hover_active:
+		var r := Rect2(_hover_pos - _hover_half, _hover_half * 2)
+		draw_rect(r, C_HOVER_FILL)
+		draw_rect(r, C_HOVER_BORD, false, 2.0)
+
 	# Layer 1: needle (always on top for readability)
 	if _needle_active:
 		_draw_dashed_line(_needle_from, _needle_reach, C_NEEDLE, 2.0)
