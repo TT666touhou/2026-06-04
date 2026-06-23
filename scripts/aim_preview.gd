@@ -138,10 +138,10 @@ func _draw() -> void:
 			draw_line(_sling_ghost + Vector2(-7, 0), _sling_ghost + Vector2(7, 0), C_SLING, 1.5)
 			draw_line(_sling_ghost + Vector2(0, -7), _sling_ghost + Vector2(0, 7), C_SLING, 1.5)
 
-	# Layer 2b: second-turn arc (dim blue — momentum carry)
-	if _sling2_active and _sling2_arc.size() >= 2:
-		_draw_dashed_path(_sling2_arc, C_SLING2, 1.5)
-		draw_circle(_sling2_arc[-1], 4.0, C_SLING2)
+	# Layer 2b: next-turn landing dot (dim — approximate, no long line)
+	if _sling2_active and _sling2_arc.size() >= 1:
+		draw_circle(_sling2_arc[-1], 5.0, C_SLING2)
+		draw_arc(_sling2_arc[-1], 5.0, 0.0, TAU, 12, Color(C_SLING2.r, C_SLING2.g, C_SLING2.b, 0.6), 1.5)
 
 	# Layer 3: wire pull arc (blue)
 	if _swing_active and _swing_arc.size() >= 2:

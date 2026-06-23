@@ -160,10 +160,13 @@ func _update_preview() -> void:
 			var sling_dist := to_mouse_p.length()
 			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 			var start_vel := sling_dir * speed
-			var r1 := _simulate_arc_result(global_position, start_vel, 60)
+			# Pass wire params if wire is active — arc will respect rope constraint
+			var w_anchor := _wire_anchor.global_position if (_wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor)) else Vector2.ZERO
+			var w_len := _wire.length if (_wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor)) else 0.0
+			var r1 := _simulate_arc_result(global_position, start_vel, 60, w_anchor, w_len)
 			var arc: PackedVector2Array = r1["arc"]
 			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
-			# Second-turn arc: simulate from end position with carried-over velocity
+			# Second-turn: only show landing dot (not long dashed line)
 			var r2 := _simulate_arc_result(arc[-1], r1["end_vel"], 60)
 			aim_preview.set_slingshot2(r2["arc"])
 	else:
@@ -187,12 +190,18 @@ func _update_preview() -> void:
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
 	return _simulate_arc_result(start_pos, start_vel, steps)["arc"]
 
-func _simulate_arc_result(start_pos: Vector2, start_vel: Vector2, steps: int) -> Dictionary:
+func _simulate_arc_result(
+	start_pos: Vector2, start_vel: Vector2, steps: int,
+	wire_anchor := Vector2.ZERO, cur_wire_len := 0.0
+) -> Dictionary:
 	# Returns {arc: PackedVector2Array, end_vel: Vector2, hit: bool}
+	# If cur_wire_len > 0, applies wire reel + rope constraint each step.
 	var pts := PackedVector2Array()
 	var pos := start_pos
 	var vel := start_vel
 	var dt := TURN_DURATION / steps
+	var wire_active := cur_wire_len > 0.0
+	var wlen := cur_wire_len
 	var ghost_rid := ghost_body.get_rid()
 	var params := PhysicsTestMotionParameters2D.new()
 	params.exclude_bodies = [get_rid()]
@@ -201,6 +210,16 @@ func _simulate_arc_result(start_pos: Vector2, start_vel: Vector2, steps: int) ->
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
+		# Wire reel + pre-constraint
+		if wire_active:
+			wlen = maxf(wlen - rope_reel_speed * dt, rope_min_length)
+			var to_anchor := wire_anchor - pos
+			var d := to_anchor.length()
+			if d > wlen and d > 0.001:
+				var dir := to_anchor / d
+				var radial := vel.dot(dir)
+				if radial < 0.0:
+					vel -= dir * radial
 		params.from = Transform2D(0, pos)
 		params.motion = vel * dt
 		if PhysicsServer2D.body_test_motion(ghost_rid, params, result):
@@ -209,6 +228,12 @@ func _simulate_arc_result(start_pos: Vector2, start_vel: Vector2, steps: int) ->
 			hit = true
 		else:
 			pos += vel * dt
+		# Wire post-constraint (hard clamp)
+		if wire_active:
+			var to_anchor := wire_anchor - pos
+			var d := to_anchor.length()
+			if d > wlen and d > 0.001:
+				pos = wire_anchor - (to_anchor / d) * wlen
 		pts.append(pos)
 	return {"arc": pts, "end_vel": vel, "hit": hit}
 
