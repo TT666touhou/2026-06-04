@@ -27,6 +27,10 @@ var _wire_projectile: Node = null
 var _sling_dragging: bool = false
 var _sling_start: Vector2 = Vector2.ZERO
 
+# Polled button state (used in _process to bypass event-system issues)
+var _lmb_prev: bool = false
+var _rmb_prev: bool = false
+
 # Disconnect button rect (world coords) — set by _update_preview, read by input
 var _disconnect_btn_rect: Rect2 = Rect2()
 
@@ -58,48 +62,53 @@ func _physics_process(delta: float) -> void:
 	_update_wire_renderer()
 
 func _process(_delta: float) -> void:
-	_update_aim_pivot()  # always update facing — runs even when frozen
-	# Safety: if LMB is physically up but drag state is stuck, reset it
-	if _sling_dragging and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_sling_dragging = false
+	_update_aim_pivot()
+	_poll_mouse_input()  # reliable polling — bypasses _input/_unhandled_input issues
 	if TurnManager.is_frozen():
 		_update_preview()
 	else:
 		aim_preview.clear_all()
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		_handle_mouse_button(event as InputEventMouseButton)
-	elif event is InputEventMouseMotion:
+func _poll_mouse_input() -> void:
+	var lmb := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	var rmb := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	var mouse_w := get_global_mouse_position()
+
+	# ── Left button ──────────────────────────────────────────────────────────
+	if lmb and not _lmb_prev:
+		# Just pressed
+		if TurnManager.is_frozen():
+			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
+				_release_grapple()
+			elif _is_on_player(mouse_w):
+				_sling_dragging = true
+				_sling_start = mouse_w
+			else:
+				_shoot_attack()
+	elif not lmb and _lmb_prev:
+		# Just released
 		if _sling_dragging:
-			aim_preview.queue_redraw()
-	elif event is InputEventKey:
+			_sling_dragging = false
+			_launch_slingshot(mouse_w)
+
+	# ── Right button ─────────────────────────────────────────────────────────
+	if rmb and not _rmb_prev:
+		if TurnManager.is_frozen():
+			_start_grapple()
+
+	# ── Space (still via _input for keyboard) ─────────────────────────────────
+	_lmb_prev = lmb
+	_rmb_prev = rmb
+
+func _input(event: InputEvent) -> void:
+	# Mouse handled by _poll_mouse_input() in _process.
+	# Only keyboard needs event-based handling.
+	if event is InputEventKey:
 		var kb := event as InputEventKey
 		if kb.pressed and not kb.echo and kb.keycode == KEY_SPACE:
 			if TurnManager.is_frozen():
 				TurnManager.commit()
 
-func _handle_mouse_button(mb: InputEventMouseButton) -> void:
-	var mouse_w := get_global_mouse_position()
-
-	if mb.button_index == MOUSE_BUTTON_LEFT:
-		if mb.pressed and TurnManager.is_frozen():
-			# Disconnect button = free action
-			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
-				_release_grapple()
-				return
-			if _is_on_player(mouse_w):
-				_sling_dragging = true
-				_sling_start = mouse_w
-			else:
-				_shoot_attack()
-		elif not mb.pressed and _sling_dragging:
-			_sling_dragging = false
-			_launch_slingshot(mouse_w)
-
-	elif mb.button_index == MOUSE_BUTTON_RIGHT:
-		if mb.pressed and TurnManager.is_frozen():
-			_start_grapple()
 
 func _is_on_player(world_pos: Vector2) -> bool:
 	# Circle radius 50px — generous hitbox so user can easily click the character
