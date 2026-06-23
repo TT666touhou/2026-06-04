@@ -85,23 +85,23 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
 				_release_grapple()
 				return
-			# Left-click = shoot attack needle immediately
-			_shoot_attack()
-
-	elif mb.button_index == MOUSE_BUTTON_RIGHT:
-		if mb.pressed and TurnManager.is_frozen():
 			if _is_on_player(mouse_w):
-				# Right-click ON player = start slingshot drag
+				# Left-click ON player = start slingshot drag
 				_sling_dragging = true
 				_sling_start = mouse_w
 			else:
-				# Right-click OFF player = wire grapple
-				_start_grapple()
+				# Left-click OFF player = shoot attack needle
+				_shoot_attack()
 		elif not mb.pressed:
-			# Right released = fire slingshot if dragging
+			# Left released = fire slingshot if dragging
 			if _sling_dragging:
 				_sling_dragging = false
 				_launch_slingshot(mouse_w)
+
+	elif mb.button_index == MOUSE_BUTTON_RIGHT:
+		if mb.pressed and TurnManager.is_frozen():
+			# Right-click = wire grapple
+			_start_grapple()
 
 func _is_on_player(world_pos: Vector2) -> bool:
 	# Slightly larger than actual 32×64 body for usability
