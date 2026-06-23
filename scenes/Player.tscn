@@ -37,4 +37,12 @@ script = ExtResource("2_nm")
 needle_proj_scene = ExtResource("3_npscene")
 needle_anchor_scene = ExtResource("4_nascene")
 
+[node name="GhostBody" type="CharacterBody2D" parent="." unique_id=665544332]
+visible = false
+collision_layer = 0
+collision_mask = 1
+
+[node name="GhostShape" type="CollisionShape2D" parent="GhostBody" unique_id=554433221]
+shape = SubResource("1_rect")
+
 [node name="Camera2D" type="Camera2D" parent="." unique_id=254480194]

@@ -37,6 +37,7 @@ var _disconnect_btn_rect: Rect2 = Rect2()
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
 @onready var throw_origin: Marker2D = $AimPivot/ThrowOrigin
+@onready var ghost_body: CharacterBody2D = $GhostBody
 
 var aim_preview: Node2D = null
 
@@ -159,15 +160,12 @@ func _update_preview() -> void:
 			var sling_dist := to_mouse_p.length()
 			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 			var start_vel := sling_dir * speed
-			var arc := _simulate_arc(global_position, start_vel, 60)
+			var r1 := _simulate_arc_result(global_position, start_vel, 60)
+			var arc: PackedVector2Array = r1["arc"]
 			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
-			# Second-turn arc: only if first arc didn't hit terrain (full 61 pts = no collision)
-			if arc.size() > 60:
-				var end_vel := _compute_arc_end_vel(start_vel, 60)
-				var arc2 := _simulate_arc(arc[-1], end_vel, 60)
-				aim_preview.set_slingshot2(arc2)
-			else:
-				aim_preview.clear_slingshot2()
+			# Second-turn arc: simulate from end position with carried-over velocity
+			var r2 := _simulate_arc_result(arc[-1], r1["end_vel"], 60)
+			aim_preview.set_slingshot2(r2["arc"])
 	else:
 		aim_preview.clear_slingshot()
 		aim_preview.clear_slingshot2()
@@ -187,32 +185,33 @@ func _update_preview() -> void:
 		aim_preview.set_disconnect_button(Rect2())
 
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
+	return _simulate_arc_result(start_pos, start_vel, steps)["arc"]
+
+func _simulate_arc_result(start_pos: Vector2, start_vel: Vector2, steps: int) -> Dictionary:
+	# Returns {arc: PackedVector2Array, end_vel: Vector2, hit: bool}
 	var pts := PackedVector2Array()
 	var pos := start_pos
 	var vel := start_vel
 	var dt := TURN_DURATION / steps
-	var space := get_world_2d().direct_space_state
+	var ghost_rid := ghost_body.get_rid()
+	var params := PhysicsTestMotionParameters2D.new()
+	params.exclude_bodies = [get_rid()]
+	params.collision_mask = 1
+	var result := PhysicsTestMotionResult2D.new()
+	var hit := false
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
-		var next_pos := pos + vel * dt
-		# Terrain raycast (layer 1 = static ground/walls)
-		var query := PhysicsRayQueryParameters2D.create(pos, next_pos, 1)
-		query.exclude = [get_rid()]
-		var hit := space.intersect_ray(query)
-		if hit:
-			pts.append(hit.position)
-			return pts  # terminated early = hit terrain
-		pos = next_pos
+		params.from = Transform2D(0, pos)
+		params.motion = vel * dt
+		if PhysicsServer2D.body_test_motion(ghost_rid, params, result):
+			pos += result.get_travel()
+			vel = vel.slide(result.get_collision_normal())
+			hit = true
+		else:
+			pos += vel * dt
 		pts.append(pos)
-	return pts
-
-func _compute_arc_end_vel(start_vel: Vector2, steps: int) -> Vector2:
-	var vel := start_vel
-	var dt := TURN_DURATION / steps
-	for _i in range(steps):
-		vel.y += gravity * dt
-	return vel
+	return {"arc": pts, "end_vel": vel, "hit": hit}
 
 func _simulate_wire_pull(
 	start_pos: Vector2, start_vel: Vector2,
