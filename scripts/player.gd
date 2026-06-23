@@ -196,7 +196,6 @@ func _simulate_arc_result(start_pos: Vector2, start_vel: Vector2, steps: int) ->
 	var ghost_rid := ghost_body.get_rid()
 	var params := PhysicsTestMotionParameters2D.new()
 	params.exclude_bodies = [get_rid()]
-	params.collision_mask = 1
 	var result := PhysicsTestMotionResult2D.new()
 	var hit := false
 	pts.append(pos)
