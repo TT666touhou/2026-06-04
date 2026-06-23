@@ -110,7 +110,9 @@ func _handle_mouse_button(mb: InputEventMouseButton) -> void:
 func _launch_slingshot(release_pos: Vector2) -> void:
 	if not TurnManager.is_frozen():
 		return
-	var drag := release_pos - _sling_start
+	# Direction and power are relative to PLAYER POSITION, not press point.
+	# This matches the passive and active previews (both use player→mouse).
+	var drag := release_pos - global_position
 	var sling_dist := drag.length()
 	if sling_dist < 4.0:
 		return
@@ -137,22 +139,19 @@ func _update_preview() -> void:
 		aim_preview.clear_needle()
 
 	# ── Layer 2: Slingshot arc — active drag or passive direction preview ────
-	if _sling_dragging:
-		var drag := mouse_w - _sling_start
-		var sling_dist := drag.length()
-		var sling_dir := drag.normalized() if sling_dist > 2.0 else Vector2.RIGHT
+	# Both active drag and passive preview use player→mouse direction
+	# so preview always matches the actual launch (which also uses player→release).
+	var to_mouse_p := mouse_w - global_position
+	if to_mouse_p.length() > 8.0:
+		var sling_dir := to_mouse_p.normalized()
+		var sling_dist := to_mouse_p.length()
 		var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
+		if not _sling_dragging:
+			speed = max_launch_speed * 0.6  # passive: show at 60% for hint
 		var arc := _simulate_arc(global_position, sling_dir * speed, 80)
-		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
+		aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, _sling_dragging)
 	else:
-		# Passive: always show where player would go if they slingshot toward mouse
-		var to_mouse_p := mouse_w - global_position
-		if to_mouse_p.length() > 30.0:
-			var passive_dir := to_mouse_p.normalized()
-			var arc := _simulate_arc(global_position, passive_dir * max_launch_speed * 0.6, 60)
-			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, false)
-		else:
-			aim_preview.clear_slingshot()
+		aim_preview.clear_slingshot()
 
 	# ── Layer 3: Wire swing arc + disconnect button (shown when wire active) ──
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
