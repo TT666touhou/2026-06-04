@@ -5,7 +5,7 @@ extends Node
 
 enum State { FROZEN, PLAYING }
 
-const TURN_DURATION: float = 1.0
+const TURN_DURATION: float = 0.3
 
 var state: State = State.FROZEN
 var _play_start_ms: int = 0

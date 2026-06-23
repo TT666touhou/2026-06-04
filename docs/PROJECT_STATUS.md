@@ -62,6 +62,18 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### GAP-058/059 — 輸入修復 + 預覽優化 + 回合加速（2026-06-23）
+
+- **完成日期**：2026-06-23
+- **修改檔案**：`scripts/player.gd`、`scripts/aim_preview.gd`、`scripts/turn_manager.gd`、`scenes/Player.tscn`
+- **修改內容**：
+  - 根本輸入修復：`ColorRect` 子節點 `mouse_filter` 從 STOP 改 IGNORE（Block 原因）；改用 `Input.is_mouse_button_pressed()` 在 `_process` 輪詢（繞過事件系統）
+  - 回合時間 1.0s → 0.3s（GDD 一致）
+  - 彈弓預覽：地形感知 raycast（layer 1）+ 第二回合動量延伸（淡藍虛線）
+  - Wire 預覽：重新計算含 reel 效果的正確物理；顏色改為藍色（移除錯誤的綠色）
+  - 預覽色統一：所有「下一步位置」用藍色
+- **驗證**：`[TM-INPUT] Mouse button 1 pressed` + `[TM] TURN START/END` 確認輸入和物理均正常
+
 ### GAP-057 — 彈弓修復 / 繩索拉動 / 被動軌跡預覽（2026-06-23）
 
 - **完成日期**：2026-06-23

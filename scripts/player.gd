@@ -15,8 +15,8 @@ extends CharacterBody2D
 
 # ── Needle reach preview (must match NeedleProjectile.flight_speed × TURN_DURATION) ──
 const NEEDLE_SPEED: float = 800.0
-const TURN_DURATION: float = 1.0
-const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 800 px
+const TURN_DURATION: float = 0.3
+const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 240 px
 
 # ── Internal state ─────────────────────────────────────────────────────────────
 var _wire: WireConstraint = null
@@ -27,7 +27,7 @@ var _wire_projectile: Node = null
 var _sling_dragging: bool = false
 var _sling_start: Vector2 = Vector2.ZERO
 
-# Polled button state (used in _process to bypass event-system issues)
+# Edge detection for DisplayServer raw polling
 var _lmb_prev: bool = false
 var _rmb_prev: bool = false
 
@@ -53,6 +53,9 @@ func _ready() -> void:
 	aim_preview.top_level = true
 	aim_preview.set_script(preview_script)
 	add_child(aim_preview)
+	set_process_unhandled_input(false)
+	_lmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	_rmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 
 func _physics_process(delta: float) -> void:
 	_apply_gravity(delta)
@@ -63,20 +66,18 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	_update_aim_pivot()
-	_poll_mouse_input()  # reliable polling — bypasses _input/_unhandled_input issues
+	_poll_mouse()
 	if TurnManager.is_frozen():
 		_update_preview()
 	else:
 		aim_preview.clear_all()
 
-func _poll_mouse_input() -> void:
+func _poll_mouse() -> void:
 	var lmb := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var rmb := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 	var mouse_w := get_global_mouse_position()
 
-	# ── Left button ──────────────────────────────────────────────────────────
 	if lmb and not _lmb_prev:
-		# Just pressed
 		if TurnManager.is_frozen():
 			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
 				_release_grapple()
@@ -86,23 +87,18 @@ func _poll_mouse_input() -> void:
 			else:
 				_shoot_attack()
 	elif not lmb and _lmb_prev:
-		# Just released
 		if _sling_dragging:
 			_sling_dragging = false
 			_launch_slingshot(mouse_w)
 
-	# ── Right button ─────────────────────────────────────────────────────────
 	if rmb and not _rmb_prev:
 		if TurnManager.is_frozen():
 			_start_grapple()
 
-	# ── Space (still via _input for keyboard) ─────────────────────────────────
 	_lmb_prev = lmb
 	_rmb_prev = rmb
 
-func _input(event: InputEvent) -> void:
-	# Mouse handled by _poll_mouse_input() in _process.
-	# Only keyboard needs event-based handling.
+func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var kb := event as InputEventKey
 		if kb.pressed and not kb.echo and kb.keycode == KEY_SPACE:
@@ -162,27 +158,26 @@ func _update_preview() -> void:
 			var sling_dir := to_mouse_p.normalized()
 			var sling_dist := to_mouse_p.length()
 			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
-			var arc := _simulate_arc(global_position, sling_dir * speed, 80)
+			var start_vel := sling_dir * speed
+			var arc := _simulate_arc(global_position, start_vel, 60)
 			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
+			# Second-turn arc: only if first arc didn't hit terrain (full 61 pts = no collision)
+			if arc.size() > 60:
+				var end_vel := _compute_arc_end_vel(start_vel, 60)
+				var arc2 := _simulate_arc(arc[-1], end_vel, 60)
+				aim_preview.set_slingshot2(arc2)
+			else:
+				aim_preview.clear_slingshot2()
 	else:
 		aim_preview.clear_slingshot()
+		aim_preview.clear_slingshot2()
 
-	# ── Layer 3: Wire swing arc + disconnect button (shown when wire active) ──
+	# ── Layer 3: Wire pull arc + disconnect button (shown when wire active) ──
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var anchor_pos := _wire_anchor.global_position
 		var wire_len := _wire.length
-		# Use a small initial kick toward perpendicular if velocity is near zero
-		# so the arc is visible even when player is stationary
-		var sim_vel := velocity
-		if sim_vel.length() < 10.0:
-			# Tangential nudge so the arc is visible when player is nearly stationary
-			var to_anchor := anchor_pos - global_position
-			if to_anchor.length() > 1.0:
-				var tangent := Vector2(-to_anchor.y, to_anchor.x).normalized()
-				sim_vel = tangent * 100.0
-		var swing_arc := _simulate_swing(global_position, sim_vel, anchor_pos, wire_len, 80)
-		aim_preview.set_swing(swing_arc)
-		# Disconnect button world position = above wire anchor
+		var wire_arc := _simulate_wire_pull(global_position, velocity, anchor_pos, wire_len, 60)
+		aim_preview.set_swing(wire_arc)
 		var btn_world := anchor_pos + Vector2(0, -28)
 		_disconnect_btn_rect = Rect2(btn_world - Vector2(28, 12), Vector2(56, 24))
 		aim_preview.set_disconnect_button(_disconnect_btn_rect)
@@ -196,14 +191,30 @@ func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> Packed
 	var pos := start_pos
 	var vel := start_vel
 	var dt := TURN_DURATION / steps
+	var space := get_world_2d().direct_space_state
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
-		pos += vel * dt
+		var next_pos := pos + vel * dt
+		# Terrain raycast (layer 1 = static ground/walls)
+		var query := PhysicsRayQueryParameters2D.create(pos, next_pos, 1)
+		query.exclude = [get_rid()]
+		var hit := space.intersect_ray(query)
+		if hit:
+			pts.append(hit.position)
+			return pts  # terminated early = hit terrain
+		pos = next_pos
 		pts.append(pos)
 	return pts
 
-func _simulate_swing(
+func _compute_arc_end_vel(start_vel: Vector2, steps: int) -> Vector2:
+	var vel := start_vel
+	var dt := TURN_DURATION / steps
+	for _i in range(steps):
+		vel.y += gravity * dt
+	return vel
+
+func _simulate_wire_pull(
 	start_pos: Vector2, start_vel: Vector2,
 	anchor_pos: Vector2, wire_len: float, steps: int
 ) -> PackedVector2Array:
@@ -211,23 +222,23 @@ func _simulate_swing(
 	var pos := start_pos
 	var vel := start_vel
 	var dt := TURN_DURATION / steps
+	var cur_len := wire_len
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
-		# Pre: cancel outward (away-from-anchor) radial velocity when taut
+		cur_len = maxf(cur_len - rope_reel_speed * dt, rope_min_length)
 		var to_anchor := anchor_pos - pos
 		var d := to_anchor.length()
-		if d > 0.001:
+		if d > cur_len and d > 0.001:
 			var rope_dir := to_anchor / d
 			var radial := vel.dot(rope_dir)
-			if d >= wire_len and radial < 0.0:
-				vel -= rope_dir * radial  # cancel outward component
+			if radial < 0.0:
+				vel -= rope_dir * radial
 		pos += vel * dt
-		# Post: hard-clamp to rope circle
 		to_anchor = anchor_pos - pos
 		d = to_anchor.length()
-		if d > wire_len and d > 0.001:
-			pos = anchor_pos - (to_anchor / d) * wire_len
+		if d > cur_len and d > 0.001:
+			pos = anchor_pos - (to_anchor / d) * cur_len
 		pts.append(pos)
 	return pts
 

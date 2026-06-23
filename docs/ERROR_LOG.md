@@ -27,6 +27,7 @@
 | 2026-06-22 | [ERR-GAP047] NeedleAnchor 不跟隨移動敵人 | 針視覺停在插入點，不隨敵人移動 | `NeedleAnchor` 是純資料 Node2D，`attached_body` 有值但無任何 `_process` 更新 `global_position` | 在 `needle_anchor.gd` 加 `_physics_process`：首幀計算 `_body_offset = global_position - attached_body.global_position`，後續每幀 `global_position = attached_body.global_position + _body_offset` |
 | 2026-06-22 | [ERR-GAP055] 回合制初始實作（設計決策紀錄） | 回合制 MVP：凍結→0.3s 播放→凍結，彈弓移動取代 A/D+Space | 新功能，非錯誤修復 | 新增 `turn_manager.gd`（Autoload，time_scale 管理）、`aim_preview.gd`（虛線預覽）；重寫 `player.gd`（移除即時輸入，加入 slingshot drag + TurnManager gate）。已移除 auto_retrieve_attack。 |
 | 2026-06-22 | [ERR-GAP047] 右鍵勾敵人玩家被拉動 | wire 鉤到敵人時玩家被拉向錨點，與預期相反 | `_apply_wire()` 無條件執行 `WireConstraint.constrain()`，沒有判斷錨點是否在移動 body 上 | `player.gd` `_apply_wire()` 加檢查：每幀同步 `_wire.anchor_pos = _wire_anchor.global_position`；若 `_wire_anchor.attached_body != null` 則 `return` 不執行 constraint |
+| 2026-06-23 | [ERR-GAP058] 輸入永遠不觸發 | `_input`/`_unhandled_input` 在 Player 節點均無反應，polling 也無反應 | `Player.tscn` 中 `Body` (ColorRect) 子節點 `mouse_filter` 預設 STOP，攔截所有滑鼠事件。且 `DisplayServer.mouse_get_button_state()` 偵測全 OS 滑鼠狀態（非視窗 focus 內），導致 Claude UI 點擊誤觸發遊戲 | (1) `Player.tscn` Body ColorRect 加 `mouse_filter = 2` (IGNORE)；(2) 用 `Input.is_mouse_button_pressed()` polling（只在視窗 focus 時為 true）；(3) `_ready()` 初始化 `_lmb_prev/_rmb_prev` 避免啟動瞬間誤判 |
 
 ---
 
