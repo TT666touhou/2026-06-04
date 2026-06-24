@@ -45,4 +45,3 @@ collision_mask = 1
 [node name="GhostShape" type="CollisionShape2D" parent="GhostBody" unique_id=554433221]
 shape = SubResource("1_rect")
 
-[node name="Camera2D" type="Camera2D" parent="." unique_id=254480194]

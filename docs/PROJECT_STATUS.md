@@ -62,6 +62,17 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### GAP-063 — 鏡頭控制器 + 世界擴展（2026-06-24）
+
+- **完成日期**：2026-06-24
+- **修改檔案**：`scripts/camera_controller.gd`（新增）、`scenes/MVP_Test.tscn`、`scenes/Player.tscn`
+- **修改內容**：
+  - Camera2D 從 Player 子節點移至場景 root，避免 FROZEN 時鏡頭被 Player 位置鎖定
+  - `camera_controller.gd`：FROZEN 時 WASD 鍵盤平移、滾輪縮放（0.25x~3.0x、zoom-toward-mouse）、中鍵拖曳；PLAYING 時 lerp 跟隨 Player（FOLLOW_LERP=7）
+  - 世界擴展至 2560×1440：Ground/Ceiling/WallLeft/WallRight 形狀同步更新
+  - Camera limits：left=0, top=-800, right=2560, bottom=1440
+  - 新增平台 F/G/H 覆蓋右側擴展區域
+
 ### GAP-062 還原（2026-06-24）
 
 - **完成日期**：2026-06-24
