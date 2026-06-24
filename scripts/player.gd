@@ -17,7 +17,7 @@ const NEEDLE_REACH: float = 480.0
 
 # ── Wall jump (coyote window after leaving a wall) ─────────────────────────────
 const WALL_COYOTE_DURATION: float = 0.15  # seconds W is valid after leaving wall
-@export var wall_jump_kick: float = 120.0  # horizontal speed away from wall on wall-jump
+@export var wall_jump_kick: float = 220.0  # horizontal speed away from wall on wall-jump
 
 # ── Reel animation ─────────────────────────────────────────────────────────────
 const REEL_DURATION: float = 0.25   # seconds to fully reel in
@@ -48,7 +48,7 @@ var _no_stick_frames: int = 0
 # Wall coyote jump
 var _wall_coyote_time: float = 0.0
 var _last_wall_normal: Vector2 = Vector2.ZERO
-var _w_prev: bool = false
+var _wall_jump_lock: float = 0.0  # seconds: horizontal input blocked after wall jump
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -72,7 +72,6 @@ func _ready() -> void:
 	add_child(aim_preview)
 	_lmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	_rmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
-	_w_prev = Input.is_key_pressed(KEY_W)
 
 func _physics_process(delta: float) -> void:
 	# Reel animation: smoothly shorten wire over REEL_DURATION
@@ -156,21 +155,19 @@ func _unhandled_input(_event: InputEvent) -> void:
 # ── Movement ───────────────────────────────────────────────────────────────────
 
 func _apply_movement(delta: float) -> void:
-	var w_now := Input.is_key_pressed(KEY_W)
-
-	# Wall coyote jump: W pressed fresh within the coyote window after leaving a wall
+	# Wall coyote jump: W pressed within the coyote window after leaving a wall.
+	# Fires on any W press (including held), since coyote time zeroes after the jump.
 	if not _stuck and _wall_coyote_time > 0.0:
 		_wall_coyote_time -= delta
-		if w_now and not _w_prev and not is_on_floor():
+		if Input.is_key_pressed(KEY_W) and not is_on_floor():
 			velocity.y = -jump_force
 			velocity.x = _last_wall_normal.x * wall_jump_kick
 			_wall_coyote_time = 0.0
-			_no_stick_frames = 8  # brief grace so player doesn't instantly re-stick
+			_no_stick_frames = 8
+			_wall_jump_lock = 0.18  # block horizontal override so kick isn't cancelled instantly
 
 	if is_on_floor():
 		_wall_coyote_time = 0.0
-
-	_w_prev = w_now
 
 	if _stuck:
 		_apply_stuck_movement()
@@ -183,12 +180,17 @@ func _apply_movement(delta: float) -> void:
 		if not is_on_floor():
 			velocity.y += gravity * delta
 	else:
-		# Free movement
-		velocity.x = h * walk_speed
-		if not is_on_floor():
+		if is_on_floor():
+			_wall_jump_lock = 0.0  # landing restores full horizontal control
+			velocity.x = h * walk_speed
+			if Input.is_key_pressed(KEY_W):
+				velocity.y = -jump_force
+		else:
 			velocity.y += gravity * delta
-		elif Input.is_key_pressed(KEY_W):
-			velocity.y = -jump_force
+			if _wall_jump_lock > 0.0:
+				_wall_jump_lock -= delta  # preserve kick velocity; don't override
+			else:
+				velocity.x = h * walk_speed
 
 func _apply_stuck_movement() -> void:
 	var h := float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A))
