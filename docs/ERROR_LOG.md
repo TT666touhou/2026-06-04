@@ -1288,13 +1288,17 @@ global_rotation = dir.angle()
 - **修改**: 移除 queue 機制，改為點擊按鈕立即縮短繩索（`_wire.length -= REEL_STEP`）並呼叫 `TurnManager.commit()`
 - **受影響檔案**: `scripts/player.gd`（移除 `_reel_queued` 變數、`_on_turn_started` 邏輯，新增 `_do_reel()`）
 
-## GAP-067 右鍵綁線改為免費動作，不消耗回合（2026-06-24）
+## GAP-069 恢復綁線觸發物理回合（Ronin A 方案）（2026-06-25）
 
-- **Severity**: Design change（行為調整）
-- **需求**: 右鍵發射繩索後玩家停在 FROZEN，選擇收縮/彈弓才啟動物理回合
-- **原本設計**: `_start_grapple()` 末尾呼叫 `TurnManager.commit()`，綁線即觸發回合
-- **修改**: 移除 `_start_grapple()` 內的 `TurnManager.commit()`，綁線為免費動作
+- **Severity**: Design correction（設計修正）
+- **背景**: GAP-067 錯誤理解需求，移除了 commit；實際需求是 Ronin 方案 A：綁住→物理立即開始
+- **修改**: 恢復 `_start_grapple()` 末尾的 `TurnManager.commit()`；右鍵綁線 → 0.3s 物理擺盪 → FROZEN
 - **受影響檔案**: `scripts/player.gd`
+
+## GAP-067 右鍵綁線改為免費動作，不消耗回合（2026-06-24）— ⚠️ 已由 GAP-069 修正
+
+- **Severity**: Design change（行為調整）—【此修改方向錯誤，GAP-069 已回退】
+- **教訓**: 需求模糊時必須先用 AskUserQuestion 確認，不可假設；「綁住時物理才開始」≠「綁線為免費動作」
 
 ## GAP-068 黏附條件修正：無繩索時才觸發（2026-06-24）
 

@@ -424,6 +424,7 @@ func _start_grapple() -> void:
 	if hit.is_empty():
 		return  # no surface in range — silent fail
 	needle_manager.place_wire_anchor_instant(hit["position"], hit["collider"])
+	TurnManager.commit()
 
 func _release_grapple() -> void:
 	needle_manager.release_wire()
