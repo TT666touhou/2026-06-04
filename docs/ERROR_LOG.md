@@ -1334,6 +1334,18 @@ global_rotation = dir.angle()
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
 
+## GAP-077 牆壁跳躍 coyote time（2026-06-25）
+
+- **Severity**: Feature — 離牆後短暫視窗內按 W 觸發跳躍
+- **設計需求**: 玩家離牆後時間夠短時按 W，應觸發「推離牆壁」跳躍（向牆壁法線方向施加橫向速度）
+- **標準做法**: Coyote time — 記錄離牆瞬間的 `_last_wall_normal`，啟動 0.15s 倒數；倒數內偵測 W 按下前緣（`w_now and not _w_prev`）→ 觸發跳躍
+- **實作細節**:
+  - `WALL_COYOTE_DURATION = 0.15s`、`wall_jump_kick = 120.0 px/s`（可調 @export）
+  - 被動離牆（crawl 出邊緣）和主動推離（按遠離牆方向）都授予 coyote 視窗
+  - 跳躍後設 `_no_stick_frames=8` 防止立即重黏
+  - 落地（`is_on_floor()`）清零 coyote 計時器
+- **受影響檔案**: `scripts/player.gd`
+
 ## GAP-076 爬牆/天花板離開表面後持續懸浮 bug（2026-06-25）
 
 - **Severity**: High — 玩家爬到天花板邊緣 crawl 出去 / 爬牆超過牆頂，_stuck 未清除，持續懸浮
