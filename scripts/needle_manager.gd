@@ -115,6 +115,7 @@ func _on_embedded(hit_pos: Vector2, collider: Object, n_type: int) -> void:
 	var anchor := needle_anchor_scene.instantiate()
 	anchor.type = _ANCHOR_ATTACK if n_type == _NEEDLE_ATTACK else _ANCHOR_WIRE
 	anchor.global_position = hit_pos
+	anchor.z_index = 1
 	if collider is PhysicsBody2D:
 		anchor.attached_body = collider as PhysicsBody2D
 	_needle_layer.add_child(anchor)

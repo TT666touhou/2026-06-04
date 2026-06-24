@@ -38,6 +38,8 @@ var _reel_elapsed: float = 0.0
 # Surface sticking (wall / ceiling / ledge)
 var _stuck: bool = false
 var _stuck_normal: Vector2 = Vector2.ZERO
+# Grace frames after _unstick() to prevent immediate re-stick
+var _no_stick_frames: int = 0
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -82,8 +84,11 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_apply_wire_post()
 
+	# Grace cooldown after _unstick() — prevent instant re-stick the same/next frame
+	if _no_stick_frames > 0:
+		_no_stick_frames -= 1
 	# Auto-stick: Ronin style — any surface contact = grab; wire releases if active
-	if not _reel_animating and not _stuck and not is_on_floor():
+	elif not _reel_animating and not _stuck and not is_on_floor():
 		if is_on_wall():
 			if _wire != null:
 				_release_grapple()
@@ -160,13 +165,15 @@ func _apply_stuck_movement() -> void:
 		if h * _stuck_normal.x > 0.3:
 			_unstick()
 			velocity.x = h * walk_speed
+			# velocity.y retains climb value; gravity resumes next frame
 	elif _stuck_normal.y > 0.5:
 		# Ceiling: A/D = crawl left/right
 		velocity.x = h * wall_climb_speed
 		velocity.y = 0.0
-		# S = drop off ceiling
+		# S = drop off ceiling — give downward impulse so ceiling contact clears
 		if v > 0.3:
 			_unstick()
+			velocity.y = 220.0
 
 # ── Reel ───────────────────────────────────────────────────────────────────────
 
@@ -188,6 +195,7 @@ func _stick_to_surface(normal: Vector2) -> void:
 func _unstick() -> void:
 	_stuck = false
 	_stuck_normal = Vector2.ZERO
+	_no_stick_frames = 4
 
 func _check_ledge_snap() -> void:
 	if velocity.y < -50.0:
@@ -333,32 +341,20 @@ func _apply_wire_post() -> void:
 	velocity = r["vel"] as Vector2
 
 func _shoot_attack() -> void:
-	var from := global_position
+	var from := throw_origin.global_position
 	var to_mouse := get_global_mouse_position() - from
 	if to_mouse.length() < 4.0:
 		return
-	var dir := to_mouse.normalized()
-	var space := get_world_2d().direct_space_state
-	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
-	var hit := space.intersect_ray(query)
-	if hit.is_empty():
-		return
-	needle_manager.place_attack_anchor_instant(hit["position"], hit["collider"])
+	needle_manager.shoot_attack_needle(from, to_mouse.normalized())
 
 func _start_grapple() -> void:
 	if _wire != null or (_wire_projectile != null and is_instance_valid(_wire_projectile)):
 		return
-	var from := global_position
+	var from := throw_origin.global_position
 	var to_mouse := get_global_mouse_position() - from
 	if to_mouse.length() < 4.0:
 		return
-	var dir := to_mouse.normalized()
-	var space := get_world_2d().direct_space_state
-	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
-	var hit := space.intersect_ray(query)
-	if hit.is_empty():
-		return
-	needle_manager.place_wire_anchor_instant(hit["position"], hit["collider"])
+	needle_manager.shoot_wire_needle(from, to_mouse.normalized())
 
 func _release_grapple() -> void:
 	needle_manager.release_wire()
