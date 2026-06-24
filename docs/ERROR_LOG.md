@@ -1270,6 +1270,16 @@ global_rotation = dir.angle()
 - 盪繩靜止 kick：20.0 → 100.0 px/s（靜止懸掛時弧線可見）
 - `to_mouse` 重複宣告 Parser Error → 被動分支改名 `to_mouse_p`
 
+## GAP-066 收縮動畫化 + 黏壁/天花板 + 邊緣掛住（2026-06-24）
+
+- **Severity**: Design change（行為擴充）
+- **需求**：① 收縮改為一回合內平滑動畫至錨點；② Player 碰牆/天花板自動黏住（壁虎模式）；③ 靠近平台邊緣自動 snap 掛住
+- **實作**：
+  - `_reel_animating` flag + `_physics_process` 內 lerp `_wire.length` from→rope_min_length over TURN_DURATION；reel 完成自動 `_release_grapple()`
+  - `_stuck` / `_stuck_normal` 狀態；stuck 時 velocity=0 + 跳過重力；`is_on_wall()` / `is_on_ceiling()` 自動觸發 `_stick_to_surface()`
+  - `_check_ledge_snap()`：雙向水平 raycast 偵測手部高度的牆面邊角，確認上方無頂蓋 → snap + stick
+- **受影響檔案**: `scripts/player.gd`
+
 ## GAP-065 收縮繩索消耗一個回合（2026-06-24）
 
 - **Severity**: Design change（行為調整）

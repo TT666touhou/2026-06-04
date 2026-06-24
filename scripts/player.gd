@@ -34,6 +34,15 @@ var _rmb_prev: bool = false
 # Reel button rect (world coords) — set by _update_preview, read by input
 var _reel_btn_rect: Rect2 = Rect2()
 
+# Reel animation state
+var _reel_animating: bool = false
+var _reel_from: float = 0.0
+var _reel_elapsed: float = 0.0
+
+# Surface sticking (wall / ceiling / ledge)
+var _stuck: bool = false
+var _stuck_normal: Vector2 = Vector2.ZERO
+
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
 @onready var throw_origin: Marker2D = $AimPivot/ThrowOrigin
@@ -60,10 +69,36 @@ func _ready() -> void:
 	TurnManager.turn_started.connect(_on_turn_started)
 
 func _physics_process(delta: float) -> void:
-	_apply_gravity(delta)
+	# Reel animation: smoothly shorten wire over one turn duration
+	if _reel_animating:
+		if _wire != null:
+			_reel_elapsed += delta
+			var t := clampf(_reel_elapsed / TURN_DURATION, 0.0, 1.0)
+			_wire.length = lerpf(_reel_from, rope_min_length, t)
+			if t >= 1.0:
+				_reel_animating = false
+				_release_grapple()
+		else:
+			_reel_animating = false
+
+	if _stuck:
+		velocity = Vector2.ZERO
+	else:
+		_apply_gravity(delta)
+
 	_apply_wire_pre(delta)
 	move_and_slide()
 	_apply_wire_post()
+
+	# Auto-stick: wall / ceiling / ledge (not during reel animation)
+	if not _reel_animating and not _stuck and not is_on_floor():
+		if is_on_wall():
+			_stick_to_surface(get_wall_normal())
+		elif is_on_ceiling():
+			_stick_to_surface(Vector2.DOWN)
+		else:
+			_check_ledge_snap()
+
 	_update_wire_renderer()
 
 func _process(_delta: float) -> void:
@@ -103,7 +138,10 @@ func _poll_mouse() -> void:
 func _do_reel() -> void:
 	if _wire == null:
 		return
-	_wire.length = maxf(_wire.length - REEL_STEP, rope_min_length)
+	_reel_from = _wire.length
+	_reel_elapsed = 0.0
+	_reel_animating = true
+	_unstick()
 	TurnManager.commit()
 
 func _on_turn_started() -> void:
@@ -133,8 +171,43 @@ func _launch_slingshot(release_pos: Vector2) -> void:
 	var dir := drag.normalized()
 	var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 	velocity = dir * speed
+	_unstick()
 	_release_grapple()  # wire breaks when player chooses to move
 	TurnManager.commit()
+
+func _stick_to_surface(normal: Vector2) -> void:
+	_stuck = true
+	_stuck_normal = normal
+	velocity = Vector2.ZERO
+
+func _unstick() -> void:
+	_stuck = false
+	_stuck_normal = Vector2.ZERO
+
+func _check_ledge_snap() -> void:
+	if velocity.y < -50.0:
+		return
+	var space := get_world_2d().direct_space_state
+	const HAND_Y := -12.0
+	const REACH := 12.0
+	for side in [-1.0, 1.0]:
+		var hand := global_position + Vector2(side * 12.0, HAND_Y)
+		var q := PhysicsRayQueryParameters2D.create(
+			hand, hand + Vector2(side * REACH, 0.0), 1, [get_rid()])
+		var hit := space.intersect_ray(q)
+		if hit.is_empty():
+			continue
+		# Confirm open space above hit point (= ledge corner, not mid-wall)
+		var hit_pos: Vector2 = hit["position"]
+		var above: Vector2 = hit_pos + Vector2(-side * 2.0, -2.0)
+		var up_q := PhysicsRayQueryParameters2D.create(
+			above, above + Vector2(0.0, -8.0), 1, [get_rid()])
+		if space.intersect_ray(up_q).is_empty():
+			global_position.y = hit_pos.y - HAND_Y
+			velocity = Vector2.ZERO
+			_stuck = true
+			_stuck_normal = Vector2(-side, 0.0)
+			break
 
 # ── Always-on preview — all layers drawn simultaneously ────────────────────────
 
