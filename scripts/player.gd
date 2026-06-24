@@ -197,9 +197,10 @@ func _apply_stuck_movement() -> void:
 	var v := float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))  # positive = down
 
 	if abs(_stuck_normal.x) > 0.5:
-		# Vertical wall: W/S = climb up/down
+		# Vertical wall: W/S = climb up/down.
+		# Negative normal.x = into-wall direction; keeps player flush against surface.
 		velocity.y = v * wall_climb_speed
-		velocity.x = 0.0
+		velocity.x = -_stuck_normal.x * 8.0
 		# Press away from wall = push off and fall (grant coyote window)
 		if h * _stuck_normal.x > 0.3:
 			_wall_coyote_time = WALL_COYOTE_DURATION
@@ -208,9 +209,10 @@ func _apply_stuck_movement() -> void:
 			velocity.x = h * walk_speed
 			# velocity.y retains climb value; gravity resumes next frame
 	elif _stuck_normal.y > 0.5:
-		# Ceiling: A/D = crawl left/right
+		# Ceiling: A/D = crawl left/right.
+		# Push upward (-y) to keep player flush against ceiling surface.
 		velocity.x = h * wall_climb_speed
-		velocity.y = 0.0
+		velocity.y = -_stuck_normal.y * 8.0
 		# S = drop off ceiling — give downward impulse so ceiling contact clears
 		if v > 0.3:
 			_unstick()
