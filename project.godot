@@ -8,16 +8,16 @@
 
 config_version=5
 
-[autoload]
-
-TurnManager="*res://scripts/turn_manager.gd"
-
 [application]
 
 config/name="needle_game"
 run/main_scene="res://scenes/MVP_Test.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+TurnManager="*res://scripts/turn_manager.gd"
 
 [display]
 
