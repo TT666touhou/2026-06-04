@@ -9,9 +9,9 @@ extends CharacterBody2D
 @export var gravity: float = 980.0
 
 # ── Wire grapple ──────────────────────────────────────────────────────────────
-@export var rope_reel_speed: float = 150.0    # px/s pulled toward anchor each turn
 @export var rope_min_length: float = 24.0
 @export var rope_snap_factor: float = 0.35
+const REEL_STEP: float = 120.0  # px shortened per manual reel action
 
 # ── Needle reach preview (must match NeedleProjectile.flight_speed × TURN_DURATION) ──
 const NEEDLE_SPEED: float = 1600.0
@@ -31,10 +31,10 @@ var _sling_start: Vector2 = Vector2.ZERO
 var _lmb_prev: bool = false
 var _rmb_prev: bool = false
 
-# Disconnect button rect (world coords) — set by _update_preview, read by input
-var _disconnect_btn_rect: Rect2 = Rect2()
-# When true, wire releases at next turn start (not immediately)
-var _disconnect_queued: bool = false
+# Reel button rect (world coords) — set by _update_preview, read by input
+var _reel_btn_rect: Rect2 = Rect2()
+# When true, wire reels in REEL_STEP px at next turn start
+var _reel_queued: bool = false
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -83,8 +83,8 @@ func _poll_mouse() -> void:
 
 	if lmb and not _lmb_prev:
 		if TurnManager.is_frozen():
-			if _disconnect_btn_rect.has_area() and _disconnect_btn_rect.has_point(mouse_w):
-				_disconnect_queued = not _disconnect_queued  # toggle: queue or cancel
+			if _reel_btn_rect.has_area() and _reel_btn_rect.has_point(mouse_w):
+				_reel_queued = not _reel_queued  # toggle: queue or cancel
 			elif _is_on_player(mouse_w):
 				_sling_dragging = true
 				_sling_start = mouse_w
@@ -103,9 +103,9 @@ func _poll_mouse() -> void:
 	_rmb_prev = rmb
 
 func _on_turn_started() -> void:
-	if _disconnect_queued:
-		_disconnect_queued = false
-		_release_grapple()
+	if _reel_queued and _wire != null:
+		_reel_queued = false
+		_wire.length = maxf(_wire.length - REEL_STEP, rope_min_length)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
@@ -131,6 +131,7 @@ func _launch_slingshot(release_pos: Vector2) -> void:
 	var dir := drag.normalized()
 	var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 	velocity = dir * speed
+	_release_grapple()  # wire breaks when player chooses to move
 	TurnManager.commit()
 
 # ── Always-on preview — all layers drawn simultaneously ────────────────────────
@@ -168,11 +169,8 @@ func _update_preview() -> void:
 			var sling_dist := to_mouse_p.length()
 			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
 			var start_vel := sling_dir * speed
-			# Pass wire params only if wire active AND disconnect not queued
-			var wire_live := (_wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor) and not _disconnect_queued)
-			var w_anchor := _wire_anchor.global_position if wire_live else Vector2.ZERO
-			var w_len := _wire.length if wire_live else 0.0
-			var r1 := _simulate_arc_result(global_position, start_vel, 60, w_anchor, w_len)
+			# Wire breaks when player chooses to move — simulate without wire
+			var r1 := _simulate_arc_result(global_position, start_vel, 60)
 			var arc: PackedVector2Array = r1["arc"]
 			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
 			aim_preview.clear_slingshot2()
@@ -180,24 +178,33 @@ func _update_preview() -> void:
 		aim_preview.clear_slingshot()
 		aim_preview.clear_slingshot2()
 
-	# ── Layer 3: Wire pull arc + disconnect button (shown when wire active) ──
+	# ── Layer 3: Wire pull arc + reel button (shown when wire active) ──
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var anchor_pos := _wire_anchor.global_position
 		var wire_len := _wire.length
-		if _disconnect_queued:
-			# Show free-fall arc (wire will release at turn start)
-			var free_arc := _simulate_arc_result(global_position, velocity, 60)
-			aim_preview.set_swing(free_arc["arc"])
-		else:
-			var wire_arc := _simulate_wire_pull(global_position, velocity, anchor_pos, wire_len, 60)
-			aim_preview.set_swing(wire_arc)
+		var wire_arc := _simulate_wire_pull(global_position, velocity, anchor_pos, wire_len, 60)
+		aim_preview.set_swing(wire_arc)
 		var btn_world := anchor_pos + Vector2(0, -28)
-		_disconnect_btn_rect = Rect2(btn_world - Vector2(36, 14), Vector2(72, 28))
-		aim_preview.set_disconnect_button(_disconnect_btn_rect, _disconnect_queued)
+		_reel_btn_rect = Rect2(btn_world - Vector2(36, 14), Vector2(72, 28))
+		aim_preview.set_reel_button(_reel_btn_rect, _reel_queued)
+		aim_preview.clear_wire_range()
 	else:
 		aim_preview.clear_swing()
-		_disconnect_btn_rect = Rect2()
-		aim_preview.set_disconnect_button(Rect2(), false)
+		_reel_btn_rect = Rect2()
+		aim_preview.set_reel_button(Rect2(), false)
+		# Show wire range circle with raycast toward mouse
+		var dir := mouse_w - global_position
+		if dir.length() > 4.0:
+			var ray_dir := dir.normalized()
+			var space := get_world_2d().direct_space_state
+			var query := PhysicsRayQueryParameters2D.create(
+				global_position, global_position + ray_dir * NEEDLE_REACH, 1, [get_rid()])
+			var hit := space.intersect_ray(query)
+			var hit_valid := not hit.is_empty()
+			var hit_pos: Vector2 = hit["position"] if hit_valid else global_position + ray_dir * NEEDLE_REACH
+			aim_preview.set_wire_range(global_position, NEEDLE_REACH, hit_pos, hit_valid)
+		else:
+			aim_preview.clear_wire_range()
 
 func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
 	return _simulate_arc_result(start_pos, start_vel, steps)["arc"]
@@ -222,9 +229,8 @@ func _simulate_arc_result(
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
-		# Wire reel + pre-constraint
+		# Wire pre-constraint (no auto-reel — reel is manual)
 		if wire_active:
-			wlen = maxf(wlen - rope_reel_speed * dt, rope_min_length)
 			var to_anchor := wire_anchor - pos
 			var d := to_anchor.length()
 			if d > wlen and d > 0.001:
@@ -261,7 +267,6 @@ func _simulate_wire_pull(
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
-		cur_len = maxf(cur_len - rope_reel_speed * dt, rope_min_length)
 		var to_anchor := anchor_pos - pos
 		var d := to_anchor.length()
 		if d > cur_len and d > 0.001:
@@ -285,7 +290,7 @@ func _apply_gravity(delta: float) -> void:
 
 # ── Wire ───────────────────────────────────────────────────────────────────────
 
-func _apply_wire_pre(delta: float) -> void:
+func _apply_wire_pre(_delta: float) -> void:
 	if _wire == null:
 		return
 	if _wire_anchor != null and is_instance_valid(_wire_anchor):
@@ -294,7 +299,6 @@ func _apply_wire_pre(delta: float) -> void:
 	if anchor_node != null and anchor_node.attached_body != null \
 			and not (anchor_node.attached_body is StaticBody2D):
 		return
-	_wire.reel(delta)
 	velocity = _wire.pre_constrain(global_position, velocity)
 
 func _apply_wire_post() -> void:
@@ -312,25 +316,34 @@ func _shoot_attack() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
 	var dir := (get_global_mouse_position() - from).normalized()
 	needle_manager.shoot_attack_needle(from, dir)
+	_release_grapple()  # wire breaks when player acts
 	TurnManager.commit()
 
 func _start_grapple() -> void:
 	if _wire != null or (_wire_projectile != null and is_instance_valid(_wire_projectile)):
 		return
-	var from := throw_origin.global_position if throw_origin else global_position
-	var dir := (get_global_mouse_position() - from).normalized()
-	needle_manager.shoot_wire_needle(from, dir)
+	var from := global_position
+	var to_mouse := get_global_mouse_position() - from
+	if to_mouse.length() < 4.0:
+		return
+	var dir := to_mouse.normalized()
+	var space := get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 1, [get_rid()])
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return  # no surface in range — silent fail
+	needle_manager.place_wire_anchor_instant(hit["position"], hit["collider"])
 	TurnManager.commit()
 
 func _release_grapple() -> void:
-	_disconnect_queued = false
+	_reel_queued = false
 	needle_manager.release_wire()
 	_wire = null
 	_wire_anchor = null
 	_wire_projectile = null
 	wire_renderer.visible = false
-	_disconnect_btn_rect = Rect2()
-	aim_preview.set_disconnect_button(Rect2(), false)
+	_reel_btn_rect = Rect2()
+	aim_preview.set_reel_button(Rect2(), false)
 
 func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
@@ -341,7 +354,6 @@ func _on_wire_anchor_ready(anchor: Node) -> void:
 	_wire = anchor.wire as WireConstraint
 	_wire_anchor = anchor as Node2D
 	_wire.min_length = rope_min_length
-	_wire.reel_speed = rope_reel_speed
 	_wire.snap_factor = rope_snap_factor
 	_wire.setup(anchor.global_position, global_position.distance_to(anchor.global_position))
 

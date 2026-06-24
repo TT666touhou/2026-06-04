@@ -62,6 +62,16 @@
   - `docs/sop-state.md`：SOP 進度追蹤文件（機器可讀）
   - `scripts/set-role.ps1`：切換角色時顯示 PENDING SOP
 
+### GAP-064 — Ronin 風格即時勾爪 + 手動收縮（2026-06-24）
+
+- **完成日期**：2026-06-24
+- **修改檔案**：`scripts/player.gd`、`scripts/aim_preview.gd`、`scripts/needle_manager.gd`
+- **修改內容**：
+  - 右鍵勾爪改為即時固定：raycast 偵測 480px 內牆面，命中→瞬間建立錨點；未命中→靜默失敗不消耗回合
+  - 移除繩索自動收縮（`rope_reel_speed`），改為手動「⬆ 收縮」按鈕（每次縮短 120px，回合開始執行）
+  - Player 任何移動（彈弓/攻擊針）自動斷線，不需手動斷開按鈕
+  - aim_preview 新增：虛線範圍圈、命中綠點/未命中紅X、收縮按鈕（取代斷開按鈕）
+
 ### GAP-063 — 鏡頭控制器 + 世界擴展（2026-06-24）
 
 - **完成日期**：2026-06-24
