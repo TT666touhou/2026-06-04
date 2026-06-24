@@ -44,7 +44,6 @@ var _no_stick_frames: int = 0
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
 @onready var throw_origin: Marker2D = $AimPivot/ThrowOrigin
-@onready var ghost_body: CharacterBody2D = $GhostBody
 
 var aim_preview: Node2D = null
 
@@ -348,11 +347,6 @@ func _simulate_wire_pull(
 			pos = anchor_pos - (to_anchor / d) * wire_len
 		pts.append(pos)
 	return pts
-
-# ── Gravity ────────────────────────────────────────────────────────────────────
-
-func _is_on_player(world_pos: Vector2) -> bool:
-	return (world_pos - global_position).length_squared() <= 50.0 * 50.0
 
 # ── Wire ───────────────────────────────────────────────────────────────────────
 
