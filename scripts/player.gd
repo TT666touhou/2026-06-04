@@ -14,9 +14,9 @@ extends CharacterBody2D
 @export var rope_snap_factor: float = 0.35
 
 # ── Needle reach preview (must match NeedleProjectile.flight_speed × TURN_DURATION) ──
-const NEEDLE_SPEED: float = 800.0
+const NEEDLE_SPEED: float = 1600.0
 const TURN_DURATION: float = 0.3
-const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 240 px
+const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 480 px
 
 # ── Internal state ─────────────────────────────────────────────────────────────
 var _wire: WireConstraint = null
