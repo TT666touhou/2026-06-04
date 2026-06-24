@@ -13,6 +13,18 @@ powershell -NoProfile -File "D:\2026-06-04\scripts\session-start.ps1"
 
 ---
 
+## ⛔ 場景內容保護規則（2026-06-24 硬性規則）
+
+> **絕對禁止** 在沒有用戶明確要求的情況下修改以下內容：
+> - 場景中的平台位置/數量（不得新增或刪除平台）
+> - 世界尺寸（Ground/Ceiling/WallLeft/WallRight 的 shape size 和 position）
+> - 任何 StaticBody2D 的幾何形狀
+>
+> **判斷標準**：用戶要求「加鏡頭」≠ 許可「改世界大小或加平台」。
+> 有疑問時**先問**，不要假設用戶同意。
+
+---
+
 ## ⛔ 修完 BUG 或實作功能後（commit 前，缺任一 = 知識丟失）
 
 | ✅ | `docs/ERROR_LOG.md` 新增 GAP-XXX 條目 |

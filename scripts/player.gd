@@ -316,7 +316,6 @@ func _shoot_attack() -> void:
 	var from := throw_origin.global_position if throw_origin else global_position
 	var dir := (get_global_mouse_position() - from).normalized()
 	needle_manager.shoot_attack_needle(from, dir)
-	_release_grapple()  # wire breaks when player acts
 	TurnManager.commit()
 
 func _start_grapple() -> void:
