@@ -1,37 +1,33 @@
-## Player — Turn-based slingshot + needle controller.
-## GAP-055/056: Rewrite for turn-based system.
-## GAP-056b: Always-on preview, disconnect button, 1.0s turns, fixed swing sim.
+## Player — real-time WASD movement + wire grapple + needle combat.
+## GAP-073: Turn-based system removed; Space = bullet time via TurnManager.
 extends CharacterBody2D
 
-# ── Slingshot ──────────────────────────────────────────────────────────────────
-@export var max_launch_speed: float = 1200.0  # px/s at full drag
-@export var max_drag_pixels: float = 80.0     # drag distance for full power
+# ── Movement ───────────────────────────────────────────────────────────────────
+@export var walk_speed: float = 220.0
+@export var jump_force: float = 550.0
+@export var wall_climb_speed: float = 140.0
 @export var gravity: float = 980.0
 
 # ── Wire grapple ──────────────────────────────────────────────────────────────
 @export var rope_min_length: float = 24.0
 @export var rope_snap_factor: float = 0.35
-const REEL_STEP: float = 120.0  # px shortened per manual reel action
 
-# ── Needle reach preview (must match NeedleProjectile.flight_speed × TURN_DURATION) ──
-const NEEDLE_SPEED: float = 1600.0
-const TURN_DURATION: float = 0.3
-const NEEDLE_REACH: float = NEEDLE_SPEED * TURN_DURATION  # 480 px
+# ── Needle reach (max range for both attack needle and wire grapple) ───────────
+const NEEDLE_REACH: float = 480.0
+
+# ── Reel animation ─────────────────────────────────────────────────────────────
+const REEL_DURATION: float = 0.25   # seconds to fully reel in
 
 # ── Internal state ─────────────────────────────────────────────────────────────
 var _wire: WireConstraint = null
 var _wire_anchor: Node2D = null
 var _wire_projectile: Node = null
 
-# Slingshot drag
-var _sling_dragging: bool = false
-var _sling_start: Vector2 = Vector2.ZERO
-
-# Edge detection for DisplayServer raw polling
+# Mouse edge detection
 var _lmb_prev: bool = false
 var _rmb_prev: bool = false
 
-# Reel button rect (world coords) — set by _update_preview, read by input
+# Reel button rect (world coords)
 var _reel_btn_rect: Rect2 = Rect2()
 
 # Reel animation state
@@ -63,17 +59,15 @@ func _ready() -> void:
 	aim_preview.top_level = true
 	aim_preview.set_script(preview_script)
 	add_child(aim_preview)
-	set_process_unhandled_input(false)
 	_lmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	_rmb_prev = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
-	TurnManager.turn_started.connect(_on_turn_started)
 
 func _physics_process(delta: float) -> void:
-	# Reel animation: smoothly shorten wire over one turn duration
+	# Reel animation: smoothly shorten wire over REEL_DURATION
 	if _reel_animating:
 		if _wire != null:
 			_reel_elapsed += delta
-			var t := clampf(_reel_elapsed / TURN_DURATION, 0.0, 1.0)
+			var t := clampf(_reel_elapsed / REEL_DURATION, 0.0, 1.0)
 			_wire.length = lerpf(_reel_from, rope_min_length, t)
 			if t >= 1.0:
 				_reel_animating = false
@@ -83,11 +77,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			_reel_animating = false
 
-	if _stuck:
-		velocity = Vector2.ZERO
-	else:
-		_apply_gravity(delta)
-
+	_apply_movement(delta)
 	_apply_wire_pre(delta)
 	move_and_slide()
 	_apply_wire_post()
@@ -115,31 +105,70 @@ func _process(_delta: float) -> void:
 	else:
 		aim_preview.clear_all()
 
+# ── Input ──────────────────────────────────────────────────────────────────────
+
 func _poll_mouse() -> void:
 	var lmb := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	var rmb := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 	var mouse_w := get_global_mouse_position()
 
 	if lmb and not _lmb_prev:
-		if TurnManager.is_frozen():
-			if _reel_btn_rect.has_area() and _reel_btn_rect.has_point(mouse_w):
-				_do_reel()
-			elif _is_on_player(mouse_w):
-				_sling_dragging = true
-				_sling_start = mouse_w
-			else:
-				_shoot_attack()
-	elif not lmb and _lmb_prev:
-		if _sling_dragging:
-			_sling_dragging = false
-			_launch_slingshot(mouse_w)
+		if _reel_btn_rect.has_area() and _reel_btn_rect.has_point(mouse_w):
+			_do_reel()
+		else:
+			_shoot_attack()
 
 	if rmb and not _rmb_prev:
-		if TurnManager.is_frozen():
-			_start_grapple()
+		_start_grapple()
 
 	_lmb_prev = lmb
 	_rmb_prev = rmb
+
+func _unhandled_input(_event: InputEvent) -> void:
+	pass
+
+# ── Movement ───────────────────────────────────────────────────────────────────
+
+func _apply_movement(delta: float) -> void:
+	if _stuck:
+		_apply_stuck_movement()
+		return
+
+	var h := float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A))
+
+	if _wire != null:
+		# Swinging on wire: gravity only, wire constraint handles position
+		if not is_on_floor():
+			velocity.y += gravity * delta
+	else:
+		# Free movement
+		velocity.x = h * walk_speed
+		if not is_on_floor():
+			velocity.y += gravity * delta
+		elif Input.is_key_pressed(KEY_W):
+			velocity.y = -jump_force
+
+func _apply_stuck_movement() -> void:
+	var h := float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A))
+	var v := float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))  # positive = down
+
+	if abs(_stuck_normal.x) > 0.5:
+		# Vertical wall: W/S = climb up/down
+		velocity.y = v * wall_climb_speed
+		velocity.x = 0.0
+		# Press away from wall = push off and fall
+		if h * _stuck_normal.x > 0.3:
+			_unstick()
+			velocity.x = h * walk_speed
+	elif _stuck_normal.y > 0.5:
+		# Ceiling: A/D = crawl left/right
+		velocity.x = h * wall_climb_speed
+		velocity.y = 0.0
+		# S = drop off ceiling
+		if v > 0.3:
+			_unstick()
+
+# ── Reel ───────────────────────────────────────────────────────────────────────
 
 func _do_reel() -> void:
 	if _wire == null:
@@ -148,34 +177,8 @@ func _do_reel() -> void:
 	_reel_elapsed = 0.0
 	_reel_animating = true
 	_unstick()
-	TurnManager.commit()
 
-func _on_turn_started() -> void:
-	pass
-
-func _unhandled_input(_event: InputEvent) -> void:
-	pass
-
-
-func _is_on_player(world_pos: Vector2) -> bool:
-	# Circle radius 50px — generous hitbox so user can easily click the character
-	return (world_pos - global_position).length_squared() <= 50.0 * 50.0
-
-# ── Slingshot ──────────────────────────────────────────────────────────────────
-
-func _launch_slingshot(release_pos: Vector2) -> void:
-	if not TurnManager.is_frozen():
-		return
-	var drag := release_pos - global_position
-	var sling_dist := drag.length()
-	if sling_dist < 2.0:
-		return
-	var dir := drag.normalized()
-	var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
-	velocity = dir * speed
-	_unstick()
-	_release_grapple()  # wire breaks when player chooses to move
-	TurnManager.commit()
+# ── Surface sticking ───────────────────────────────────────────────────────────
 
 func _stick_to_surface(normal: Vector2) -> void:
 	_stuck = true
@@ -199,7 +202,6 @@ func _check_ledge_snap() -> void:
 		var hit := space.intersect_ray(q)
 		if hit.is_empty():
 			continue
-		# Confirm open space above hit point (= ledge corner, not mid-wall)
 		var hit_pos: Vector2 = hit["position"]
 		var above: Vector2 = hit_pos + Vector2(-side * 2.0, -2.0)
 		var up_q := PhysicsRayQueryParameters2D.create(
@@ -226,54 +228,26 @@ func _try_stick_after_reel(anchor_pos: Vector2) -> void:
 	if not hit.is_empty():
 		_stick_to_surface(hit["normal"] as Vector2)
 
-# ── Always-on preview — all layers drawn simultaneously ────────────────────────
+# ── Aim preview (shown during bullet time) ─────────────────────────────────────
 
 func _update_preview() -> void:
 	var mouse_w := get_global_mouse_position()
-	var hover_player := _is_on_player(mouse_w)
 
-	# ── Layer 1: Needle trajectory — HIDDEN when hovering player (slingshot mode) ─
-	if not hover_player and not _sling_dragging:
-		var from := global_position
-		var to_mouse := mouse_w - from
-		var dist := to_mouse.length()
-		if dist > 8.0:
-			var needle_dir := to_mouse.normalized()
-			var space2 := get_world_2d().direct_space_state
-			var nq := PhysicsRayQueryParameters2D.create(
-				from, from + needle_dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
-			var nhit := space2.intersect_ray(nq)
-			var reach: Vector2 = nhit["position"] if not nhit.is_empty() else from + needle_dir * NEEDLE_REACH
-			aim_preview.set_needle(from, reach, mouse_w)
-		else:
-			aim_preview.clear_needle()
+	# Layer 1: Needle aim trajectory
+	var from := global_position
+	var to_mouse := mouse_w - from
+	if to_mouse.length() > 8.0:
+		var needle_dir := to_mouse.normalized()
+		var space := get_world_2d().direct_space_state
+		var nq := PhysicsRayQueryParameters2D.create(
+			from, from + needle_dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
+		var nhit := space.intersect_ray(nq)
+		var reach: Vector2 = nhit["position"] if not nhit.is_empty() else from + needle_dir * NEEDLE_REACH
+		aim_preview.set_needle(from, reach, mouse_w)
 	else:
 		aim_preview.clear_needle()
 
-	# ── Layer 1b: Player highlight — shown when hovering (slingshot mode ready) ─
-	if hover_player and not _sling_dragging:
-		aim_preview.set_player_hover(global_position, Vector2(16, 32))
-	else:
-		aim_preview.clear_player_hover()
-
-	# ── Layer 2: Slingshot arc — ONLY during active left-drag from player body ─
-	if _sling_dragging:
-		var to_mouse_p := mouse_w - global_position
-		if to_mouse_p.length() > 8.0:
-			var sling_dir := to_mouse_p.normalized()
-			var sling_dist := to_mouse_p.length()
-			var speed := clampf(sling_dist / max_drag_pixels, 0.0, 1.0) * max_launch_speed
-			var start_vel := sling_dir * speed
-			# Wire breaks when player chooses to move — simulate without wire
-			var r1 := _simulate_arc_result(global_position, start_vel, 60)
-			var arc: PackedVector2Array = r1["arc"]
-			aim_preview.set_slingshot(arc, arc[-1] if arc.size() > 0 else global_position, true)
-			aim_preview.clear_slingshot2()
-	else:
-		aim_preview.clear_slingshot()
-		aim_preview.clear_slingshot2()
-
-	# ── Layer 3: Wire pull arc + reel button (shown when wire active) ──
+	# Layer 3: Wire swing arc + reel button (when wire active)
 	if _wire != null and _wire_anchor != null and is_instance_valid(_wire_anchor):
 		var anchor_pos := _wire_anchor.global_position
 		var wire_len := _wire.length
@@ -287,7 +261,7 @@ func _update_preview() -> void:
 		aim_preview.clear_swing()
 		_reel_btn_rect = Rect2()
 		aim_preview.set_reel_button(Rect2(), false)
-		# Show wire range circle with raycast toward mouse
+		# Wire range indicator toward mouse
 		var dir := mouse_w - global_position
 		if dir.length() > 4.0:
 			var ray_dir := dir.normalized()
@@ -301,54 +275,7 @@ func _update_preview() -> void:
 		else:
 			aim_preview.clear_wire_range()
 
-func _simulate_arc(start_pos: Vector2, start_vel: Vector2, steps: int) -> PackedVector2Array:
-	return _simulate_arc_result(start_pos, start_vel, steps)["arc"]
-
-func _simulate_arc_result(
-	start_pos: Vector2, start_vel: Vector2, steps: int,
-	wire_anchor := Vector2.ZERO, cur_wire_len := 0.0
-) -> Dictionary:
-	# Returns {arc: PackedVector2Array, end_vel: Vector2, hit: bool}
-	# If cur_wire_len > 0, applies wire reel + rope constraint each step.
-	var pts := PackedVector2Array()
-	var pos := start_pos
-	var vel := start_vel
-	var dt := TURN_DURATION / steps
-	var wire_active := cur_wire_len > 0.0
-	var wlen := cur_wire_len
-	var ghost_rid := ghost_body.get_rid()
-	var params := PhysicsTestMotionParameters2D.new()
-	params.exclude_bodies = [get_rid()]
-	var result := PhysicsTestMotionResult2D.new()
-	var hit := false
-	pts.append(pos)
-	for _i in range(steps):
-		vel.y += gravity * dt
-		# Wire pre-constraint (no auto-reel — reel is manual)
-		if wire_active:
-			var to_anchor := wire_anchor - pos
-			var d := to_anchor.length()
-			if d > wlen and d > 0.001:
-				var dir := to_anchor / d
-				var radial := vel.dot(dir)
-				if radial < 0.0:
-					vel -= dir * radial
-		params.from = Transform2D(0, pos)
-		params.motion = vel * dt
-		if PhysicsServer2D.body_test_motion(ghost_rid, params, result):
-			pos += result.get_travel()
-			vel = vel.slide(result.get_collision_normal())
-			hit = true
-		else:
-			pos += vel * dt
-		# Wire post-constraint (hard clamp)
-		if wire_active:
-			var to_anchor := wire_anchor - pos
-			var d := to_anchor.length()
-			if d > wlen and d > 0.001:
-				pos = wire_anchor - (to_anchor / d) * wlen
-		pts.append(pos)
-	return {"arc": pts, "end_vel": vel, "hit": hit}
+# ── Wire simulation (for aim preview swing arc) ────────────────────────────────
 
 func _simulate_wire_pull(
 	start_pos: Vector2, start_vel: Vector2,
@@ -357,14 +284,13 @@ func _simulate_wire_pull(
 	var pts := PackedVector2Array()
 	var pos := start_pos
 	var vel := start_vel
-	var dt := TURN_DURATION / steps
-	var cur_len := wire_len
+	var dt := 0.3 / steps
 	pts.append(pos)
 	for _i in range(steps):
 		vel.y += gravity * dt
 		var to_anchor := anchor_pos - pos
 		var d := to_anchor.length()
-		if d > cur_len and d > 0.001:
+		if d > wire_len and d > 0.001:
 			var rope_dir := to_anchor / d
 			var radial := vel.dot(rope_dir)
 			if radial < 0.0:
@@ -372,16 +298,15 @@ func _simulate_wire_pull(
 		pos += vel * dt
 		to_anchor = anchor_pos - pos
 		d = to_anchor.length()
-		if d > cur_len and d > 0.001:
-			pos = anchor_pos - (to_anchor / d) * cur_len
+		if d > wire_len and d > 0.001:
+			pos = anchor_pos - (to_anchor / d) * wire_len
 		pts.append(pos)
 	return pts
 
 # ── Gravity ────────────────────────────────────────────────────────────────────
 
-func _apply_gravity(delta: float) -> void:
-	if not is_on_floor():
-		velocity.y += gravity * delta
+func _is_on_player(world_pos: Vector2) -> bool:
+	return (world_pos - global_position).length_squared() <= 50.0 * 50.0
 
 # ── Wire ───────────────────────────────────────────────────────────────────────
 
@@ -419,7 +344,6 @@ func _shoot_attack() -> void:
 	if hit.is_empty():
 		return
 	needle_manager.place_attack_anchor_instant(hit["position"], hit["collider"])
-	TurnManager.commit()
 
 func _start_grapple() -> void:
 	if _wire != null or (_wire_projectile != null and is_instance_valid(_wire_projectile)):
@@ -433,9 +357,8 @@ func _start_grapple() -> void:
 	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
 	var hit := space.intersect_ray(query)
 	if hit.is_empty():
-		return  # no surface in range — silent fail
+		return
 	needle_manager.place_wire_anchor_instant(hit["position"], hit["collider"])
-	TurnManager.commit()
 
 func _release_grapple() -> void:
 	needle_manager.release_wire()
@@ -450,7 +373,6 @@ func _on_wire_needle_launched(proj: Node) -> void:
 	_wire_projectile = proj
 
 func _on_wire_anchor_ready(anchor: Node) -> void:
-	print("[PLAYER] Wire anchor ready at ", (anchor as Node2D).global_position)
 	_wire_projectile = null
 	_wire = anchor.wire as WireConstraint
 	_wire_anchor = anchor as Node2D

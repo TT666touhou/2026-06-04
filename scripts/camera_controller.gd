@@ -21,20 +21,11 @@ func _process(delta: float) -> void:
 	if _player == null:
 		_player = get_tree().get_first_node_in_group("player") as Node2D
 
-	if TurnManager.is_frozen():
-		# FROZEN: WASD keyboard pan
-		var kdir := Vector2(
-			float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
-			float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
+	# Always follow player (WASD pan removed — WASD now controls player movement)
+	if _player:
+		global_position = global_position.lerp(
+			_player.global_position + Vector2(0, 60), FOLLOW_LERP * delta
 		)
-		if kdir.length_squared() > 0.0:
-			global_position += kdir.normalized() * PAN_SPEED / zoom.x * delta
-	else:
-		# PLAYING: smooth follow player
-		if _player:
-			global_position = global_position.lerp(
-				_player.global_position + Vector2(0, 60), FOLLOW_LERP * delta
-			)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
