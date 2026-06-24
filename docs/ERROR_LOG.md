@@ -1334,6 +1334,16 @@ global_rotation = dir.angle()
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
 
+## GAP-078 垂直牆壁/天花板黏附空隙（2026-06-25）
+
+- **Severity**: Bug — 貼牆時玩家與牆面之間出現可見空隙（非固定，垂直爬行時尤明顯）
+- **根本原因**: `_apply_stuck_movement` 設 `velocity.x = 0.0`（牆壁）/ `velocity.y = 0.0`（天花板）  
+  → Godot `move_and_slide()` 在 velocity 為零時不推玩家貼牆，玩家停在 safe_margin 位置  
+  → 垂直移動（climb）期間如有幾何邊角或物理時序，輕微飄離表面
+- **修復**: 用 `velocity.x = -_stuck_normal.x * 8.0`（牆壁）/ `velocity.y = -_stuck_normal.y * 8.0`（天花板）  
+  持續施加朝表面方向的微小速度，`move_and_slide()` 在碰撞面解析掉，淨效果：玩家始終緊貼牆面
+- **受影響檔案**: `scripts/player.gd`
+
 ## GAP-077 牆壁跳躍 coyote time（2026-06-25）
 
 - **Severity**: Feature — 離牆後短暫視窗內按 W 觸發跳躍

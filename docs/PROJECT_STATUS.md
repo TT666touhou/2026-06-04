@@ -306,6 +306,7 @@
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
+| 2026-06-25 | Developer | GAP-078：垂直牆壁黏附空隙 — velocity.x = -normal.x * 8 持續壓入牆面，move_and_slide 解析掉多餘速度 |
 | 2026-06-25 | Developer | GAP-077b：牆壁跳躍手感修復 — _wall_jump_lock 0.18s 防止 kick 被 velocity.x=h*walk_speed 覆蓋；kick 220px/s；移除 _w_prev 限制 |
 | 2026-06-25 | Developer | GAP-077：牆壁跳躍 coyote time — 離牆後 0.15s 內按 W 觸發，橫向 kick 120px/s，_no_stick_frames=8 防重黏 |
 | 2026-06-25 | Developer | GAP-076：爬牆/天花板離開表面後持續懸浮 — _probe_stuck_surface() raycast 逐幀驗證，被動釋放無 grace |
