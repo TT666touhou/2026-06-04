@@ -306,6 +306,7 @@
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
+| 2026-06-25 | Developer | GAP-076：爬牆/天花板離開表面後持續懸浮 — _probe_stuck_surface() raycast 逐幀驗證，被動釋放無 grace |
 | 2026-06-25 | Designer | GAP-074/075：GDD v13 §2.2/§2.3/§2.3a — 針飛行時間+子彈時間演出、解除黏附修復說明、清除舊回合制殘留 |
 | 2026-06-25 | Developer | GAP-075：天花板/牆壁解除黏附重新黏附 bug — _no_stick_frames=4 寬限期 + velocity.y=220 離頂推力 |
 | 2026-06-25 | Developer | GAP-074：左/右鍵改為發射飛行 NeedleProjectile，受 time_scale 影響，子彈時間下慢速飛行 |

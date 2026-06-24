@@ -1334,6 +1334,20 @@ global_rotation = dir.angle()
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
 
+## GAP-076 爬牆/天花板離開表面後持續懸浮 bug（2026-06-25）
+
+- **Severity**: High — 玩家爬到天花板邊緣 crawl 出去 / 爬牆超過牆頂，_stuck 未清除，持續懸浮
+- **根本原因**: `_stuck` 只有玩家主動按輸入鍵才會清除。自動黏附 block 有 `not _stuck` 條件保護，
+  導致表面消失後也無法偵測到；`_apply_stuck_movement()` 持續將 velocity.y=0，玩家飄在空中
+- **標準做法**: Godot 論壇建議用 RayCast2D 驗證表面接觸，比 `is_on_wall()`/`is_on_ceiling()` 可靠
+  （後者需 velocity≠0 才記錄碰撞，靜止貼附時可能誤判）
+- **修復**: 新增 `_probe_stuck_surface()`，每幀在 `move_and_slide()` 後向已知表面方向射 raycast
+  （ceiling: 36px 上；wall/ledge: 20px 橫向）。raycast 空擊 → 被動釋放（無 grace period）
+- **被動 vs 主動釋放區分**:
+  - 被動（surface lost）: `_stuck=false`，不設 `_no_stick_frames`，允許立即黏附新表面
+  - 主動（按 S/A/D 推離）: `_unstick()` 設 `_no_stick_frames=4` 防同幀重黏
+- **受影響檔案**: `scripts/player.gd`
+
 ## GAP-075 天花板/牆壁解除黏附後重新黏附 bug（2026-06-25）
 
 - **Severity**: Medium — 玩家按 S 離開天花板後仍無法掉落
