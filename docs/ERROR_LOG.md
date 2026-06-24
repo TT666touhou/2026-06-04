@@ -1269,3 +1269,11 @@ global_rotation = dir.angle()
 
 - 盪繩靜止 kick：20.0 → 100.0 px/s（靜止懸掛時弧線可見）
 - `to_mouse` 重複宣告 Parser Error → 被動分支改名 `to_mouse_p`
+
+## GAP-065 收縮繩索消耗一個回合（2026-06-24）
+
+- **Severity**: Design change（行為調整）
+- **需求**: 用戶要求點擊「收縮」按鈕應耗費一個回合（與彈弓/攻擊針一致）
+- **原本設計**: 點擊收縮按鈕 → 設 `_reel_queued = true` → 下一回合開始時執行收縮，不消耗回合
+- **修改**: 移除 queue 機制，改為點擊按鈕立即縮短繩索（`_wire.length -= REEL_STEP`）並呼叫 `TurnManager.commit()`
+- **受影響檔案**: `scripts/player.gd`（移除 `_reel_queued` 變數、`_on_turn_started` 邏輯，新增 `_do_reel()`）

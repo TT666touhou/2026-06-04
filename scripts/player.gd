@@ -33,8 +33,6 @@ var _rmb_prev: bool = false
 
 # Reel button rect (world coords) — set by _update_preview, read by input
 var _reel_btn_rect: Rect2 = Rect2()
-# When true, wire reels in REEL_STEP px at next turn start
-var _reel_queued: bool = false
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -84,7 +82,7 @@ func _poll_mouse() -> void:
 	if lmb and not _lmb_prev:
 		if TurnManager.is_frozen():
 			if _reel_btn_rect.has_area() and _reel_btn_rect.has_point(mouse_w):
-				_reel_queued = not _reel_queued  # toggle: queue or cancel
+				_do_reel()
 			elif _is_on_player(mouse_w):
 				_sling_dragging = true
 				_sling_start = mouse_w
@@ -102,10 +100,14 @@ func _poll_mouse() -> void:
 	_lmb_prev = lmb
 	_rmb_prev = rmb
 
+func _do_reel() -> void:
+	if _wire == null:
+		return
+	_wire.length = maxf(_wire.length - REEL_STEP, rope_min_length)
+	TurnManager.commit()
+
 func _on_turn_started() -> void:
-	if _reel_queued and _wire != null:
-		_reel_queued = false
-		_wire.length = maxf(_wire.length - REEL_STEP, rope_min_length)
+	pass
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey:
@@ -186,7 +188,7 @@ func _update_preview() -> void:
 		aim_preview.set_swing(wire_arc)
 		var btn_world := anchor_pos + Vector2(0, -28)
 		_reel_btn_rect = Rect2(btn_world - Vector2(36, 14), Vector2(72, 28))
-		aim_preview.set_reel_button(_reel_btn_rect, _reel_queued)
+		aim_preview.set_reel_button(_reel_btn_rect, false)
 		aim_preview.clear_wire_range()
 	else:
 		aim_preview.clear_swing()
@@ -335,7 +337,6 @@ func _start_grapple() -> void:
 	TurnManager.commit()
 
 func _release_grapple() -> void:
-	_reel_queued = false
 	needle_manager.release_wire()
 	_wire = null
 	_wire_anchor = null
