@@ -1333,3 +1333,17 @@ global_rotation = dir.angle()
 - **背景**: Space 鍵原用於 debug 快速跳過回合，非正式設計功能
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
+
+## GAP-073 移除回合制 → WASD 即時動作 + Space 子彈時間（2026-06-25）
+
+- **Severity**: Major design change（系統性重寫）
+- **背景**: 用戶 MVP 實測後決定放棄回合制，改為即時制（實時 WASD 移動 + Space = 子彈時間 time_scale=0.15）
+- **根本設計變更**:
+  - TurnManager 重新定位為 BulletTimeManager：`is_frozen()` = 子彈時間中；`commit()` = no-op（保留 API 不破壞編譯）
+  - Player 移動改為 WASD：A/D = 220 px/s 水平，W = 跳躍（550 px/s），S = 保留
+  - 彈弓拖曳移動完全移除；`_sling_dragging`、`_sling_start`、`max_launch_speed`、`max_drag_pixels` 等變數刪除
+  - `_shoot_attack()` 和 `_start_grapple()` 移除 `commit()` 呼叫，改為即時執行
+  - Camera WASD 平移移除（WASD 現在控制玩家）；Camera 改為永遠 lerp 跟隨玩家
+  - `signal turn_started` / `signal turn_ended` 從 TurnManager 移除（unused warning → error）
+- **受影響檔案**: `scripts/turn_manager.gd`、`scripts/player.gd`、`scripts/camera_controller.gd`、`docs/GAME_DESIGN.md`（v12→v13）
+- **注意**: TurnManager Autoload 名稱不變；舊 `commit()` 呼叫者無需修改（no-op 安全）
