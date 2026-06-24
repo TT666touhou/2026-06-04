@@ -306,6 +306,7 @@
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
+| 2026-06-24 | Developer | GAP-068：黏附改為無繩索時才觸發 — _wire == null 條件，盪繩狀態下不吸附 |
 | 2026-06-24 | Developer | GAP-067：右鍵綁線改為免費動作 — 移除 _start_grapple() 內的 commit，綁線不耗回合，收縮/彈弓才啟動物理 |
 | 2026-06-24 | Developer | GAP-066 修正：收縮後黏附未觸發 — 改用向錨點 raycast 確認牆面後強制 _try_stick_after_reel() |
 | 2026-06-24 | Developer | GAP-066：收縮動畫化(lerp over 0.3s)+ Player 黏壁/天花板(壁虎模式)+ 平台邊緣自動掛住(ledge snap) |
