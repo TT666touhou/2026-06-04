@@ -1334,6 +1334,12 @@ global_rotation = dir.angle()
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
 
+## GAP-079 移除牆壁跳躍機制（2026-06-25）
+
+- **類型**: Design decision — 手感不符合預期，移除整個機制
+- **移除項目**: `WALL_COYOTE_DURATION`、`wall_jump_kick`、`_wall_coyote_time`、`_last_wall_normal`、`_wall_jump_lock` 及所有相關邏輯
+- **受影響檔案**: `scripts/player.gd`、`docs/GAME_DESIGN.md`（§2.3a、§3.3）
+
 ## GAP-078 垂直牆壁/天花板黏附空隙（2026-06-25）
 
 - **Severity**: Bug — 貼牆時玩家與牆面之間出現可見空隙（非固定，垂直爬行時尤明顯）
