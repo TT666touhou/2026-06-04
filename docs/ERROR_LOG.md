@@ -1287,3 +1287,19 @@ global_rotation = dir.angle()
 - **原本設計**: 點擊收縮按鈕 → 設 `_reel_queued = true` → 下一回合開始時執行收縮，不消耗回合
 - **修改**: 移除 queue 機制，改為點擊按鈕立即縮短繩索（`_wire.length -= REEL_STEP`）並呼叫 `TurnManager.commit()`
 - **受影響檔案**: `scripts/player.gd`（移除 `_reel_queued` 變數、`_on_turn_started` 邏輯，新增 `_do_reel()`）
+
+## GAP-067 右鍵綁線改為免費動作，不消耗回合（2026-06-24）
+
+- **Severity**: Design change（行為調整）
+- **需求**: 右鍵發射繩索後玩家停在 FROZEN，選擇收縮/彈弓才啟動物理回合
+- **原本設計**: `_start_grapple()` 末尾呼叫 `TurnManager.commit()`，綁線即觸發回合
+- **修改**: 移除 `_start_grapple()` 內的 `TurnManager.commit()`，綁線為免費動作
+- **受影響檔案**: `scripts/player.gd`
+
+## GAP-068 黏附條件修正：無繩索時才觸發（2026-06-24）
+
+- **Severity**: Design change（行為修正）
+- **需求**: 只有無繩索連接（自由飛行/彈弓後）碰到牆/天花板才黏附；盪繩中不黏附
+- **原本設計**: auto-stick 無繩索條件，任何時機碰牆都黏附
+- **修改**: auto-stick 加 `_wire == null` 前置條件
+- **受影響檔案**: `scripts/player.gd`
