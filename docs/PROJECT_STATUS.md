@@ -306,6 +306,9 @@
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
+| 2026-06-25 | Designer | GAP-074/075：GDD v13 §2.2/§2.3/§2.3a — 針飛行時間+子彈時間演出、解除黏附修復說明、清除舊回合制殘留 |
+| 2026-06-25 | Developer | GAP-075：天花板/牆壁解除黏附重新黏附 bug — _no_stick_frames=4 寬限期 + velocity.y=220 離頂推力 |
+| 2026-06-25 | Developer | GAP-074：左/右鍵改為發射飛行 NeedleProjectile，受 time_scale 影響，子彈時間下慢速飛行 |
 | 2026-06-25 | Designer | GAP-073：移除回合制 → WASD 即時動作 + Space 子彈時間 — GDD v13，§1.2/§2.2/§2.4/§9.1/§9.1b/§10 全部更新 |
 | 2026-06-25 | Developer | GAP-073：重寫 turn_manager.gd(BulletTimeManager) + player.gd(WASD即時) + camera_controller.gd(移除WASD平移) |
 | 2026-06-25 | Developer | GAP-072：攻擊針改即時 raycast + mask=0xFFFF — 解決穿透敵人問題，place_attack_anchor_instant |

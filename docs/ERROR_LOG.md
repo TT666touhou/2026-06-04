@@ -1334,6 +1334,24 @@ global_rotation = dir.angle()
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
 
+## GAP-075 天花板/牆壁解除黏附後重新黏附 bug（2026-06-25）
+
+- **Severity**: Medium — 玩家按 S 離開天花板後仍無法掉落
+- **根本原因**: `_unstick()` 設 `_stuck=false`，但同一幀內 `move_and_slide()` 尚未執行，`is_on_ceiling()` 仍為 true，自動黏附 block 立即重新黏附
+- **修復**: `_unstick()` 增加 `_no_stick_frames=4`（4 幀寬限期），自動黏附 block 改為 `elif`——grace 期間整個 block 跳過；從天花板 S 鍵脫落後加 `velocity.y=220.0` 確保物理分離
+- **受影響檔案**: `scripts/player.gd`
+
+## GAP-074 左/右鍵改為飛行針（受子彈時間影響）（2026-06-25）
+
+- **Severity**: Feature（設計變更 — 演出需求）
+- **背景**: 即時 raycast 無飛行演出，用戶要求能看到「針被拋出但在子彈時間下緩慢移動」的效果
+- **修改**:
+  - `_shoot_attack()` 改呼叫 `needle_manager.shoot_attack_needle(throw_origin.global_position, dir)`
+  - `_start_grapple()` 改呼叫 `needle_manager.shoot_wire_needle(throw_origin.global_position, dir)`
+  - `NeedleProjectile._physics_process(delta)` 中 delta 被 `Engine.time_scale` 縮放，子彈時間下自動慢速
+  - `needle_manager._on_embedded()` 新增 `z_index=1` 確保錨點渲染在敵人前
+- **受影響檔案**: `scripts/player.gd`、`scripts/needle_manager.gd`
+
 ## GAP-073 移除回合制 → WASD 即時動作 + Space 子彈時間（2026-06-25）
 
 - **Severity**: Major design change（系統性重寫）
