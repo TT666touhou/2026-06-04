@@ -1300,10 +1300,17 @@ global_rotation = dir.angle()
 - **Severity**: Design change（行為調整）—【此修改方向錯誤，GAP-069 已回退】
 - **教訓**: 需求模糊時必須先用 AskUserQuestion 確認，不可假設；「綁住時物理才開始」≠「綁線為免費動作」
 
-## GAP-068 黏附條件修正：無繩索時才觸發（2026-06-24）
+## GAP-068 黏附條件修正：無繩索時才觸發（2026-06-24）— ⚠️ 已由 GAP-070 修正
 
-- **Severity**: Design change（行為修正）
+- **Severity**: Design change（行為修正）—【此條件在 GAP-070 中放寬，已改為 Ronin 機制】
 - **需求**: 只有無繩索連接（自由飛行/彈弓後）碰到牆/天花板才黏附；盪繩中不黏附
-- **原本設計**: auto-stick 無繩索條件，任何時機碰牆都黏附
 - **修改**: auto-stick 加 `_wire == null` 前置條件
 - **受影響檔案**: `scripts/player.gd`
+
+## GAP-070 盪繩碰牆自動黏附（Ronin 機制）（2026-06-25）
+
+- **Severity**: Design change（設計修正）
+- **背景**: 查詢 Ronin (2015) 遊戲機制確認：盪繩中玩家身體碰到牆面/天花板 → 自動附著，繩索釋放。用戶要求「去查 Ronin 的機制」
+- **舊行為（GAP-068）**: `_wire == null` 前置條件 → 盪繩中碰牆不黏附
+- **新行為**: 移除 `_wire == null` 條件；碰到牆/天花板時若繩索在線則先 `_release_grapple()` 再 `_stick_to_surface()`；邊緣掛住仍保留 `_wire == null` 條件（掛住只在自由飛行中有意義）
+- **受影響檔案**: `scripts/player.gd`（`_physics_process` auto-stick block）

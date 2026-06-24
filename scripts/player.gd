@@ -92,13 +92,17 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_apply_wire_post()
 
-	# Auto-stick: only when no wire connected (free movement hitting surface)
-	if _wire == null and not _reel_animating and not _stuck and not is_on_floor():
+	# Auto-stick: Ronin style — any surface contact = grab; wire releases if active
+	if not _reel_animating and not _stuck and not is_on_floor():
 		if is_on_wall():
+			if _wire != null:
+				_release_grapple()
 			_stick_to_surface(get_wall_normal())
 		elif is_on_ceiling():
+			if _wire != null:
+				_release_grapple()
 			_stick_to_surface(Vector2.DOWN)
-		else:
+		elif _wire == null:
 			_check_ledge_snap()
 
 	_update_wire_renderer()
