@@ -1346,6 +1346,18 @@ global_rotation = dir.angle()
   - 落地（`is_on_floor()`）清零 coyote 計時器
 - **受影響檔案**: `scripts/player.gd`
 
+### GAP-077b 牆壁跳躍手感修復（2026-06-25）
+
+- **Severity**: Bug fix — 跳躍 kick 完全無效
+- **根本原因**: `_apply_movement` 中 coyote 區塊設定 `velocity.x = kick` 後，同函式底部 `velocity.x = h * walk_speed` 在**同一幀**立即覆蓋，實際 kick 為 0
+- **附帶問題**: `not _w_prev` 條件導致爬牆持續按 W 後離牆無法立即跳，需放開再按
+- **修復**:
+  1. 新增 `_wall_jump_lock: float`：跳後 0.18s 期間空中不覆蓋 `velocity.x`
+  2. 移除 `_w_prev` / `not _w_prev`：允許按住 W 直接觸發（coyote 時間歸零防雙發）
+  3. `wall_jump_kick` 預設從 120 → 220（與 walk_speed 相符）
+- **業界參考**: maximmaeder Godot 教學 — `justWallJumped` boolean 禁止 0.2s 水平覆蓋
+- **受影響檔案**: `scripts/player.gd`
+
 ## GAP-076 爬牆/天花板離開表面後持續懸浮 bug（2026-06-25）
 
 - **Severity**: High — 玩家爬到天花板邊緣 crawl 出去 / 爬牆超過牆頂，_stuck 未清除，持續懸浮
