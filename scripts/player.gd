@@ -15,10 +15,6 @@ extends CharacterBody2D
 # ── Needle reach (max range for both attack needle and wire grapple) ───────────
 const NEEDLE_REACH: float = 480.0
 
-# ── Wall jump (coyote window after leaving a wall) ─────────────────────────────
-const WALL_COYOTE_DURATION: float = 0.15  # seconds W is valid after leaving wall
-@export var wall_jump_kick: float = 220.0  # horizontal speed away from wall on wall-jump
-
 # ── Reel animation ─────────────────────────────────────────────────────────────
 const REEL_DURATION: float = 0.25   # seconds to fully reel in
 
@@ -44,11 +40,6 @@ var _stuck: bool = false
 var _stuck_normal: Vector2 = Vector2.ZERO
 # Grace frames after _unstick() to prevent immediate re-stick
 var _no_stick_frames: int = 0
-
-# Wall coyote jump
-var _wall_coyote_time: float = 0.0
-var _last_wall_normal: Vector2 = Vector2.ZERO
-var _wall_jump_lock: float = 0.0  # seconds: horizontal input blocked after wall jump
 
 @onready var needle_manager: Node = $NeedleManager
 @onready var wire_renderer: Line2D = $WireRenderer
@@ -97,9 +88,6 @@ func _physics_process(delta: float) -> void:
 	# This catches walking off a ceiling edge or climbing past the top of a wall.
 	# Does NOT set _no_stick_frames, so the player can immediately re-stick to a new surface.
 	if _stuck and not _probe_stuck_surface():
-		if abs(_stuck_normal.x) > 0.5:  # wall (not ceiling): grant coyote window
-			_wall_coyote_time = WALL_COYOTE_DURATION
-			_last_wall_normal = _stuck_normal
 		_stuck = false
 		_stuck_normal = Vector2.ZERO
 
@@ -155,20 +143,6 @@ func _unhandled_input(_event: InputEvent) -> void:
 # ── Movement ───────────────────────────────────────────────────────────────────
 
 func _apply_movement(delta: float) -> void:
-	# Wall coyote jump: W pressed within the coyote window after leaving a wall.
-	# Fires on any W press (including held), since coyote time zeroes after the jump.
-	if not _stuck and _wall_coyote_time > 0.0:
-		_wall_coyote_time -= delta
-		if Input.is_key_pressed(KEY_W) and not is_on_floor():
-			velocity.y = -jump_force
-			velocity.x = _last_wall_normal.x * wall_jump_kick
-			_wall_coyote_time = 0.0
-			_no_stick_frames = 8
-			_wall_jump_lock = 0.18  # block horizontal override so kick isn't cancelled instantly
-
-	if is_on_floor():
-		_wall_coyote_time = 0.0
-
 	if _stuck:
 		_apply_stuck_movement()
 		return
@@ -181,16 +155,12 @@ func _apply_movement(delta: float) -> void:
 			velocity.y += gravity * delta
 	else:
 		if is_on_floor():
-			_wall_jump_lock = 0.0  # landing restores full horizontal control
 			velocity.x = h * walk_speed
 			if Input.is_key_pressed(KEY_W):
 				velocity.y = -jump_force
 		else:
 			velocity.y += gravity * delta
-			if _wall_jump_lock > 0.0:
-				_wall_jump_lock -= delta  # preserve kick velocity; don't override
-			else:
-				velocity.x = h * walk_speed
+			velocity.x = h * walk_speed
 
 func _apply_stuck_movement() -> void:
 	var h := float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A))
@@ -201,10 +171,8 @@ func _apply_stuck_movement() -> void:
 		# Negative normal.x = into-wall direction; keeps player flush against surface.
 		velocity.y = v * wall_climb_speed
 		velocity.x = -_stuck_normal.x * 8.0
-		# Press away from wall = push off and fall (grant coyote window)
+		# Press away from wall = push off and fall
 		if h * _stuck_normal.x > 0.3:
-			_wall_coyote_time = WALL_COYOTE_DURATION
-			_last_wall_normal = _stuck_normal
 			_unstick()
 			velocity.x = h * walk_speed
 			# velocity.y retains climb value; gravity resumes next frame
