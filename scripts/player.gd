@@ -153,12 +153,8 @@ func _do_reel() -> void:
 func _on_turn_started() -> void:
 	pass
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		var kb := event as InputEventKey
-		if kb.pressed and not kb.echo and kb.keycode == KEY_SPACE:
-			if TurnManager.is_frozen():
-				TurnManager.commit()
+func _unhandled_input(_event: InputEvent) -> void:
+	pass
 
 
 func _is_on_player(world_pos: Vector2) -> bool:

@@ -1314,3 +1314,10 @@ global_rotation = dir.angle()
 - **舊行為（GAP-068）**: `_wire == null` 前置條件 → 盪繩中碰牆不黏附
 - **新行為**: 移除 `_wire == null` 條件；碰到牆/天花板時若繩索在線則先 `_release_grapple()` 再 `_stick_to_surface()`；邊緣掛住仍保留 `_wire == null` 條件（掛住只在自由飛行中有意義）
 - **受影響檔案**: `scripts/player.gd`（`_physics_process` auto-stick block）
+
+## GAP-071 移除 Space 快捷鍵觸發回合（2026-06-25）
+
+- **Severity**: Design change（功能移除）
+- **背景**: Space 鍵原用於 debug 快速跳過回合，非正式設計功能
+- **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
+- **受影響檔案**: `scripts/player.gd`
