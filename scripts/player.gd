@@ -84,11 +84,19 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	_apply_wire_post()
 
-	# Grace cooldown after _unstick() — prevent instant re-stick the same/next frame
+	# Passive surface validation — release if the registered surface is gone.
+	# This catches walking off a ceiling edge or climbing past the top of a wall.
+	# Does NOT set _no_stick_frames, so the player can immediately re-stick to a new surface.
+	if _stuck and not _probe_stuck_surface():
+		_stuck = false
+		_stuck_normal = Vector2.ZERO
+
+	# Active-release grace period (set by _unstick() on player-initiated release).
+	# Prevents re-sticking to the SAME surface the frame after pressing the release key.
 	if _no_stick_frames > 0:
 		_no_stick_frames -= 1
-	# Auto-stick: Ronin style — any surface contact = grab; wire releases if active
-	elif not _reel_animating and not _stuck and not is_on_floor():
+	# Auto-stick: any surface contact = grab; wire releases if active
+	elif not _stuck and not _reel_animating and not is_on_floor():
 		if is_on_wall():
 			if _wire != null:
 				_release_grapple()
@@ -220,6 +228,33 @@ func _check_ledge_snap() -> void:
 			_stuck = true
 			_stuck_normal = Vector2(-side, 0.0)
 			break
+
+## Raycast probe toward the registered stuck surface.
+## Returns false when the surface is gone (player walked off an edge).
+## Used for passive release only — does not depend on move_and_slide collision flags,
+## so it works even when velocity is zero (ledge-snap / static hold).
+func _probe_stuck_surface() -> bool:
+	var probe_dir: Vector2
+	var probe_len: float
+	if _stuck_normal.y > 0.5:
+		# Ceiling: probe straight up from player center.
+		# Player half-height ≈ 32 px → probe 36 px to clear top edge with a 4 px buffer.
+		probe_dir = Vector2(0.0, -1.0)
+		probe_len = 36.0
+	elif abs(_stuck_normal.x) > 0.5:
+		# Wall / ledge: probe toward the wall face.
+		# Player half-width ≈ 16 px → probe 20 px to clear side edge with a 4 px buffer.
+		probe_dir = Vector2(-_stuck_normal.x, 0.0)
+		probe_len = 20.0
+	else:
+		return true  # unknown surface type — keep stuck to avoid false release
+	var space := get_world_2d().direct_space_state
+	var q := PhysicsRayQueryParameters2D.create(
+		global_position,
+		global_position + probe_dir * probe_len,
+		1,          # collision layer 1 = terrain only
+		[get_rid()])
+	return not space.intersect_ray(q).is_empty()
 
 func _try_stick_after_reel(anchor_pos: Vector2) -> void:
 	if anchor_pos == Vector2.ZERO:
