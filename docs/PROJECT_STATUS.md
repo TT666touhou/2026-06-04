@@ -306,6 +306,7 @@
 | 2026-06-20 | Developer | GAP-036：修復 needle_projectile 硬編碼舊 960×540 邊界（出生即被刪），改 get_viewport_rect 推導 |
 | 2026-06-20 | QA | GAP-035：run_project 乾淨啟動（1280×720, errors 空）、sensor 21/21、--check-only 0、無 dangling 參考；手感 8 情境 + @export 交玩家實測 → 通過 |
 | 2026-06-20 | Reviewer | GAP-035：審查通過 — bungee always-pull capped+防0、inertia move_toward 正確、buffer/coyote 順序正確、外牆座標框滿 0..1280/0..720 與相機 limits 一致 |
+| 2026-06-25 | Developer | GAP-072：攻擊針改即時 raycast + mask=0xFFFF — 解決穿透敵人問題，place_attack_anchor_instant |
 | 2026-06-25 | Developer | GAP-071：移除 Space 快捷鍵觸發回合 — 清空 _unhandled_input，只保留 pass |
 | 2026-06-25 | Developer | GAP-070：盪繩碰牆自動黏附(Ronin機制) — 移除 _wire==null 限制，碰牆/天花板時繩索先釋放再黏附 |
 | 2026-06-25 | Developer | GAP-069：恢復綁線觸發物理回合(Ronin A方案) — 還原 GAP-067 錯誤移除的 commit |

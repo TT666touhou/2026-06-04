@@ -40,6 +40,20 @@ func shoot_wire_needle(from: Vector2, dir: Vector2) -> void:
 		return
 	_spawn_projectile(from, dir, _NEEDLE_WIRE)
 
+func place_attack_anchor_instant(hit_pos: Vector2, collider: Object) -> void:
+	if _total_count() >= max_needles or needle_anchor_scene == null or _needle_layer == null:
+		return
+	var anchor := needle_anchor_scene.instantiate()
+	anchor.type = _ANCHOR_ATTACK
+	anchor.global_position = hit_pos
+	anchor.z_index = 1
+	if collider is PhysicsBody2D:
+		anchor.attached_body = collider as PhysicsBody2D
+	_needle_layer.add_child(anchor)
+	_anchors.append(anchor)
+	if collider != null and collider.has_method("on_needle_embedded"):
+		collider.on_needle_embedded(_NEEDLE_ATTACK)
+
 func place_wire_anchor_instant(hit_pos: Vector2, collider: Object) -> void:
 	if needle_anchor_scene == null or _needle_layer == null:
 		return
@@ -47,6 +61,7 @@ func place_wire_anchor_instant(hit_pos: Vector2, collider: Object) -> void:
 	var anchor := needle_anchor_scene.instantiate()
 	anchor.type = _ANCHOR_WIRE
 	anchor.global_position = hit_pos
+	anchor.z_index = 1
 	if collider is PhysicsBody2D:
 		anchor.attached_body = collider as PhysicsBody2D
 	_needle_layer.add_child(anchor)

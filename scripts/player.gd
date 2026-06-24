@@ -234,13 +234,16 @@ func _update_preview() -> void:
 
 	# ── Layer 1: Needle trajectory — HIDDEN when hovering player (slingshot mode) ─
 	if not hover_player and not _sling_dragging:
-		var from := global_position  # fire from player center
+		var from := global_position
 		var to_mouse := mouse_w - from
 		var dist := to_mouse.length()
 		if dist > 8.0:
 			var needle_dir := to_mouse.normalized()
-			var reach_dist := minf(dist, NEEDLE_REACH)
-			var reach := from + needle_dir * reach_dist
+			var space2 := get_world_2d().direct_space_state
+			var nq := PhysicsRayQueryParameters2D.create(
+				from, from + needle_dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
+			var nhit := space2.intersect_ray(nq)
+			var reach: Vector2 = nhit["position"] if not nhit.is_empty() else from + needle_dir * NEEDLE_REACH
 			aim_preview.set_needle(from, reach, mouse_w)
 		else:
 			aim_preview.clear_needle()
@@ -290,7 +293,7 @@ func _update_preview() -> void:
 			var ray_dir := dir.normalized()
 			var space := get_world_2d().direct_space_state
 			var query := PhysicsRayQueryParameters2D.create(
-				global_position, global_position + ray_dir * NEEDLE_REACH, 1, [get_rid()])
+				global_position, global_position + ray_dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
 			var hit := space.intersect_ray(query)
 			var hit_valid := not hit.is_empty()
 			var hit_pos: Vector2 = hit["position"] if hit_valid else global_position + ray_dir * NEEDLE_REACH
@@ -405,9 +408,17 @@ func _apply_wire_post() -> void:
 	velocity = r["vel"] as Vector2
 
 func _shoot_attack() -> void:
-	var from := throw_origin.global_position if throw_origin else global_position
-	var dir := (get_global_mouse_position() - from).normalized()
-	needle_manager.shoot_attack_needle(from, dir)
+	var from := global_position
+	var to_mouse := get_global_mouse_position() - from
+	if to_mouse.length() < 4.0:
+		return
+	var dir := to_mouse.normalized()
+	var space := get_world_2d().direct_space_state
+	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
+	var hit := space.intersect_ray(query)
+	if hit.is_empty():
+		return
+	needle_manager.place_attack_anchor_instant(hit["position"], hit["collider"])
 	TurnManager.commit()
 
 func _start_grapple() -> void:
@@ -419,7 +430,7 @@ func _start_grapple() -> void:
 		return
 	var dir := to_mouse.normalized()
 	var space := get_world_2d().direct_space_state
-	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 1, [get_rid()])
+	var query := PhysicsRayQueryParameters2D.create(from, from + dir * NEEDLE_REACH, 0xFFFF, [get_rid()])
 	var hit := space.intersect_ray(query)
 	if hit.is_empty():
 		return  # no surface in range — silent fail

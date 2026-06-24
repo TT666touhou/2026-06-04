@@ -1315,6 +1315,18 @@ global_rotation = dir.angle()
 - **新行為**: 移除 `_wire == null` 條件；碰到牆/天花板時若繩索在線則先 `_release_grapple()` 再 `_stick_to_surface()`；邊緣掛住仍保留 `_wire == null` 條件（掛住只在自由飛行中有意義）
 - **受影響檔案**: `scripts/player.gd`（`_physics_process` auto-stick block）
 
+## GAP-072 攻擊針改即時命中 + 全層 mask（2026-06-25）
+
+- **Severity**: Bug fix + Design change
+- **問題**: 攻擊針（左鍵）以 NeedleProjectile 拋射體偵測，可能因時序或碰撞層不符而穿透敵人；右鍵勾爪 mask=1 也可能遺漏不在 layer 1 的敵人
+- **根本原因**: NeedleProjectile RayCast2D `collision_mask=1` 只偵測 layer 1；若敵人不在 layer 1 或拋射體時序問題 → 穿透
+- **修復**:
+  1. `_shoot_attack()` 改為即時 PhysicsRayQueryParameters2D raycast（同 `_start_grapple()` 方式），不再使用拋射體偵測
+  2. needle_manager 新增 `place_attack_anchor_instant(hit_pos, collider)` — 無 wire，有 z_index=1 確保顯示在敵人上方
+  3. `_start_grapple()` 及攻擊針 raycast 的 mask 從 `1` 改為 `0xFFFF`（偵測所有碰撞層）
+  4. aim_preview 針預覽也改用 raycast+mask=0xFFFF 顯示實際命中點
+- **受影響檔案**: `scripts/player.gd`, `scripts/needle_manager.gd`
+
 ## GAP-071 移除 Space 快捷鍵觸發回合（2026-06-25）
 
 - **Severity**: Design change（功能移除）
