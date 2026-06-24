@@ -1334,6 +1334,18 @@ global_rotation = dir.angle()
 - **修改**: 清空 `_unhandled_input` 函式體（改為 `pass`）；`set_process_unhandled_input(false)` 已在 `_ready()` 存在，此函式實際上無作用
 - **受影響檔案**: `scripts/player.gd`
 
+## GAP-080 地毯式清理（2026-06-25）
+
+- **類型**: Maintenance — 移除過時死碼 + 修正 GDD 不準確
+- **代碼清理**:
+  - `player.gd`: 移除 `ghost_body` @onready（從未使用）和 `_is_on_player()` 函式（彈弓時代殘留）
+  - `turn_manager.gd`: 移除 `commit()` no-op（全專案零呼叫者），更新 header
+  - `aim_preview.gd`: 移除彈弓（slingshot）與 hover 相關全部死碼 — 12 個變數、6 個函式、3 個 draw layer、4 個常數（GAP-073 移除彈弓後遺留）
+- **GDD 修正**:
+  - §2.2 射出機制說明「即時 raycast」→「飛行針 1600px/s」（GAP-074 修改後遺漏更新）
+  - §10.1 `commit()` 描述更新（已移除）
+- **受影響檔案**: `scripts/player.gd`, `scripts/turn_manager.gd`, `scripts/aim_preview.gd`, `docs/GAME_DESIGN.md`
+
 ## GAP-079 移除牆壁跳躍機制（2026-06-25）
 
 - **類型**: Design decision — 手感不符合預期，移除整個機制
