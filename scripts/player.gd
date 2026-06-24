@@ -77,7 +77,9 @@ func _physics_process(delta: float) -> void:
 			_wire.length = lerpf(_reel_from, rope_min_length, t)
 			if t >= 1.0:
 				_reel_animating = false
+				var anchor_pos: Vector2 = _wire_anchor.global_position if _wire_anchor != null else Vector2.ZERO
 				_release_grapple()
+				_try_stick_after_reel(anchor_pos)
 		else:
 			_reel_animating = false
 
@@ -208,6 +210,21 @@ func _check_ledge_snap() -> void:
 			_stuck = true
 			_stuck_normal = Vector2(-side, 0.0)
 			break
+
+func _try_stick_after_reel(anchor_pos: Vector2) -> void:
+	if anchor_pos == Vector2.ZERO:
+		return
+	var dir: Vector2 = (anchor_pos - global_position)
+	var dist := dir.length()
+	if dist < 0.5:
+		return
+	dir = dir / dist
+	var space := get_world_2d().direct_space_state
+	var q := PhysicsRayQueryParameters2D.create(
+		global_position, anchor_pos + dir * 8.0, 1, [get_rid()])
+	var hit := space.intersect_ray(q)
+	if not hit.is_empty():
+		_stick_to_surface(hit["normal"] as Vector2)
 
 # ── Always-on preview — all layers drawn simultaneously ────────────────────────
 
